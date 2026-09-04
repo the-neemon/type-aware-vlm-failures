@@ -33,14 +33,80 @@ own the paper alone.
 
 | Workstream | Scope | Owner |
 | --- | --- | --- |
-| **A. Infra and inference** | Ada, SLURM, envs, model runs, activation caching | TBD |
-| **B. Labelling** | Judge pipeline, annotation, kappa, taxonomy definitions | TBD |
-| **C. Synthetic** | Generator, matched pairs, ground-truth labels | TBD |
-| **D. Analysis** | Probes, surface control, matrix, controller, plots | TBD |
+| **A. Infra and inference** | Ada, SLURM, envs, model runs, activation caching | Yash More |
+| **B. Labelling** | Judge pipeline, annotation, kappa, taxonomy definitions | Shrish Kadam |
+| **C. Synthetic** | Generator, matched pairs, ground-truth labels | Sanjith Ganapathi |
+| **D. Analysis** | Probes, surface control, matrix, controller, plots | Naman Singhal |
 
-Assign these at the next team meeting and record them here. Every member needs
-enough context on workstream B to annotate, since the kappa check needs two
-independent annotators.
+Provisional, swap freely at the first meeting. Every member needs enough context
+on workstream B to annotate, since the kappa check needs two independent
+annotators, and the judge-versus-human check in P2.5 needs a third opinion to
+adjudicate.
+
+### 1.1 Day 1: Wednesday 2 September
+
+Only track A needs a GPU. Everything else is laptop work, so nobody is blocked
+waiting on cluster access.
+
+**Naman, first 30 minutes, before anyone else starts:** push the repo skeleton
+(P0.6, P0.7) so the other three have somewhere to commit. Directories per SPEC
+Section 10, a `.gitignore` covering `*.npz`, `*.pt`, `cache/` and `results/*.npz`,
+and a README stub carrying the empty HuggingFace and WandB link section. Then
+grant the TA mentors access (P0.8), which takes two minutes and is otherwise
+the kind of thing that gets remembered on 29 September.
+
+| Who | Today's track | End-of-day deliverable |
+| --- | --- | --- |
+| **Yash** | Ada, environment, weights, smoke test (P0.1, P0.2, P0.3, P0.5) | One Qwen2.5-VL-7B answer to one ChartQA image, produced by a committed `scripts/smoke.sbatch` |
+| **Naman** | Repo skeleton, then the storage budget and caching schema (P0.6, P0.7, P0.8, P0.4) | `configs/activations.yaml` plus the arithmetic behind it, as a proposal for the evening sync |
+| **Shrish** | ChartQA ingest, relaxed accuracy, figure-level splits (P1.1, P1.6, and the P5.4 assertion) | `src/eval/relaxed_accuracy.py` with boundary tests passing, and figure-versus-question counts for every split |
+| **Sanjith** | Synthetic bar chart generator (P3.1), taxonomy definitions draft (P2.1) | Twenty generated charts with a manifest, and a first draft of the two class definitions |
+
+**Detail per person.**
+
+*Yash.* Confirm all four of us can submit an Ada job and write to `/scratch`
+before doing anything else, since a missing account is a multi-day fix. Set
+`HF_HOME` to a shared `/scratch` path, not home; home quota will not hold two 7B
+checkpoints. Pin `transformers` and `qwen-vl-utils` in `requirements.txt` and
+record the exact versions, because activations differ silently across versions.
+In the SLURM template, request walltime explicitly (the default is one hour),
+constrain the GPU type since nodes are mixed, and exclude `gnode077`. The day is
+successful if one image and one question produce one answer string. Do not batch,
+do not evaluate, do not tune the prompt yet.
+
+*Naman.* Skeleton first, then the critical-path decision. Read
+`num_hidden_layers` and `hidden_size` from each model's `config.json` rather than
+trusting the numbers quoted in Section 4.1 of this file; verifying them is the
+task. Then run the processor on three real ChartQA figures at the resolution we
+intend to use and count the actual vision tokens after patch merging, since that
+is the term that decides whether the cache is 2 GB or 1.8 TB. Produce the
+arithmetic for pooled and unpooled at a candidate layer set (for 28 layers,
+something like 2, 6, 10, 14, 18, 22, 26, 27 spans early, middle and late), and
+bring a recommendation rather than options. This needs no GPU.
+
+*Shrish.* Download ChartQA and count figures against questions per split, which
+tells us how much figure-level splitting will cost us in effective sample size.
+Implement relaxed accuracy with 5 percent numeric tolerance and exact match on
+strings, and unit-test it exactly at the tolerance boundary in both directions.
+Getting this wrong marks correct answers as errors, and those mislabelled items
+land in the structural class and poison every probe downstream, so it is worth a
+full day. Write the manifest schema for `(figure_id, question, gold, prediction,
+correct)` while you are in the data, since both caching and labelling key off it.
+Add the assertion that no `figure_id` appears in two splits.
+
+*Sanjith.* Start with bar charts only, node-link diagrams can wait. Make bar
+height separation, tick density and axis range controllable parameters from the
+first version, since those are what P3.4's matched pairs will vary. Emit a
+manifest alongside the images carrying ground truth and the split assignment, so
+the split can never drift from the data. Separately, draft the structural and
+fabrication definitions with three worked edge cases each, and include the
+explicit "neither / ambiguous" option; that draft is what Shrish's judge prompt
+gets built on next week.
+
+**Evening sync, 30 minutes.** One agenda item that matters: ratify or reject
+Naman's pooling recommendation (open decision 1). It is close to irreversible
+once caching starts, so it gets decided by the team rather than by whoever writes
+the caching code. Everything else is a status round.
 
 ---
 
@@ -403,7 +469,7 @@ Record the resolution here as each is made.
 | 1 | Pooling strategy and cached layer set | 8 Sep | Open |
 | 2 | Judge model and cost ceiling | 10 Sep | Open |
 | 3 | Whether to run ChartQA train split for error yield | 12 Sep | Open |
-| 4 | Workstream ownership | Next meeting | Open |
+| 4 | Workstream ownership | Next meeting | Provisional, see Section 1 |
 | 5 | `I_0` definition, with or without a naive re-ask control | 1 Oct | Open |
 | 6 | `I_crop` conditioning mechanism | 1 Oct | Open |
 | 7 | ChartGemma stretch goal: keep or drop | 30 Sep | Open |
