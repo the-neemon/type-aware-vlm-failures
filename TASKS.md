@@ -562,8 +562,8 @@ Record the resolution here as each is made.
 | 2 | Judge model and cost ceiling | 10 Sep | Open |
 | 3 | Whether to run ChartQA train split for error yield | 12 Sep | Open |
 | 4 | Workstream ownership | Next meeting | Provisional, see Section 1 |
-| 9 | Which pool runs which model, fixed for the project | 14 Sep | Open, see Section 1.1 |
 | 5 | `I_0` definition, with or without a naive re-ask control | 1 Oct | Open |
 | 6 | `I_crop` conditioning mechanism | 1 Oct | Open |
 | 7 | ChartGemma stretch goal: keep or drop | 30 Sep | Open |
 | 8 | Shared storage path for weights and caches, given node-local `/scratch` | 8 Sep | Open, P0.3 |
+| 9 | Which pool runs which model, fixed for the project | 14 Sep | Open, see Section 1.1 |
