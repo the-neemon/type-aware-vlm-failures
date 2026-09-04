@@ -65,9 +65,11 @@ the kind of thing that gets remembered on 29 September.
 **Detail per person.**
 
 *Yash.* Confirm all four of us can submit an Ada job and write to `/scratch`
-before doing anything else, since a missing account is a multi-day fix. Set
-`HF_HOME` to a shared `/scratch` path, not home; home quota will not hold two 7B
-checkpoints. Pin `transformers` and `qwen-vl-utils` in `requirements.txt` and
+before doing anything else, since a missing account is a multi-day fix. Then map
+the filesystem, because `/scratch` is node-local and cannot hold anything the
+whole team shares: find the shared path we are actually entitled to, and report
+its quota. That number decides whether the checkpoints can be downloaded once or
+have to be replicated per node. Pin `transformers` and `qwen-vl-utils` in `requirements.txt` and
 record the exact versions, because activations differ silently across versions.
 In the SLURM template, request walltime explicitly (the default is one hour),
 constrain the GPU type since nodes are mixed, and exclude `gnode077`. The day is
@@ -120,9 +122,18 @@ the caching code. Everything else is a status round.
       `qwen-vl-utils`; LLaVA-NeXT has its own processor path. Lock versions in
       `requirements.txt` and record the exact commit. Version drift between team
       members will silently change activations.
-- [ ] **P0.3** Set `HF_HOME` to `/scratch`, not home. Home quota will not hold two
-      7B checkpoints (roughly 16 GB each). Download both checkpoints once and
-      share the path.
+- [ ] **P0.3** **Map the filesystem before downloading anything.** `/scratch` on
+      Ada is node-local: a job on one node cannot see what a job on another node
+      wrote there. Report (a) the shared path available to us and its quota,
+      (b) home quota, (c) whether `/scratch` is ever purged and on what cycle.
+      Then decide where `HF_HOME` points. Two 7B checkpoints are roughly 32 GB
+      combined, so if no shared location holds them, they get replicated per
+      node and jobs must be pinned to a fixed node set to avoid re-downloading
+      16 GB every time the scheduler moves us. Resolves open decision 8.
+- [ ] **P0.9** Job scripts stage results back. Every job that writes activations
+      copies them from node-local `/scratch` to the shared path before exiting,
+      and the script fails loudly if the copy fails. Without this the cache
+      silently fragments across nodes and is unusable for training a probe.
 - [x] **P0.4** **Decide the caching schema and compute the storage budget before
       writing any cache.** This is the single most consequential infra decision
       in the project. See Section 4.1 for the arithmetic.
@@ -368,8 +379,20 @@ in October.
 
 Request explicit walltime; the default is one hour. Nodes carry mixed GPU types,
 so constrain the GPU in the job script or a large model will land on a card that
-cannot hold it. `/scratch` persists across jobs, so cache there and not in the
-job's temp space. Avoid `gnode077`.
+cannot hold it. Avoid `gnode077`.
+
+**`/scratch` is node-local, not shared.** It persists across jobs *on the same
+node*, which makes it good working space and a good weights cache, but a job
+that lands elsewhere sees none of it. Two consequences. Model weights cannot be
+downloaded once and shared through it, so either they live on shared storage or
+they are replicated per node and jobs are pinned to a fixed node set. And
+activations written there must be staged back to shared storage before the job
+exits (P0.9), or the cache fragments across whichever nodes the scheduler picked
+and no probe can be trained on it.
+
+This is another argument for pooling: 35 GiB of pooled activations will fit on
+shared storage, whereas 4.6 TiB of unpooled activations would have had nowhere
+to live at all.
 
 ### 4.5 Reproducibility hygiene
 
@@ -492,3 +515,4 @@ Record the resolution here as each is made.
 | 5 | `I_0` definition, with or without a naive re-ask control | 1 Oct | Open |
 | 6 | `I_crop` conditioning mechanism | 1 Oct | Open |
 | 7 | ChartGemma stretch goal: keep or drop | 30 Sep | Open |
+| 8 | Shared storage path for weights and caches, given node-local `/scratch` | 8 Sep | Open, P0.3 |

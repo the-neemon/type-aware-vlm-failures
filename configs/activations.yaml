@@ -66,9 +66,15 @@ models:
 # Storage
 # --------------------------------------------------------------------------
 storage:
-  root: /scratch            # exact shared path set by workstream A in P0.3
+  # Ada's /scratch is NODE-LOCAL. A job on one node cannot see what a job on
+  # another node wrote there, so it is working space for the duration of a job,
+  # never the cache's home. Every job stages its output to durable_root before
+  # exiting (TASKS.md P0.9) or the cache fragments across nodes.
+  working_root: /scratch    # node-local, fast, per job
+  durable_root: TBD         # shared path, set by workstream A in P0.3
+  stage_back_required: true
   # At 20k items: 15.0 GiB for Qwen, 19.5 GiB for LLaVA, 34.5 GiB total.
-  # At 50k items: 86 GiB total. Both comfortable.
+  # At 50k items: 86 GiB total. Check both against the durable_root quota.
   estimated_gib_at_20k_items: 34.5
   estimated_gib_at_50k_items: 86.0
 

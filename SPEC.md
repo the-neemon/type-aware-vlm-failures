@@ -79,8 +79,13 @@ reportable finding, not a dead end.
   the two pathways occupy different depths. Both facts motivate spanning depth
   and position rather than fixing one.
 - **Binding constraint is storage, not compute.** Layers are subsampled, not
-  cached exhaustively. Activations are written to `/scratch` on Ada, with the
-  layer index set recorded in the run config so caches are reproducible.
+  cached exhaustively. The layer index set is recorded in the run config so
+  caches are reproducible.
+- **Ada's `/scratch` is node-local, not shared.** What a job writes on one node
+  is invisible to a job that lands on another. It is fast working space for the
+  duration of a job, not the cache's home. Every job stages its activations back
+  to shared storage before exiting, or the cache ends up scattered across
+  whichever nodes the scheduler happened to pick.
 
 ### 4.2 Probes
 Three logistic regressions with L2 regularisation, trained on cached activations:
@@ -234,7 +239,7 @@ weeks separate proposal acceptance from the mid-submission.
 | Fabrication scarcity in natural data | Ask about quantities outside a figure's range; control class balance directly in the synthetic arm. |
 | Signal is diagnostic but not causal (the Yuan et al. 2026 failure mode) | E4 stands alone without any probe. It is not downstream of E1 to E3. |
 | Probe result is a format or surface confound (the Sahoo et al. 2026 failure mode) | E2 is mandatory, not optional. No AUROC is reported without its surface baseline and residualised counterpart. |
-| Activation storage | Subsample layers; cache to `/scratch` on Ada; record the layer set in the run config. |
+| Activation storage | Subsample layers; use node-local `/scratch` as working space and stage back to shared storage per job; record the layer set in the run config. |
 | Compute | Not binding. 7B forward passes fit on Ada, probes take minutes on CPU. Real costs are activation storage and judge API calls. |
 
 ## 10. Repository Layout
@@ -259,7 +264,8 @@ type-aware-vlm-failures/
   paper/                  ACL-style LaTeX for mid and final write-ups
 ```
 
-Activation caches live on `/scratch` and are never committed.
+Activation caches live on shared cluster storage, staged there from node-local
+`/scratch` at the end of each job. They are never committed.
 
 ## 11. Definition of Done
 

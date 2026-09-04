@@ -19,8 +19,9 @@ Phase P0 (infrastructure). Nothing to reproduce yet.
 
 Not yet pinned. `requirements.txt` lands with P0.2.
 
-Set `HF_HOME` to a shared `/scratch` path before downloading any checkpoint.
-Home directory quota will not hold two 7B models.
+Ada's `/scratch` is node-local, not shared across nodes. Decide where `HF_HOME`
+points before downloading any checkpoint, and stage activation caches back to
+shared storage at the end of every job. See TASKS.md P0.3 and P0.9.
 
 ## Models
 
