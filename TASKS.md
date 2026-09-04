@@ -43,7 +43,36 @@ on workstream B to annotate, since the kappa check needs two independent
 annotators, and the judge-versus-human check in P2.5 needs a third opinion to
 adjudicate.
 
-### 1.1 Day 1: Wednesday 2 September
+### 1.1 Compute resources
+
+Two pools, and they are not interchangeable.
+
+| Pool | Access | Use for |
+| --- | --- | --- |
+| **Ada** | All four of us | Development, smoke tests, probes, everything small |
+| **H100** | Sanjith | Every heavy inference job |
+
+**Route heavy work to Sanjith.** The compute-bound tasks are P1.3 and P1.4
+(both VLMs over ChartQA), P1.5 (train-split runs for error yield), P4.3
+(activation caching over the full item set) and P6.5 (four interventions across
+two failure types, two models and two data arms, which is the largest re-query
+load in the project). Probes and the surface baseline take minutes on CPU and
+should stay wherever is convenient.
+
+This does not move workstream C off Sanjith. It means jobs from workstreams A
+and D get scheduled on his hardware, so he needs warning before a large run
+rather than a job appearing in his queue.
+
+**One hardware caveat that matters here.** Pick one machine per model and keep
+all of that model's inference *and* activation caching on it. Different GPUs
+select different kernels, so the same checkpoint and the same prompt can produce
+a different answer string on Ada than on an H100. P4.4 requires activations to
+be coupled to the exact answer that was labelled, so a model whose answers came
+from one pool and whose activations came from the other has silently broken that
+coupling, and nothing downstream will flag it. Record the pool alongside the
+run config, next to the library versions (Section 4.5).
+
+### 1.2 Day 1: Wednesday 2 September
 
 Only track A needs a GPU. Everything else is laptop work, so nobody is blocked
 waiting on cluster access.
@@ -533,6 +562,7 @@ Record the resolution here as each is made.
 | 2 | Judge model and cost ceiling | 10 Sep | Open |
 | 3 | Whether to run ChartQA train split for error yield | 12 Sep | Open |
 | 4 | Workstream ownership | Next meeting | Provisional, see Section 1 |
+| 9 | Which pool runs which model, fixed for the project | 14 Sep | Open, see Section 1.1 |
 | 5 | `I_0` definition, with or without a naive re-ask control | 1 Oct | Open |
 | 6 | `I_crop` conditioning mechanism | 1 Oct | Open |
 | 7 | ChartGemma stretch goal: keep or drop | 30 Sep | Open |

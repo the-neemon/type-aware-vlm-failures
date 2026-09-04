@@ -69,6 +69,10 @@ reportable finding, not a dead end.
 
 ### 4.1 Models and activation extraction
 - **Primary models:** Qwen2.5-VL-7B, LLaVA-NeXT. Both frozen.
+- **Hardware:** Ada for development and probes; H100 (via Sanjith) for the heavy
+  inference jobs. Each model is pinned to one pool for the whole project, since
+  differing kernels can change the generated answer and would decouple cached
+  activations from the answer that was actually labelled.
 - **Stretch goal:** ChartGemma. Only attempted if the two primary models are
   fully through the pipeline.
 - For each `(figure, question)` pair, cache activations at a fixed subsampled set
@@ -240,7 +244,7 @@ weeks separate proposal acceptance from the mid-submission.
 | Signal is diagnostic but not causal (the Yuan et al. 2026 failure mode) | E4 stands alone without any probe. It is not downstream of E1 to E3. |
 | Probe result is a format or surface confound (the Sahoo et al. 2026 failure mode) | E2 is mandatory, not optional. No AUROC is reported without its surface baseline and residualised counterpart. |
 | Activation storage | Subsample layers; use node-local `/scratch` as working space and stage back to shared storage per job; record the layer set in the run config. |
-| Compute | Not binding. 7B forward passes fit on Ada, probes take minutes on CPU. Real costs are activation storage and judge API calls. |
+| Compute | Not binding. 7B forward passes fit on Ada, probes take minutes on CPU, and Sanjith has H100 access for the heavy inference jobs. Real costs are activation storage and judge API calls. |
 
 ## 10. Repository Layout
 
