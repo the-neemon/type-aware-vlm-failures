@@ -1,0 +1,41 @@
+# Activation caches and model weights never enter the repo.
+# Caches live on /scratch; see configs/activations.yaml for the path.
+*.npz
+*.npy
+*.pt
+*.pth
+*.safetensors
+*.bin
+cache/
+checkpoints/
+hf_home/
+
+# Data. ChartQA and generated synthetic figures are reproducible from
+# scripts, so only manifests are tracked.
+data/
+!data/manifests/
+*.png
+*.jpg
+*.jpeg
+!paper/figures/*.png
+
+# Results: small metrics and figures are tracked, bulk arrays are not.
+results/**/*.npz
+results/**/*.parquet
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# SLURM
+slurm-*.out
+logs/
+
+# Editors and OS
+.DS_Store
+.vscode/
+.idea/
