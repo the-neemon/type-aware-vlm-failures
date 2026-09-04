@@ -1,0 +1,82 @@
+# LLM judge configuration. Resolves open decision 2, decided 2 September.
+#
+# The judge assigns a failure label to each incorrect VLM answer, given the
+# figure, the question, the gold answer and the model's answer. It labels
+# roughly 90 percent of the naturalistic arm, so its accuracy is a ceiling on
+# every probe result in the project (TASKS.md Section 5.1). This is the wrong
+# place to economise.
+#
+# Course note: the guidelines permit AI for implementation and data work and
+# forbid it only for generating the reports. Judge labelling is data work.
+
+model: claude-opus-5
+
+# Why not a cheaper model. The judge has to read a chart accurately and decide
+# whether a stated value appears anywhere in it. That is the same perceptual
+# task the models under test are failing, so a weaker judge produces label
+# noise that caps E1 and E3 and cannot be recovered downstream. Sonnet 5 would
+# save roughly $95 across the project and put the supervision signal at risk.
+# Revisit only if the pilot shows Opus and a cheaper model agreeing closely on
+# the 200-item human-annotated set.
+
+# --------------------------------------------------------------------------
+# Cost controls
+# --------------------------------------------------------------------------
+batch_api: true           # 50 percent discount; labelling is not latency-sensitive
+                          # client.messages.batches.create, poll, then read results.
+                          # Results arrive in ANY order: key by custom_id, never
+                          # by position.
+
+prompt_caching: true      # the rubric below is byte-identical on every call, so it
+                          # goes first with cache_control; the image and the item
+                          # fields go after it. Verify with
+                          # usage.cache_read_input_tokens; a zero there means
+                          # something volatile crept into the prefix.
+
+effort:
+  pilot: high             # 50-item pilot and the 200-item agreement set
+  production: medium      # full runs; this is a bounded classification against a
+                          # fixed rubric, not open-ended reasoning
+# Effort is chosen by measurement, not assumption: run the 200-item agreement
+# set at both levels and keep medium only if it matches high against the human
+# consensus labels. That set is being collected for P2.5 anyway.
+
+# --------------------------------------------------------------------------
+# Budget
+# --------------------------------------------------------------------------
+budget:
+  ceiling_usd: 200
+  # Estimate: ~12,000 calls (3k errors across both models, roughly three full
+  # runs as the definitions are revised, plus the pilot and the agreement set).
+  # Per call: ~1100 image tokens for a 1000x800 chart, ~1800 rubric tokens,
+  # ~150 item tokens, and 450 to 1200 output tokens depending on effort.
+  # Opus 5 with batch: $159 at medium effort, $272 at high.
+  # The ceiling assumes production runs at medium. Stop and re-plan rather than
+  # quietly exceeding it.
+  estimated_usd_medium: 159
+  estimated_usd_high: 272
+  # Replace both with measured figures after the pilot: 50 real calls give a
+  # true per-item cost, and these estimates are only as good as the token guesses.
+
+# --------------------------------------------------------------------------
+# Request shape
+# --------------------------------------------------------------------------
+request:
+  structured_output: true   # output_config.format, so the label parses reliably
+                            # rather than being regexed out of prose
+  labels: [structural, fabrication, ambiguous]
+  # "ambiguous" is the escape hatch from P2.1. Items landing there are dropped,
+  # never coerced into one of the two real classes.
+  capture_rationale: true   # P2.6 needs per-item rationale for the appendix
+  thinking: adaptive        # on by default for Opus 5; do not disable it
+
+# --------------------------------------------------------------------------
+# Validation
+# --------------------------------------------------------------------------
+# Two numbers, not one (TASKS.md Section 5.1):
+#   inter-human kappa      does the taxonomy admit consistent application
+#   judge vs human consensus  does THIS judge apply it correctly
+# The first without the second says nothing about the labels the judge produces.
+validation:
+  human_agreement_items: 200
+  kappa_threshold: 0.6

@@ -60,18 +60,17 @@ layers_fallback:
 # --------------------------------------------------------------------------
 # Compute pool (open decision 9, DECIDED 2 September)
 # --------------------------------------------------------------------------
-# Both models run all inference AND activation caching on the H100. Not Ada.
+# Everything runs on Ada. The H100 belongs to Sanjith's own research and is not
+# available to this project.
 #
-# The requirement is that a model's answers and its activations come from the
-# same kernels, or P4.4's coupling breaks silently. "Pin it to Ada" does not
-# satisfy that on its own, because Ada's nodes carry mixed GPU types and a
-# second run can land on a different card. The H100 is a single consistent
-# target, so it is the safer pin as well as the faster one.
-#
-# Fallback if H100 capacity becomes the bottleneck: move ONE model to Ada with
-# an explicit GPU-type constraint in the job script, and re-run that model's
-# answers and activations together. Never move a model partially.
-compute_pool: h100
+# The kernel-consistency requirement does not go away with it: a model's
+# answers and its activations must come from the same hardware or P4.4's
+# coupling breaks silently. Ada's nodes carry mixed GPU types, so "run it on
+# Ada" is NOT a pin by itself. Every inference and caching job must name one
+# GPU type in its SLURM constraint, that type is fixed for the project, and it
+# is recorded next to the library versions in the run config.
+compute_pool: ada
+gpu_type: TBD             # set by workstream A from the P0.1 inventory, then frozen
 
 # --------------------------------------------------------------------------
 # Models
