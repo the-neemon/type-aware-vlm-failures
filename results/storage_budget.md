@@ -37,26 +37,30 @@ Planning number for Qwen: **1044 vision tokens** (800x1000 figure, max_pixels ca
 fp16 throughout. Layer sets: 8 subsampled layers spanning early,
 middle and late, versus every layer.
 
-| Model | Schema | Layers | Per item | 20k items | 50k items |
+| Model | Schema | Layers | Per item | 6k items | 20k items |
 | --- | --- | --- | --- | --- | --- |
-| Qwen2.5-VL-7B | A_pooled | 8 | 112 KB | 2.1 GiB | 5.3 GiB |
-| Qwen2.5-VL-7B | A_pooled | all | 392 KB | 7.5 GiB | 18.7 GiB |
-| Qwen2.5-VL-7B | B_pooled_plus | 8 | 224 KB | 4.3 GiB | 10.7 GiB |
-| Qwen2.5-VL-7B | B_pooled_plus | all | 784 KB | 15.0 GiB | 37.4 GiB |
-| Qwen2.5-VL-7B | C_unpooled | 8 | 57.1 MB | 1116.2 GiB | 2790.5 GiB |
-| Qwen2.5-VL-7B | C_unpooled | all | 200.0 MB | 3906.6 GiB | 9766.6 GiB |
-| LLaVA-NeXT-7B | A_pooled | 8 | 128 KB | 2.4 GiB | 6.1 GiB |
-| LLaVA-NeXT-7B | A_pooled | all | 512 KB | 9.8 GiB | 24.4 GiB |
-| LLaVA-NeXT-7B | B_pooled_plus | 8 | 256 KB | 4.9 GiB | 12.2 GiB |
-| LLaVA-NeXT-7B | B_pooled_plus | all | 1.0 MB | 19.5 GiB | 48.8 GiB |
-| LLaVA-NeXT-7B | C_unpooled | 8 | 183.1 MB | 3575.4 GiB | 8938.6 GiB |
-| LLaVA-NeXT-7B | C_unpooled | all | 732.2 MB | 14301.8 GiB | 35754.4 GiB |
+| Qwen2.5-VL-7B | A_pooled | 8 | 112 KB | 0.6 GiB | 2.1 GiB |
+| Qwen2.5-VL-7B | A_pooled | all | 392 KB | 2.2 GiB | 7.5 GiB |
+| Qwen2.5-VL-7B | B_pooled_plus | 8 | 224 KB | 1.3 GiB | 4.3 GiB |
+| Qwen2.5-VL-7B | B_pooled_plus | all | 784 KB | 4.5 GiB | 15.0 GiB |
+| Qwen2.5-VL-7B | C_unpooled | 8 | 57.1 MB | 334.9 GiB | 1116.2 GiB |
+| Qwen2.5-VL-7B | C_unpooled | all | 200.0 MB | 1172.0 GiB | 3906.6 GiB |
+| LLaVA-NeXT-7B | A_pooled | 8 | 128 KB | 0.7 GiB | 2.4 GiB |
+| LLaVA-NeXT-7B | A_pooled | all | 512 KB | 2.9 GiB | 9.8 GiB |
+| LLaVA-NeXT-7B | B_pooled_plus | 8 | 256 KB | 1.5 GiB | 4.9 GiB |
+| LLaVA-NeXT-7B | B_pooled_plus | all | 1.0 MB | 5.9 GiB | 19.5 GiB |
+| LLaVA-NeXT-7B | C_unpooled | 8 | 183.1 MB | 1072.6 GiB | 3575.4 GiB |
+| LLaVA-NeXT-7B | C_unpooled | all | 732.2 MB | 4290.5 GiB | 14301.8 GiB |
 
 ## 3. Verdict
 
-- Schema B, 8 layers, both models, 20k items: **9.2 GiB**.
-- Schema B, ALL layers, both models, 20k items: **34.5 GiB** (and 86 GiB at 50k items).
-- Schema C, 8 layers, both models, 20k items: **4.6 TiB**, a 512x increase. Not viable.
+Planned volume after decisions 2 and 3 is about **6,000 items**:
+roughly 2,800 naturalistic (a 700-error pool plus matched correct
+items, per model) and 3,200 synthetic.
+
+- Schema B, ALL layers, both models, 6k items: **10.3 GiB**, or 16.2 GiB with room to re-cache one model.
+- Schema B, 8 layers, both models, 6k items: **2.7 GiB**.
+- Schema C, 8 layers, both models, 6k items: **1.4 TiB**, a 512x increase. Not viable.
 
 Pooling is what makes full-depth caching affordable. Once the vision
 tokens are pooled, going from 8 layers to every layer costs a factor

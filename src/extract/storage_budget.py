@@ -150,7 +150,7 @@ def main():
     print("## 2. Cache size per schema\n")
     print("fp16 throughout. Layer sets: 8 subsampled layers spanning early,")
     print("middle and late, versus every layer.\n")
-    print("| Model | Schema | Layers | Per item | 20k items | 50k items |")
+    print("| Model | Schema | Layers | Per item | 6k items | 20k items |")
     print("| --- | --- | --- | --- | --- | --- |")
 
     rows = []
@@ -164,7 +164,7 @@ def main():
                 per = (f"{bpi/1024:.0f} KB" if bpi < 1024**2
                        else f"{bpi/1024**2:.1f} MB")
                 print(f"| {mname} | {sname} | {lname} | {per} | "
-                      f"{bpi*20_000/GIB:.1f} GiB | {bpi*50_000/GIB:.1f} GiB |")
+                      f"{bpi*6_000/GIB:.1f} GiB | {bpi*20_000/GIB:.1f} GiB |")
 
     print("\n## 3. Verdict\n")
     def total(schema, layers):
@@ -173,13 +173,17 @@ def main():
     both_bpi = total("B_pooled_plus", "8")
     unpooled_bpi = total("C_unpooled", "8")
     ball_bpi = total("B_pooled_plus", "all")
-    print(f"- Schema B, 8 layers, both models, 20k items: "
-          f"**{both_bpi*20_000/GIB:.1f} GiB**.")
-    print(f"- Schema B, ALL layers, both models, 20k items: "
-          f"**{ball_bpi*20_000/GIB:.1f} GiB** "
-          f"(and {ball_bpi*50_000/GIB:.0f} GiB at 50k items).")
-    print(f"- Schema C, 8 layers, both models, 20k items: "
-          f"**{unpooled_bpi*20_000/GIB/1024:.1f} TiB**, "
+    print("Planned volume after decisions 2 and 3 is about **6,000 items**:")
+    print("roughly 2,800 naturalistic (a 700-error pool plus matched correct")
+    print("items, per model) and 3,200 synthetic.\n")
+    print(f"- Schema B, ALL layers, both models, 6k items: "
+          f"**{ball_bpi*6_000/GIB:.1f} GiB**, "
+          f"or {(ball_bpi*6_000 + 1024*1024*6_000)/GIB:.1f} GiB with room to "
+          f"re-cache one model.")
+    print(f"- Schema B, 8 layers, both models, 6k items: "
+          f"**{both_bpi*6_000/GIB:.1f} GiB**.")
+    print(f"- Schema C, 8 layers, both models, 6k items: "
+          f"**{unpooled_bpi*6_000/GIB/1024:.1f} TiB**, "
           f"a {unpooled_bpi/both_bpi:.0f}x increase. Not viable.")
     print()
     print("Pooling is what makes full-depth caching affordable. Once the vision")

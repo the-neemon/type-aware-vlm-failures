@@ -584,12 +584,13 @@ Record the resolution here as each is made.
 
 | # | Decision | Needed by | Status |
 | --- | --- | --- | --- |
-| 1 | Pooling strategy and cached layer set | 8 Sep | **Decided 2 Sep.** Schema B, fp16, all layers subject to a quota rule; see `configs/activations.yaml`. Contingent on P0.10. |
+| 1 | Pooling strategy and cached layer set | 8 Sep | **Decided 2 Sep, rule revised same day.** Schema B, fp16, `layers: all`. At the planned 6k items the cache is 10.3 GiB against a 30 GiB quota, so it holds. Contingent on P0.10. |
 | 2 | How the naturalistic arm gets labelled | 10 Sep | **Decided 2 Sep.** No paid API. Hand-annotated, ~1000 items, ~250 each; synthetic arm carries E4. See `configs/labelling.yaml`. |
 | 3 | ChartQA train split and error-pool size | 12 Sep | **Decided 2 Sep, revised same day.** Yes, but only ~1000 extra questions per model for a 700-error pool. Hand-labelling, not inference, is now the bottleneck. See P1.5. |
 | 4 | Workstream ownership | Next meeting | Provisional, see Section 1 |
 | 5 | `I_0` definition, with or without a naive re-ask control | 1 Oct | Open |
 | 6 | `I_crop` conditioning mechanism | 1 Oct | Open |
 | 7 | ChartGemma stretch goal: keep or drop | 30 Sep | Open |
-| 8 | Shared storage path for weights and caches, given node-local `/scratch` | 8 Sep | Open, P0.3 |
+| 8 | Shared storage path for weights and caches, given node-local `/scratch` | 8 Sep | **Closed 2 Sep by P0.3.** `$HOME`, 30 GiB per user. `/share1` has 100 GiB but no compute node can reach it. |
+| 10 | Can probe training read `/share1` from the login node | 20 Sep | Open. Would unlock 100 GiB of cold archive; only matters if the item count grows. |
 | 9 | Which pool runs which model, fixed for the project | 14 Sep | **Decided 2 Sep, revised same day.** Ada only; the H100 is unavailable. One frozen GPU type, named in every job constraint. See Section 1.1. |

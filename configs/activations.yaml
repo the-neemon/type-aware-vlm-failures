@@ -39,16 +39,18 @@ positions:
 # network boundaries), so full depth coverage is exactly what the hypothesis
 # needs, and it costs 3.8x on a base of 9 GiB.
 #
-# The rule exists because the budget has to fit SHARED storage, not node-local
-# /scratch, and that quota is unknown until P0.3 reports it. Applying the rule
-# needs no further meeting:
+# RULE (revised 2 Sep, after P0.3 reported the real quota). Stated as a
+# fraction rather than a fixed GiB bar, because the first version was pinned to
+# a 20k-item planning number that decisions 2 and 3 invalidated the same day:
 #
-#   durable_root quota >= 100 GiB  ->  layers: all
-#   durable_root quota <  100 GiB  ->  layers: subsampled (indices below)
+#   cache at planned volume, plus room to re-cache one model,
+#   must be <= 70% of durable_root quota   ->  layers: all
+#   otherwise                              ->  layers_fallback
 #
-# 100 GiB is 34.5 GiB for the full cache at 20k items, doubled for a re-cache
-# of one model, plus headroom. The subsampled fallback is 9.2 GiB at 20k items
-# and buys the layer-selection risk back.
+# Currently: 6,000 planned items -> 10.3 GiB, or 16.2 GiB with the re-cache
+# headroom, against a 30 GiB quota. That is 54%, so layers: all holds.
+# Recheck this if the item count grows; at 10k items it reaches 90% and the
+# contingencies below apply in order.
 layers: all
 
 # Used only if the quota rule above selects the fallback. Fixed here so the
@@ -105,13 +107,39 @@ storage:
   # never the cache's home. Every job stages its output to durable_root before
   # exiting (TASKS.md P0.9) or the cache fragments across nodes.
   working_root: /scratch    # node-local, fast, per job
-  durable_root: TBD         # shared path, set by workstream A in P0.3
-  durable_quota_gib: TBD    # P0.3 reports this; it selects layers via the rule above
+  durable_root: $HOME       # measured in P0.3: the ONLY shared, writable,
+                            # durable path visible from compute nodes
+  durable_quota_gib: 30     # per user
   stage_back_required: true
-  # At 20k items: 15.0 GiB for Qwen, 19.5 GiB for LLaVA, 34.5 GiB total.
-  # At 50k items: 86 GiB total. Check both against the durable_root quota.
-  estimated_gib_at_20k_items: 34.5
-  estimated_gib_at_50k_items: 86.0
+
+  # /share1 has 100 GiB but is mounted only on the head node, and compute nodes
+  # cannot reach it, so no job can write there directly. It is not unusable
+  # though: jobs stage to $HOME (visible everywhere) and a login-node step can
+  # move completed caches to /share1 afterwards. Worth confirming whether probe
+  # training can read /share1 from the login node, since probes are CPU work
+  # that takes minutes. Tracked as decision 10.
+  cold_archive: /share1
+  cold_archive_gib: 100
+  cold_archive_reachable_from_compute: false
+
+  # Planned volume after decisions 2 and 3 is ~6,000 items: ~2,800 naturalistic
+  # (a 700-error pool plus matched correct items, per model) and ~3,200
+  # synthetic. Per item across both models at all layers: 1808 KB.
+  planned_items: 6000
+  estimated_gib: 10.3
+  estimated_gib_with_recache_headroom: 16.2
+
+  # Contingencies IN ORDER if the item count grows past ~8,000. Do not shard the
+  # cache across teammates' home directories: home dirs are not group-readable
+  # by default, one person's quota filling silently breaks a quarter of the
+  # cache, and four roots reintroduces exactly the fragmentation P0.9 exists to
+  # prevent. 30 GiB is also total quota, not free space.
+  contingencies:
+    - drop query_mean from positions (4 -> 3 vectors per layer, saves 25%)
+    - cache and analyse one model at a time; they are reported separately
+      anyway (TASKS.md Section 5.7), so the asymmetry costs nothing
+    - stage completed caches to /share1 from the login node (decision 10)
+    - only then, layers_fallback
 
 # --------------------------------------------------------------------------
 # Escape hatch
