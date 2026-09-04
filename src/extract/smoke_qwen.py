@@ -83,9 +83,23 @@ def main():
     # ---- model -------------------------------------------------------------
     t0 = time.time()
     processor = AutoProcessor.from_pretrained(args.model, max_pixels=args.max_pixels)
-    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-        args.model, dtype=dtype, attn_implementation=attn, device_map="auto")
+
+    # transformers renamed `torch_dtype` to `dtype` partway through the 4.x
+    # line and kept the old name as a deprecated alias. Which one is accepted
+    # depends on the exact pin, and getting it wrong silently loads fp32 and
+    # then OOMs, so try the new name and fall back rather than guess.
+    load_kwargs = dict(attn_implementation=attn, device_map="auto")
+    try:
+        model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+            args.model, dtype=dtype, **load_kwargs)
+    except TypeError:
+        model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+            args.model, torch_dtype=dtype, **load_kwargs)
     model.eval()
+
+    got_dtype = next(model.parameters()).dtype
+    if got_dtype != dtype:
+        raise SystemExit(f"asked for {dtype}, model loaded as {got_dtype}")
     print(f"loaded in {time.time() - t0:.1f}s; device_map spans "
           f"{len(set(str(p.device) for p in model.parameters()))} devices")
 
@@ -96,7 +110,10 @@ def main():
     text = processor.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True)
     inputs = processor(text=[text], images=[image], return_tensors="pt")
-    inputs = inputs.to(model.device)
+    # With device_map="auto" the model is split across cards. Inputs go to the
+    # device holding the input embeddings; accelerate's hooks move activations
+    # across the shard boundary from there.
+    inputs = inputs.to(model.get_input_embeddings().weight.device)
 
     # Free diagnostic for Naman's P0.4 budget: the real vision-token count.
     image_token_id = model.config.image_token_id

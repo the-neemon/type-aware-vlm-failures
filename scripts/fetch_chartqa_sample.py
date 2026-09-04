@@ -20,7 +20,11 @@ import pathlib
 # ChartQA test split. First entry that loads wins; the mirrors carry the same
 # figures under different column names, so the column probing below is not
 # optional politeness, it is what makes the fallback work.
+# datasets 5.x dropped script-based loaders entirely, so a mirror that ships a
+# loading script will not work regardless of trust_remote_code. These are
+# ordered parquet-first for that reason.
 CANDIDATES = [
+    ("lmms-lab/ChartQA", "test"),
     ("HuggingFaceM4/ChartQA", "test"),
     ("ahmed-masry/ChartQA", "test"),
 ]
