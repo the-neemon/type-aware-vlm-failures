@@ -34,7 +34,7 @@ own the paper alone.
 | Workstream | Scope | Owner |
 | --- | --- | --- |
 | **A. Infra and inference** | Ada, SLURM, envs, model runs, activation caching | Yash More |
-| **B. Labelling** | Judge pipeline, annotation, kappa, taxonomy definitions | Shrish Kadam |
+| **B. Labelling** | Annotation tooling and protocol, kappa, taxonomy definitions | Shrish Kadam |
 | **C. Synthetic** | Generator, matched pairs, ground-truth labels | Sanjith Ganapathi |
 | **D. Analysis** | Probes, surface control, matrix, controller, plots | Naman Singhal |
 
@@ -47,39 +47,24 @@ adjudicate.
 
 Two pools, and they are not interchangeable.
 
-| Pool | Access | Use for |
-| --- | --- | --- |
-| **Ada** | All four of us | Development, smoke tests, probes, surface baseline, synthetic generation |
-| **H100** | Sanjith | **All** VLM inference and activation caching, both models |
+**Ada is the only pool.** Sanjith's H100 access belongs to his own research and
+is not available to this project. Plan accordingly: there is no fast fallback if
+Ada queues get long, so start the long inference jobs early rather than in the
+week before a deadline.
 
-**Decided 2 September (decision 9): both models run all inference and caching on
-the H100.** The constraint is that a model's answers and its activations must
-come from the same kernels or P4.4's coupling breaks silently, and "pin it to
-Ada" does not satisfy that by itself, because Ada's nodes carry mixed GPU types
-and a second run can land on a different card. One consistent target is both
-safer and faster. Fallback if capacity bites: move one model to Ada with an
-explicit GPU-type constraint and re-run its answers and activations together,
-never partially.
+**The consistency requirement survives losing the H100, and Ada makes it
+harder.** A model's answers and its activations must come from the same
+hardware, or P4.4's coupling breaks silently and nothing downstream flags it.
+Ada's nodes carry mixed GPU types, so "run it on Ada" is not a pin. Every
+inference and caching job names one GPU type in its SLURM constraint, that type
+is frozen for the project, and it is recorded in the run config next to the
+library versions (Section 4.5). Decision 9.
 
-**Route heavy work to Sanjith.** The compute-bound tasks are P1.3 and P1.4
-(both VLMs over ChartQA), P1.5 (train-split runs for error yield), P4.3
-(activation caching over the full item set) and P6.5 (four interventions across
-two failure types, two models and two data arms, which is the largest re-query
-load in the project). Probes and the surface baseline take minutes on CPU and
-should stay wherever is convenient.
-
-This does not move workstream C off Sanjith. It means jobs from workstreams A
-and D get scheduled on his hardware, so he needs warning before a large run
-rather than a job appearing in his queue.
-
-**One hardware caveat that matters here.** Pick one machine per model and keep
-all of that model's inference *and* activation caching on it. Different GPUs
-select different kernels, so the same checkpoint and the same prompt can produce
-a different answer string on Ada than on an H100. P4.4 requires activations to
-be coupled to the exact answer that was labelled, so a model whose answers came
-from one pool and whose activations came from the other has silently broken that
-coupling, and nothing downstream will flag it. Record the pool alongside the
-run config, next to the library versions (Section 4.5).
+**Compute is moderate, not trivial.** Roughly 7,000 forward passes for
+inference and error collection (about 3,500 questions per model), plus caching,
+plus re-queries for the intervention matrix, most of which now fall on the
+synthetic arm. That fits on Ada comfortably, but still not in a one-hour
+walltime slot, so see P1.7 on resumability.
 
 ### 1.2 Day 1: Wednesday 2 September
 
@@ -228,38 +213,48 @@ the caching code. Everything else is a status round.
       Record accuracy and sanity-check it against the published number for the
       model. A large gap means the prompt or the metric is wrong, not the model.
 - [ ] **P1.4** Same for LLaVA-NeXT.
-- [ ] **P1.5** **Run the train split. This is settled, not conditional**
-      (decision 3). E4 needs roughly 400 labelled errors per failure type per
-      model for tight cells. Fabrications are the minority class, plausibly 20
-      to 30 percent of errors, so that means 1500 to 2000 errors per model.
-      ChartQA's test splits are about 2500 items; at any accuracy between 75 and
-      85 percent they yield 375 to 625 errors per model, which is short by a
-      factor of three. Extend into train until the yield clears 1500 per model.
-      Budget a day of H100 time.
+- [ ] **P1.5** Build an error pool of roughly **700 per model** (decision 3,
+      revised). The original target of 1500 assumed an LLM judge could label
+      cheaply at volume. Hand-labelling caps the naturalistic arm at about 1000
+      items total, so inference only needs a pool comfortably larger than that
+      to sample from. Test splits give roughly 500 errors per model; extend into
+      train by about 1000 questions per model to clear 700. That is roughly 3500
+      questions per model rather than 10,500.
 - [ ] **P1.6** Store `(figure_id, question, gold, prediction, correct)` rows as
       the single source of truth that labelling and caching both key off.
+- [ ] **P1.7** **Make inference resumable.** Even at the revised 3,500 questions
+      per model, a run will not finish in one walltime slot. Jobs write results incrementally and
+      skip items already present on restart, keyed by `(model, figure_id,
+      question)`. Without this, every queue eviction costs the whole run.
 
 ### P2. Labelling (8 Sep to 21 Sep, 2 weeks, overlaps P1)
 
 - [ ] **P2.1** Write the two-class definitions with worked edge cases. Include an
       explicit **"neither / ambiguous"** escape hatch so annotators and the judge
       are never forced to pick. Ambiguous items are dropped, not coerced.
-- [ ] **P2.2** Build the VLM judge pipeline. The judge sees figure, question, gold
-      answer and model answer. Estimate API cost before launching; images make
-      this the largest cash cost in the project.
-- [ ] **P2.3** Pilot the judge on 50 items. Read every one by hand. Refine the
-      definitions. Expect at least two rounds.
+- [ ] **P2.2** Build the **annotation tool**, not a judge pipeline (decision 2:
+      no budget for paid APIs). A minimal local interface is enough: show the
+      figure, question, gold answer and model answer, take one of three keys,
+      capture a one-line rationale, write to disk, next item. Annotators must
+      not see the model identity or each other's labels. Budget half a day; the
+      tool is not the deliverable, the labels are.
+- [ ] **P2.3** Pilot on 50 items with **all four** annotating. Compare, argue
+      about the disagreements, revise the rubric. Expect at least two rounds.
+      This is where the taxonomy actually gets defined; the rubric written in
+      P2.1 is a draft until it survives this.
 - [ ] **P2.4** **Kappa gate.** Two team members independently annotate roughly
       200 items. Compute Cohen's kappa. Threshold is 0.6.
       - Pass: proceed.
       - Fail: simplify definitions, adjudicate, re-annotate. Do not proceed on
         unreliable labels. Budget a full week for a failure.
-- [ ] **P2.5** **Also measure judge-versus-human agreement** on the same 200
-      items. Inter-human kappa validates that the taxonomy is clear; it says
-      nothing about whether the judge applies it correctly. Both numbers go in
-      the paper. See Section 5.1.
-- [ ] **P2.6** Run the judge over the full error set. Record per-item judge
-      rationale for the appendix.
+- [ ] **P2.5** ~~Judge-versus-human agreement.~~ **Moot under decision 2**: with
+      no judge, inter-human kappa is the whole validation story. This is the one
+      genuine upside of losing the API budget, and the paper should say so
+      plainly rather than presenting hand-labelling as a limitation only.
+- [ ] **P2.6** Annotate the main set: 1000 items across both models, roughly
+      250 each, after the rubric is frozen. Record the one-line rationale per
+      item for the appendix. Do this in two sittings rather than one; agreement
+      degrades with fatigue and that degradation is invisible in the output.
 
 ### P3. Synthetic arm (5 Sep to 21 Sep, parallel, 2 weeks)
 
@@ -468,15 +463,22 @@ versions will produce different activations and neither will notice.
 
 ## 5. Things To Be Careful About: Methodology
 
-### 5.1 Inter-human kappa does not validate the judge
+### 5.1 Every label is now a human label, which changes what kappa means
 
-The proposal sets kappa > 0.6 between two team members. That measures whether
-the taxonomy is *definable*. It does not measure whether the LLM judge *applies*
-it correctly, and the judge is what labels the other ninety percent of the data.
-Report both inter-human kappa and judge-versus-human-consensus agreement. If the
-judge agrees with humans much less than humans agree with each other, the label
-noise is in the judge and the probes will underperform for reasons that have
-nothing to do with the hypothesis.
+Under decision 2 there is no judge, so kappa between annotators is no longer a
+proxy for anything: it *is* the label-validity evidence, covering the whole
+dataset rather than a 200-item sample of it. That is a genuine strengthening and
+the paper should say so, because the obvious reading of "we could not afford an
+LLM judge" is that the labels got worse.
+
+What it costs instead is sample size, and the risks move accordingly. Watch for
+annotator drift, where the rubric is applied differently in week three than in
+week one; re-annotate a 50-item slice from the first sitting at the end and
+check that the labels still agree with themselves. Watch for one annotator's
+idiosyncratic reading propagating unchecked through the 750 items nobody else
+sees. The double-annotated 200 is the only place either failure becomes visible,
+so it must be sampled across the whole set and across sittings, not taken from
+the front of the queue.
 
 ### 5.2 `I_0` needs a real definition
 
@@ -533,12 +535,22 @@ models rely on late query-token states. Report Qwen and LLaVA separately
 throughout. An averaged number across two architectures with different optimal
 representations is not meaningful.
 
-### 5.8 Keep the naturalistic arm central
+### 5.8 Keep the naturalistic arm central, which just got harder
 
 The synthetic arm is easier, cleaner and more fun to work on, and it will try to
 eat the project. It is a control and a source of balanced classes. The claim is
 about real chart reasoning. If the paper's headline numbers come from
 synthetic data, the contribution shrinks accordingly.
+
+**Decision 2 pushed weight toward synthetic and this is a real cost, not a
+neutral reshuffle.** With no labelling budget, E4's cell counts come mostly from
+generated figures, and the naturalistic arm supplies a smaller replication with
+wider intervals. Two obligations follow. Report the naturalistic E4 alongside
+the synthetic one even where its intervals are wide, because a matrix that has
+diagonal structure only on synthetic data is a much weaker claim and the paper
+must let a reader see that. And state the constraint in the limitations section:
+the taxonomy's naturalistic evidence is bounded by what four people could label
+by hand, not by anything about the taxonomy itself.
 
 ### 5.9 Report the gap, never the raw AUROC alone
 
@@ -573,11 +585,11 @@ Record the resolution here as each is made.
 | # | Decision | Needed by | Status |
 | --- | --- | --- | --- |
 | 1 | Pooling strategy and cached layer set | 8 Sep | **Decided 2 Sep.** Schema B, fp16, all layers subject to a quota rule; see `configs/activations.yaml`. Contingent on P0.10. |
-| 2 | Judge model and cost ceiling | 10 Sep | Open |
-| 3 | Whether to run ChartQA train split for error yield | 12 Sep | **Decided 2 Sep: yes, required.** Test splits cannot reach E4's power needs at any plausible accuracy. See P1.5. |
+| 2 | How the naturalistic arm gets labelled | 10 Sep | **Decided 2 Sep.** No paid API. Hand-annotated, ~1000 items, ~250 each; synthetic arm carries E4. See `configs/labelling.yaml`. |
+| 3 | ChartQA train split and error-pool size | 12 Sep | **Decided 2 Sep, revised same day.** Yes, but only ~1000 extra questions per model for a 700-error pool. Hand-labelling, not inference, is now the bottleneck. See P1.5. |
 | 4 | Workstream ownership | Next meeting | Provisional, see Section 1 |
 | 5 | `I_0` definition, with or without a naive re-ask control | 1 Oct | Open |
 | 6 | `I_crop` conditioning mechanism | 1 Oct | Open |
 | 7 | ChartGemma stretch goal: keep or drop | 30 Sep | Open |
 | 8 | Shared storage path for weights and caches, given node-local `/scratch` | 8 Sep | Open, P0.3 |
-| 9 | Which pool runs which model, fixed for the project | 14 Sep | **Decided 2 Sep.** Both models, inference and caching, on the H100. See Section 1.1. |
+| 9 | Which pool runs which model, fixed for the project | 14 Sep | **Decided 2 Sep, revised same day.** Ada only; the H100 is unavailable. One frozen GPU type, named in every job constraint. See Section 1.1. |

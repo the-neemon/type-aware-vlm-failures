@@ -69,10 +69,11 @@ reportable finding, not a dead end.
 
 ### 4.1 Models and activation extraction
 - **Primary models:** Qwen2.5-VL-7B, LLaVA-NeXT. Both frozen.
-- **Hardware:** Ada for development and probes; H100 (via Sanjith) for the heavy
-  inference jobs. Each model is pinned to one pool for the whole project, since
-  differing kernels can change the generated answer and would decouple cached
-  activations from the answer that was actually labelled.
+- **Hardware:** Ada throughout. Because its nodes carry mixed GPU types, every
+  inference and caching job names one GPU type in its scheduler constraint, and
+  that type is frozen for the project: differing kernels can change the
+  generated answer and would decouple cached activations from the answer that
+  was actually labelled.
 - **Stretch goal:** ChartGemma. Only attempted if the two primary models are
   fully through the pipeline.
 - For each `(figure, question)` pair, cache activations at a fixed subsampled set
@@ -143,14 +144,27 @@ an intervention choice. Three settings are compared:
 
 ### 5.1 Naturalistic arm
 Run both VLMs over **ChartQA** (Masry et al., 2022), collect incorrect answers,
-and label each with an LLM judge given the figure, question, gold answer and
-model answer, following the methodology (not the taxonomy) of Ashury-Tahan et
-al. (2026).
+and label each **by hand**, given the figure, question, gold answer and model
+answer. The proposal specified an LLM judge following Ashury-Tahan et al.
+(2026); with no budget for paid APIs that is unavailable, and a local open VLM
+strong enough to judge these models is not comfortably runnable on Ada. We keep
+their taxonomy-construction methodology and drop the automation.
+
+Volume is sized to what four annotators can sustain: roughly **1000 items** in
+one round, about 250 each, with the class-balance burden moved to the synthetic
+arm (Section 5.2). Labels are `structural`, `fabrication`, or `ambiguous`;
+ambiguous items are dropped rather than coerced. Annotators are blind to model
+identity and to each other's labels.
 
 **Agreement gate.** Roughly 200 items are independently annotated by two team
 members. Acceptance threshold is **kappa > 0.6**. Below it: simplify the category
 definitions, adjudicate disagreements, and re-run. We do not proceed on
 unreliable labels.
+
+One consequence is favourable and should be reported as such: with no judge in
+the loop, inter-annotator agreement is the *whole* label-validity story. There
+is no second question about whether an automated labeller applies the rubric
+faithfully.
 
 ### 5.2 Synthetic arm
 Programmatically generate bar charts and node-link diagrams with known ground
@@ -243,12 +257,13 @@ weeks separate proposal acceptance from the mid-submission.
 
 | Risk | Mitigation |
 | --- | --- |
-| Low judge agreement (kappa <= 0.6) | The synthetic arm needs no judge. Its labels are correct by construction. |
+| Low inter-annotator agreement (kappa <= 0.6) | The synthetic arm needs no annotation. Its labels are correct by construction. |
+| No budget for paid APIs | The naturalistic arm is hand-labelled at reduced volume; the synthetic arm carries E4's cell counts. Cost is naturalistic sample size, stated as a limitation. |
 | Fabrication scarcity in natural data | Ask about quantities outside a figure's range; control class balance directly in the synthetic arm. |
 | Signal is diagnostic but not causal (the Yuan et al. 2026 failure mode) | E4 stands alone without any probe. It is not downstream of E1 to E3. |
 | Probe result is a format or surface confound (the Sahoo et al. 2026 failure mode) | E2 is mandatory, not optional. No AUROC is reported without its surface baseline and residualised counterpart. |
 | Activation storage | Pool the vision tokens, which is what makes a full-depth cache affordable; use node-local `/scratch` as working space and stage back to shared storage per job; record the layer set in the run config. |
-| Compute | Not binding. 7B forward passes fit on Ada, probes take minutes on CPU, and Sanjith has H100 access for the heavy inference jobs. Real costs are activation storage and judge API calls. |
+| Compute | Roughly 7,000 forward passes for inference and error collection, plus caching and the intervention re-queries. Fits on Ada, but not in a single walltime slot, so inference jobs are chunked and resumable. Probes take minutes on CPU. |
 
 ## 10. Repository Layout
 
@@ -261,7 +276,7 @@ type-aware-vlm-failures/
   configs/                run configs: model, layer set, token positions, splits
   src/
     extract/              VLM inference and activation caching
-    label/                LLM judge pipeline and annotation agreement (kappa)
+    label/                annotation tooling and inter-annotator agreement (kappa)
     synth/                synthetic bar-chart and node-link generator
     probes/               binary, structural, fabrication probes
     surface/              E2 surface-feature baseline and residualisation
