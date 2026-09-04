@@ -57,7 +57,7 @@ the kind of thing that gets remembered on 29 September.
 
 | Who | Today's track | End-of-day deliverable |
 | --- | --- | --- |
-| **Yash** | Ada, environment, weights, smoke test (P0.1, P0.2, P0.3, P0.5) | One Qwen2.5-VL-7B answer to one ChartQA image, produced by a committed `scripts/smoke.sbatch` |
+| **Yash** | Ada, environment, weights, smoke test, token-count check (P0.1, P0.2, P0.3, P0.5, P0.10) | One Qwen2.5-VL-7B answer to one ChartQA image from a committed `scripts/smoke.sbatch`, plus a pass or fail on `scripts/verify_vision_tokens.py` |
 | **Naman** | Repo skeleton, then the storage budget and caching schema (P0.6, P0.7, P0.8, P0.4) | `configs/activations.yaml` plus the arithmetic behind it, as a proposal for the evening sync |
 | **Shrish** | ChartQA ingest, relaxed accuracy, figure-level splits (P1.1, P1.6, and the P5.4 assertion) | `src/eval/relaxed_accuracy.py` with boundary tests passing, and figure-versus-question counts for every split |
 | **Sanjith** | Synthetic bar chart generator (P3.1), taxonomy definitions draft (P2.1) | Twenty generated charts with a manifest, and a first draft of the two class definitions |
@@ -75,6 +75,11 @@ In the SLURM template, request walltime explicitly (the default is one hour),
 constrain the GPU type since nodes are mixed, and exclude `gnode077`. The day is
 successful if one image and one question produce one answer string. Do not batch,
 do not evaluate, do not tune the prompt yet.
+
+Once that works, run P0.10: `python3 scripts/verify_vision_tokens.py` against
+five real ChartQA figures. It takes a minute and it is the check that decides
+whether tonight's storage numbers are real or an artefact of a reimplemented
+`smart_resize`. If it fails, say so before the sync rather than after.
 
 *Naman.* Skeleton first, then the critical-path decision. Read
 `num_hidden_layers` and `hidden_size` from each model's `config.json` rather than
@@ -134,15 +139,31 @@ the caching code. Everything else is a status round.
       copies them from node-local `/scratch` to the shared path before exiting,
       and the script fails loudly if the copy fails. Without this the cache
       silently fragments across nodes and is unusable for training a probe.
+- [ ] **P0.10** **Verify the vision-token counts against the real processor.**
+      The storage budget rests on counts that `src/extract/storage_budget.py`
+      derives analytically, by reimplementing `smart_resize` from the config.
+      Nothing has confirmed that reimplementation matches what
+      `Qwen2VLImageProcessor` actually does, and an off-by-one in the merge or a
+      different rounding rule shifts the entire budget table. Run
+      `python3 scripts/verify_vision_tokens.py <figures>` on at least five real
+      ChartQA figures of differing sizes, with `--max-pixels` matching
+      `configs/activations.yaml`. It exits non-zero on any mismatch.
+      - Pass: report the observed token range so the planning number in
+        `configs/activations.yaml` can be replaced with a measured one.
+      - Fail: `storage_budget.py` is wrong. Fix it, regenerate
+        `results/storage_budget.md`, and recheck the schema before any caching
+        starts.
+      Depends on P0.2 and P0.3, and on a handful of ChartQA figures from
+      Shrish's P1.1 ingest (or download a few directly, five is enough).
 - [x] **P0.4** **Decide the caching schema and compute the storage budget before
       writing any cache.** This is the single most consequential infra decision
       in the project. See Section 4.1 for the arithmetic.
       Budget computed in `results/storage_budget.md` from
       `src/extract/storage_budget.py`; schema proposed in
       `configs/activations.yaml`. Ratification is open decision 1, Section 7.
-      One check still outstanding: the vision-token counts are derived
-      analytically from the config, not measured against the real
-      `Qwen2VLImageProcessor`. Confirm once the environment exists.
+      One check still outstanding, now owned by workstream A as P0.10: the
+      vision-token counts are analytic and unverified against the real
+      `Qwen2VLImageProcessor`.
 - [ ] **P0.5** SLURM job template. Request explicit walltime; the cluster default
       is 1 hour and a full ChartQA pass will not finish in it. Pin GPU type in the
       constraint, since nodes are mixed and a job that lands on the wrong card
