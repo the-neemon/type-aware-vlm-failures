@@ -222,8 +222,8 @@ the caching code. Everything else is a status round.
       questions per model rather than 10,500.
 - [ ] **P1.6** Store `(figure_id, question, gold, prediction, correct)` rows as
       the single source of truth that labelling and caching both key off.
-- [ ] **P1.7** **Make inference resumable.** Roughly 10,500 questions per model
-      will not finish in one walltime slot. Jobs write results incrementally and
+- [ ] **P1.7** **Make inference resumable.** Even at the revised 3,500 questions
+      per model, a run will not finish in one walltime slot. Jobs write results incrementally and
       skip items already present on restart, keyed by `(model, figure_id,
       question)`. Without this, every queue eviction costs the whole run.
 
