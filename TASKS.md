@@ -123,19 +123,28 @@ the caching code. Everything else is a status round.
 - [ ] **P0.3** Set `HF_HOME` to `/scratch`, not home. Home quota will not hold two
       7B checkpoints (roughly 16 GB each). Download both checkpoints once and
       share the path.
-- [ ] **P0.4** **Decide the caching schema and compute the storage budget before
+- [x] **P0.4** **Decide the caching schema and compute the storage budget before
       writing any cache.** This is the single most consequential infra decision
       in the project. See Section 4.1 for the arithmetic.
+      Budget computed in `results/storage_budget.md` from
+      `src/extract/storage_budget.py`; schema proposed in
+      `configs/activations.yaml`. Ratification is open decision 1, Section 7.
+      One check still outstanding: the vision-token counts are derived
+      analytically from the config, not measured against the real
+      `Qwen2VLImageProcessor`. Confirm once the environment exists.
 - [ ] **P0.5** SLURM job template. Request explicit walltime; the cluster default
       is 1 hour and a full ChartQA pass will not finish in it. Pin GPU type in the
       constraint, since nodes are mixed and a job that lands on the wrong card
       will OOM or run slow. Avoid `gnode077` (known dead GPU).
-- [ ] **P0.6** Repo skeleton per SPEC Section 10: `configs/`, `src/`, `scripts/`,
+- [x] **P0.6** Repo skeleton per SPEC Section 10: `configs/`, `src/`, `scripts/`,
       `results/`, `paper/`. Add `.gitignore` for caches, checkpoints and `*.npz`.
-- [ ] **P0.7** README stub. Guidelines require HuggingFace and WandB links live
+- [x] **P0.7** README stub. Guidelines require HuggingFace and WandB links live
       here. Add the section now even if empty.
-- [ ] **P0.8** Grant TA mentor access to the repo, or make it public. Required by
-      30 September; do it now so it cannot be forgotten.
+- [ ] **P0.8** Grant TA mentor access to the repo, or make it public.
+      **Deferred by team decision on 2 September.** Note the binding deadline is
+      the **mid** submission (30 September), not the final one: the guidelines
+      require the repo to be public or TA-accessible at that point. Whoever
+      picks this up in late September, it is a two-minute change.
 
 ### P1. Inference and error collection (5 Sep to 14 Sep, 1.5 weeks)
 
