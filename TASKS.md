@@ -49,8 +49,17 @@ Two pools, and they are not interchangeable.
 
 | Pool | Access | Use for |
 | --- | --- | --- |
-| **Ada** | All four of us | Development, smoke tests, probes, everything small |
-| **H100** | Sanjith | Every heavy inference job |
+| **Ada** | All four of us | Development, smoke tests, probes, surface baseline, synthetic generation |
+| **H100** | Sanjith | **All** VLM inference and activation caching, both models |
+
+**Decided 2 September (decision 9): both models run all inference and caching on
+the H100.** The constraint is that a model's answers and its activations must
+come from the same kernels or P4.4's coupling breaks silently, and "pin it to
+Ada" does not satisfy that by itself, because Ada's nodes carry mixed GPU types
+and a second run can land on a different card. One consistent target is both
+safer and faster. Fallback if capacity bites: move one model to Ada with an
+explicit GPU-type constraint and re-run its answers and activations together,
+never partially.
 
 **Route heavy work to Sanjith.** The compute-bound tasks are P1.3 and P1.4
 (both VLMs over ChartQA), P1.5 (train-split runs for error yield), P4.3
@@ -219,9 +228,14 @@ the caching code. Everything else is a status round.
       Record accuracy and sanity-check it against the published number for the
       model. A large gap means the prompt or the metric is wrong, not the model.
 - [ ] **P1.4** Same for LLaVA-NeXT.
-- [ ] **P1.5** Count errors per model. If the combined yield is under roughly 800,
-      extend to the ChartQA train split until the yield clears 1500. Budget a
-      day of GPU time for this.
+- [ ] **P1.5** **Run the train split. This is settled, not conditional**
+      (decision 3). E4 needs roughly 400 labelled errors per failure type per
+      model for tight cells. Fabrications are the minority class, plausibly 20
+      to 30 percent of errors, so that means 1500 to 2000 errors per model.
+      ChartQA's test splits are about 2500 items; at any accuracy between 75 and
+      85 percent they yield 375 to 625 errors per model, which is short by a
+      factor of three. Extend into train until the yield clears 1500 per model.
+      Budget a day of H100 time.
 - [ ] **P1.6** Store `(figure_id, question, gold, prediction, correct)` rows as
       the single source of truth that labelling and caching both key off.
 
@@ -558,12 +572,12 @@ Record the resolution here as each is made.
 
 | # | Decision | Needed by | Status |
 | --- | --- | --- | --- |
-| 1 | Pooling strategy and cached layer set | 8 Sep | Proposal in `configs/activations.yaml`, ratify at the 2 Sep sync |
+| 1 | Pooling strategy and cached layer set | 8 Sep | **Decided 2 Sep.** Schema B, fp16, all layers subject to a quota rule; see `configs/activations.yaml`. Contingent on P0.10. |
 | 2 | Judge model and cost ceiling | 10 Sep | Open |
-| 3 | Whether to run ChartQA train split for error yield | 12 Sep | Open |
+| 3 | Whether to run ChartQA train split for error yield | 12 Sep | **Decided 2 Sep: yes, required.** Test splits cannot reach E4's power needs at any plausible accuracy. See P1.5. |
 | 4 | Workstream ownership | Next meeting | Provisional, see Section 1 |
 | 5 | `I_0` definition, with or without a naive re-ask control | 1 Oct | Open |
 | 6 | `I_crop` conditioning mechanism | 1 Oct | Open |
 | 7 | ChartGemma stretch goal: keep or drop | 30 Sep | Open |
 | 8 | Shared storage path for weights and caches, given node-local `/scratch` | 8 Sep | Open, P0.3 |
-| 9 | Which pool runs which model, fixed for the project | 14 Sep | Open, see Section 1.1 |
+| 9 | Which pool runs which model, fixed for the project | 14 Sep | **Decided 2 Sep.** Both models, inference and caching, on the H100. See Section 1.1. |

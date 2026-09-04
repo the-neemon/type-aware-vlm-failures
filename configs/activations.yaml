@@ -1,7 +1,10 @@
 # Activation caching schema. Resolves open decision 1 (TASKS.md Section 7).
 #
-# Recommendation for the 2 September sync. Supporting arithmetic is in
+# DECIDED 2 September (open decision 1). Supporting arithmetic is in
 # results/storage_budget.md, regenerable via src/extract/storage_budget.py.
+# Still contingent on P0.10: the vision-token counts behind the budget are
+# analytic and unverified against the real processor. If P0.10 fails, recompute
+# before caching anything.
 #
 # Headline: pooling the vision tokens is what makes this affordable, and once
 # they are pooled we can afford EVERY layer rather than a subsampled set. The
@@ -31,12 +34,44 @@ positions:
 # --------------------------------------------------------------------------
 # Which layers
 # --------------------------------------------------------------------------
-# All of them. Liu et al. report the grounding and hallucination pathways at
-# different depths (mid-to-late versus early and network boundaries), so full
-# depth coverage is exactly what the hypothesis needs, and it costs 3.8x on a
-# base of 9 GiB. Subsampling would save nothing worth the risk of having
-# picked the wrong layers.
+# All of them, subject to a quota rule. Liu et al. report the grounding and
+# hallucination pathways at different depths (mid-to-late versus early and
+# network boundaries), so full depth coverage is exactly what the hypothesis
+# needs, and it costs 3.8x on a base of 9 GiB.
+#
+# The rule exists because the budget has to fit SHARED storage, not node-local
+# /scratch, and that quota is unknown until P0.3 reports it. Applying the rule
+# needs no further meeting:
+#
+#   durable_root quota >= 100 GiB  ->  layers: all
+#   durable_root quota <  100 GiB  ->  layers: subsampled (indices below)
+#
+# 100 GiB is 34.5 GiB for the full cache at 20k items, doubled for a re-cache
+# of one model, plus headroom. The subsampled fallback is 9.2 GiB at 20k items
+# and buys the layer-selection risk back.
 layers: all
+
+# Used only if the quota rule above selects the fallback. Fixed here so the
+# choice is not made ad hoc later, and spans early, middle and late depth.
+layers_fallback:
+  qwen2_5_vl_7b: [2, 6, 10, 14, 18, 22, 26, 27]     # of 28
+  llava_next_mistral_7b: [2, 7, 11, 15, 19, 23, 27, 31]  # of 32
+
+# --------------------------------------------------------------------------
+# Compute pool (open decision 9, DECIDED 2 September)
+# --------------------------------------------------------------------------
+# Both models run all inference AND activation caching on the H100. Not Ada.
+#
+# The requirement is that a model's answers and its activations come from the
+# same kernels, or P4.4's coupling breaks silently. "Pin it to Ada" does not
+# satisfy that on its own, because Ada's nodes carry mixed GPU types and a
+# second run can land on a different card. The H100 is a single consistent
+# target, so it is the safer pin as well as the faster one.
+#
+# Fallback if H100 capacity becomes the bottleneck: move ONE model to Ada with
+# an explicit GPU-type constraint in the job script, and re-run that model's
+# answers and activations together. Never move a model partially.
+compute_pool: h100
 
 # --------------------------------------------------------------------------
 # Models
@@ -72,6 +107,7 @@ storage:
   # exiting (TASKS.md P0.9) or the cache fragments across nodes.
   working_root: /scratch    # node-local, fast, per job
   durable_root: TBD         # shared path, set by workstream A in P0.3
+  durable_quota_gib: TBD    # P0.3 reports this; it selects layers via the rule above
   stage_back_required: true
   # At 20k items: 15.0 GiB for Qwen, 19.5 GiB for LLaVA, 34.5 GiB total.
   # At 50k items: 86 GiB total. Check both against the durable_root quota.

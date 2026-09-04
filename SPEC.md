@@ -82,9 +82,13 @@ reportable finding, not a dead end.
   Qwen2.5-VL-7B best served by visual-only features; Liu et al. (2026) report
   the two pathways occupy different depths. Both facts motivate spanning depth
   and position rather than fixing one.
-- **Binding constraint is storage, not compute.** Layers are subsampled, not
-  cached exhaustively. The layer index set is recorded in the run config so
-  caches are reproducible.
+- **Binding constraint is storage, not compute**, but less so than assumed.
+  Pooling the vision tokens brings a full-depth cache to roughly 35 GiB across
+  both models, so activations are cached at **every** layer rather than a
+  subsampled set, falling back to eight layers only if shared storage quota
+  requires it. Caching per-token vision activations remains out of the question
+  at roughly 4.6 TiB. The layer index set is recorded in the run config so
+  caches are reproducible. See `configs/activations.yaml`.
 - **Ada's `/scratch` is node-local, not shared.** What a job writes on one node
   is invisible to a job that lands on another. It is fast working space for the
   duration of a job, not the cache's home. Every job stages its activations back
@@ -243,7 +247,7 @@ weeks separate proposal acceptance from the mid-submission.
 | Fabrication scarcity in natural data | Ask about quantities outside a figure's range; control class balance directly in the synthetic arm. |
 | Signal is diagnostic but not causal (the Yuan et al. 2026 failure mode) | E4 stands alone without any probe. It is not downstream of E1 to E3. |
 | Probe result is a format or surface confound (the Sahoo et al. 2026 failure mode) | E2 is mandatory, not optional. No AUROC is reported without its surface baseline and residualised counterpart. |
-| Activation storage | Subsample layers; use node-local `/scratch` as working space and stage back to shared storage per job; record the layer set in the run config. |
+| Activation storage | Pool the vision tokens, which is what makes a full-depth cache affordable; use node-local `/scratch` as working space and stage back to shared storage per job; record the layer set in the run config. |
 | Compute | Not binding. 7B forward passes fit on Ada, probes take minutes on CPU, and Sanjith has H100 access for the heavy inference jobs. Real costs are activation storage and judge API calls. |
 
 ## 10. Repository Layout
