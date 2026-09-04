@@ -23,6 +23,24 @@ Ada's `/scratch` is node-local, not shared across nodes. Decide where `HF_HOME`
 points before downloading any checkpoint, and stage activation caches back to
 shared storage at the end of every job. See TASKS.md P0.3 and P0.9.
 
+## Synthetic data generation
+
+Run these commands from the repository root. Each output directory must be new;
+the generators write PNG figures and a JSONL manifest.
+
+```bash
+python3 -m src.synth.generate_bar_charts data/synthetic_bars \
+  --num-charts 20 --seed 42
+
+python3 -m src.synth.generate_followups nodes data/synthetic_nodes \
+  --num-figures 20 --path-length 4 --edge-crossings 3 --seed 42
+
+python3 -m src.synth.generate_followups pairs data/synthetic_pairs \
+  --pair-count 10 --seed 42
+```
+
+See [TAXONOMY.md](src/synth/TAXONOMY.md) for the synthetic failure labels.
+
 ## Models
 
 | Model | Backbone | Hidden | Layers |
