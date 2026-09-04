@@ -1,0 +1,82 @@
+# Activation caching schema. Resolves open decision 1 (TASKS.md Section 7).
+#
+# Recommendation for the 2 September sync. Supporting arithmetic is in
+# results/storage_budget.md, regenerable via src/extract/storage_budget.py.
+#
+# Headline: pooling the vision tokens is what makes this affordable, and once
+# they are pooled we can afford EVERY layer rather than a subsampled set. The
+# SPEC assumed storage forced us to subsample; the arithmetic says otherwise.
+
+schema_version: 1
+
+dtype: float16            # never float32; doubles the cache for no probe benefit
+
+# --------------------------------------------------------------------------
+# What to cache, per layer, per item
+# --------------------------------------------------------------------------
+# Schema B in results/storage_budget.md. Four vectors per layer.
+#
+# vision_mean and vision_max cover HALP's visual-only family, which it reports
+# as the strongest for Qwen2.5-VL specifically. query_last covers the late
+# query-token family that HALP reports as strongest for most other models.
+# query_mean is cheap insurance. Caching all four means the representation
+# family becomes an analysis choice rather than a caching commitment we cannot
+# revisit without a full re-run.
+positions:
+  - vision_mean          # mean over the image's vision tokens
+  - vision_max           # elementwise max over the same
+  - query_last           # final query token, the pre-generation state
+  - query_mean           # mean over query tokens
+
+# --------------------------------------------------------------------------
+# Which layers
+# --------------------------------------------------------------------------
+# All of them. Liu et al. report the grounding and hallucination pathways at
+# different depths (mid-to-late versus early and network boundaries), so full
+# depth coverage is exactly what the hypothesis needs, and it costs 3.8x on a
+# base of 9 GiB. Subsampling would save nothing worth the risk of having
+# picked the wrong layers.
+layers: all
+
+# --------------------------------------------------------------------------
+# Models
+# --------------------------------------------------------------------------
+models:
+  qwen2_5_vl_7b:
+    hf_id: Qwen/Qwen2.5-VL-7B-Instruct
+    hidden_size: 3584       # verified against configs/model_configs/
+    num_hidden_layers: 28
+    # Qwen2.5-VL is dynamic-resolution. The shipped default of 12845056 leaves
+    # the token count unbounded by figure size (a 1080x1920 figure costs 2691
+    # tokens). Capping at 1.0M bounds it near 1260 with no loss on typical
+    # ChartQA figures, which resize identically under both caps. This bounds
+    # inference compute and keeps sequence lengths comparable across items.
+    max_pixels: 1000000
+    typical_vision_tokens: 1044   # 800x1000 figure under the cap above
+
+  llava_next_mistral_7b:
+    hf_id: llava-hf/llava-v1.6-mistral-7b-hf
+    # Both fields are ABSENT from the VLM config's text_config and fall back to
+    # Mistral-7B-Instruct-v0.2 defaults. Read them from the backbone config.
+    hidden_size: 4096
+    num_hidden_layers: 32
+    vision_tokens: 2928     # fixed-grid anyres, largest pinpoint
+
+# --------------------------------------------------------------------------
+# Storage
+# --------------------------------------------------------------------------
+storage:
+  root: /scratch            # exact shared path set by workstream A in P0.3
+  # At 20k items: 15.0 GiB for Qwen, 19.5 GiB for LLaVA, 34.5 GiB total.
+  # At 50k items: 86 GiB total. Both comfortable.
+  estimated_gib_at_20k_items: 34.5
+  estimated_gib_at_50k_items: 86.0
+
+# --------------------------------------------------------------------------
+# Escape hatch
+# --------------------------------------------------------------------------
+# Unpooled vision tokens are 4.6 TiB across both models at 20k items, even
+# restricted to 8 layers. If an experiment genuinely needs per-token
+# activations, re-cache a subsample of at most a few hundred items rather than
+# changing this schema.
+unpooled_subsample_max_items: 500
