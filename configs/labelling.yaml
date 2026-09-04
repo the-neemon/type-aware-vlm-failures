@@ -1,0 +1,73 @@
+# Labelling protocol. Resolves open decision 2, decided 2 September.
+#
+# CONSTRAINT: zero budget for paid APIs. No commercial LLM judge.
+#
+# The proposal assumed an LLM judge over the naturalistic arm. Without a budget
+# that is not available, so the naturalistic arm is labelled by hand and the
+# synthetic arm carries the volume. See TASKS.md decision 2 for the reasoning
+# and the cost this imposes.
+
+method: human_annotation
+
+# --------------------------------------------------------------------------
+# Why not a local open VLM as the judge
+# --------------------------------------------------------------------------
+# Considered and rejected as the primary labeller. A judge must be stronger
+# than the models it judges, and the models under test (Qwen2.5-VL-7B,
+# LLaVA-NeXT-7B) are already near the top of what fits comfortably on Ada.
+# Judging Qwen's errors with Qwen is circular. A 32B or 72B VLM in 4-bit might
+# fit, but then its own chart-reading errors become label noise we cannot
+# measure without... hand-labelling a validation set anyway.
+#
+# Kept as an OPTIONAL triage step only, never as the label of record:
+optional_pre_labeller:
+  enabled: false          # turn on only if a node holds a 32B+ VLM comfortably
+  role: triage_only       # proposes a label; a human confirms every one
+  gate: must reach kappa > 0.6 against human labels on 200 items before use
+  # If it passes, it saves reading time. If it fails, discard it silently.
+  # It never produces a label that goes into the dataset unreviewed.
+
+# --------------------------------------------------------------------------
+# Volume
+# --------------------------------------------------------------------------
+# Sized so that four people can do it without the project becoming an
+# annotation exercise. 20 to 30 seconds per item once the rubric is stable.
+naturalistic:
+  target_items: 1000            # across both models
+  per_person: 250               # roughly 1.5 to 2 hours each, one round
+  double_annotated: 200         # the kappa set, annotated by two people
+  kappa_threshold: 0.6
+  adjudication: third team member breaks ties on the double-annotated set
+
+# The synthetic arm carries E4's cell counts, because human labelling caps how
+# many naturalistic fabrications we can produce and E4 needs adequate counts in
+# every cell. This was always the synthetic arm's stated purpose (SPEC 5.2), it
+# is just now load-bearing rather than a convenience.
+synthetic:
+  min_items_per_failure_type: 400
+  labels: by_construction       # free, exact, no annotator time
+
+# --------------------------------------------------------------------------
+# Protocol
+# --------------------------------------------------------------------------
+protocol:
+  labels: [structural, fabrication, ambiguous]
+  # "ambiguous" is a real option, not a failure to decide. Items landing there
+  # are dropped from the typed analysis, never coerced into one of the two.
+  blind: true                   # annotators do not see each other's labels, and
+                                # do not see which model produced the answer
+  capture_rationale: true       # one line per item; feeds the appendix
+  rubric: docs/taxonomy.md      # written in P2.1, frozen before the main round
+  pilot_items: 50               # all four annotate these, then revise the rubric
+
+# --------------------------------------------------------------------------
+# If a budget ever appears
+# --------------------------------------------------------------------------
+# Institutional or student research credits would make an LLM judge a drop-in
+# addition: it would scale the naturalistic arm past what hand-labelling
+# supports. It would NOT replace the human set, which becomes the validation
+# data for it. Do not plan around this; check, and treat anything found as
+# upside.
+paid_api_fallback:
+  available: false
+  if_available: judge scales the arm; human labels become its validation set

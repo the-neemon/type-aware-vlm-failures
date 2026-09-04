@@ -40,7 +40,7 @@ Mistral-7B defaults and must be read from the backbone config, not the VLM one.
 ```
 configs/      run configs; vendored model configs under model_configs/
 src/extract/  VLM inference and activation caching
-src/label/    LLM judge pipeline and annotation agreement
+src/label/    annotation tooling and inter-annotator agreement
 src/synth/    synthetic bar-chart and node-link generators
 src/probes/   binary, structural, fabrication probes
 src/surface/  E2 surface-feature baseline and residualisation

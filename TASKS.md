@@ -34,7 +34,7 @@ own the paper alone.
 | Workstream | Scope | Owner |
 | --- | --- | --- |
 | **A. Infra and inference** | Ada, SLURM, envs, model runs, activation caching | Yash More |
-| **B. Labelling** | Judge pipeline, annotation, kappa, taxonomy definitions | Shrish Kadam |
+| **B. Labelling** | Annotation tooling and protocol, kappa, taxonomy definitions | Shrish Kadam |
 | **C. Synthetic** | Generator, matched pairs, ground-truth labels | Sanjith Ganapathi |
 | **D. Analysis** | Probes, surface control, matrix, controller, plots | Naman Singhal |
 
@@ -60,12 +60,11 @@ inference and caching job names one GPU type in its SLURM constraint, that type
 is frozen for the project, and it is recorded in the run config next to the
 library versions (Section 4.5). Decision 9.
 
-**The compute load is no longer trivial**, which is worth stating because SPEC
-originally called compute "not binding". Roughly 21,000 forward passes for
-inference and error collection (about 10,500 questions per model once the train
-split is included), plus caching, plus another 9,000 or so re-queries for the
-intervention matrix. That fits on Ada, but not in a one-hour walltime slot, so
-see P1.7 on resumability.
+**Compute is moderate, not trivial.** Roughly 7,000 forward passes for
+inference and error collection (about 3,500 questions per model), plus caching,
+plus re-queries for the intervention matrix, most of which now fall on the
+synthetic arm. That fits on Ada comfortably, but still not in a one-hour
+walltime slot, so see P1.7 on resumability.
 
 ### 1.2 Day 1: Wednesday 2 September
 
@@ -214,14 +213,13 @@ the caching code. Everything else is a status round.
       Record accuracy and sanity-check it against the published number for the
       model. A large gap means the prompt or the metric is wrong, not the model.
 - [ ] **P1.4** Same for LLaVA-NeXT.
-- [ ] **P1.5** **Run the train split. This is settled, not conditional**
-      (decision 3). E4 needs roughly 400 labelled errors per failure type per
-      model for tight cells. Fabrications are the minority class, plausibly 20
-      to 30 percent of errors, so that means 1500 to 2000 errors per model.
-      ChartQA's test splits are about 2500 items; at any accuracy between 75 and
-      85 percent they yield 375 to 625 errors per model, which is short by a
-      factor of three. Extend into train until the yield clears 1500 per model.
-      Budget several days of Ada time and start early.
+- [ ] **P1.5** Build an error pool of roughly **700 per model** (decision 3,
+      revised). The original target of 1500 assumed an LLM judge could label
+      cheaply at volume. Hand-labelling caps the naturalistic arm at about 1000
+      items total, so inference only needs a pool comfortably larger than that
+      to sample from. Test splits give roughly 500 errors per model; extend into
+      train by about 1000 questions per model to clear 700. That is roughly 3500
+      questions per model rather than 10,500.
 - [ ] **P1.6** Store `(figure_id, question, gold, prediction, correct)` rows as
       the single source of truth that labelling and caching both key off.
 - [ ] **P1.7** **Make inference resumable.** Roughly 10,500 questions per model
@@ -234,27 +232,29 @@ the caching code. Everything else is a status round.
 - [ ] **P2.1** Write the two-class definitions with worked edge cases. Include an
       explicit **"neither / ambiguous"** escape hatch so annotators and the judge
       are never forced to pick. Ambiguous items are dropped, not coerced.
-- [ ] **P2.2** Build the VLM judge pipeline per `configs/judge.yaml`
-      (decision 2, decided 2 September). Claude Opus 5 through the **Batch API**,
-      which halves the cost and suits work that is not latency-sensitive, with
-      the rubric cached as a stable prefix and structured output so the label
-      parses rather than being regexed out of prose. Batch results come back in
-      arbitrary order: key them by `custom_id`, never by position. Estimated
-      $159 across the project at medium effort, ceiling $200. Replace the
-      estimate with a measured per-item cost after the 50-item pilot.
-- [ ] **P2.3** Pilot the judge on 50 items. Read every one by hand. Refine the
-      definitions. Expect at least two rounds.
+- [ ] **P2.2** Build the **annotation tool**, not a judge pipeline (decision 2:
+      no budget for paid APIs). A minimal local interface is enough: show the
+      figure, question, gold answer and model answer, take one of three keys,
+      capture a one-line rationale, write to disk, next item. Annotators must
+      not see the model identity or each other's labels. Budget half a day; the
+      tool is not the deliverable, the labels are.
+- [ ] **P2.3** Pilot on 50 items with **all four** annotating. Compare, argue
+      about the disagreements, revise the rubric. Expect at least two rounds.
+      This is where the taxonomy actually gets defined; the rubric written in
+      P2.1 is a draft until it survives this.
 - [ ] **P2.4** **Kappa gate.** Two team members independently annotate roughly
       200 items. Compute Cohen's kappa. Threshold is 0.6.
       - Pass: proceed.
       - Fail: simplify definitions, adjudicate, re-annotate. Do not proceed on
         unreliable labels. Budget a full week for a failure.
-- [ ] **P2.5** **Also measure judge-versus-human agreement** on the same 200
-      items. Inter-human kappa validates that the taxonomy is clear; it says
-      nothing about whether the judge applies it correctly. Both numbers go in
-      the paper. See Section 5.1.
-- [ ] **P2.6** Run the judge over the full error set. Record per-item judge
-      rationale for the appendix.
+- [ ] **P2.5** ~~Judge-versus-human agreement.~~ **Moot under decision 2**: with
+      no judge, inter-human kappa is the whole validation story. This is the one
+      genuine upside of losing the API budget, and the paper should say so
+      plainly rather than presenting hand-labelling as a limitation only.
+- [ ] **P2.6** Annotate the main set: 1000 items across both models, roughly
+      250 each, after the rubric is frozen. Record the one-line rationale per
+      item for the appendix. Do this in two sittings rather than one; agreement
+      degrades with fatigue and that degradation is invisible in the output.
 
 ### P3. Synthetic arm (5 Sep to 21 Sep, parallel, 2 weeks)
 
@@ -463,15 +463,22 @@ versions will produce different activations and neither will notice.
 
 ## 5. Things To Be Careful About: Methodology
 
-### 5.1 Inter-human kappa does not validate the judge
+### 5.1 Every label is now a human label, which changes what kappa means
 
-The proposal sets kappa > 0.6 between two team members. That measures whether
-the taxonomy is *definable*. It does not measure whether the LLM judge *applies*
-it correctly, and the judge is what labels the other ninety percent of the data.
-Report both inter-human kappa and judge-versus-human-consensus agreement. If the
-judge agrees with humans much less than humans agree with each other, the label
-noise is in the judge and the probes will underperform for reasons that have
-nothing to do with the hypothesis.
+Under decision 2 there is no judge, so kappa between annotators is no longer a
+proxy for anything: it *is* the label-validity evidence, covering the whole
+dataset rather than a 200-item sample of it. That is a genuine strengthening and
+the paper should say so, because the obvious reading of "we could not afford an
+LLM judge" is that the labels got worse.
+
+What it costs instead is sample size, and the risks move accordingly. Watch for
+annotator drift, where the rubric is applied differently in week three than in
+week one; re-annotate a 50-item slice from the first sitting at the end and
+check that the labels still agree with themselves. Watch for one annotator's
+idiosyncratic reading propagating unchecked through the 750 items nobody else
+sees. The double-annotated 200 is the only place either failure becomes visible,
+so it must be sampled across the whole set and across sittings, not taken from
+the front of the queue.
 
 ### 5.2 `I_0` needs a real definition
 
@@ -528,12 +535,22 @@ models rely on late query-token states. Report Qwen and LLaVA separately
 throughout. An averaged number across two architectures with different optimal
 representations is not meaningful.
 
-### 5.8 Keep the naturalistic arm central
+### 5.8 Keep the naturalistic arm central, which just got harder
 
 The synthetic arm is easier, cleaner and more fun to work on, and it will try to
 eat the project. It is a control and a source of balanced classes. The claim is
 about real chart reasoning. If the paper's headline numbers come from
 synthetic data, the contribution shrinks accordingly.
+
+**Decision 2 pushed weight toward synthetic and this is a real cost, not a
+neutral reshuffle.** With no labelling budget, E4's cell counts come mostly from
+generated figures, and the naturalistic arm supplies a smaller replication with
+wider intervals. Two obligations follow. Report the naturalistic E4 alongside
+the synthetic one even where its intervals are wide, because a matrix that has
+diagonal structure only on synthetic data is a much weaker claim and the paper
+must let a reader see that. And state the constraint in the limitations section:
+the taxonomy's naturalistic evidence is bounded by what four people could label
+by hand, not by anything about the taxonomy itself.
 
 ### 5.9 Report the gap, never the raw AUROC alone
 
@@ -568,8 +585,8 @@ Record the resolution here as each is made.
 | # | Decision | Needed by | Status |
 | --- | --- | --- | --- |
 | 1 | Pooling strategy and cached layer set | 8 Sep | **Decided 2 Sep.** Schema B, fp16, all layers subject to a quota rule; see `configs/activations.yaml`. Contingent on P0.10. |
-| 2 | Judge model and cost ceiling | 10 Sep | **Decided 2 Sep.** Claude Opus 5 via the Batch API, $200 ceiling; see `configs/judge.yaml`. |
-| 3 | Whether to run ChartQA train split for error yield | 12 Sep | **Decided 2 Sep: yes, required.** Test splits cannot reach E4's power needs at any plausible accuracy. See P1.5. |
+| 2 | How the naturalistic arm gets labelled | 10 Sep | **Decided 2 Sep.** No paid API. Hand-annotated, ~1000 items, ~250 each; synthetic arm carries E4. See `configs/labelling.yaml`. |
+| 3 | ChartQA train split and error-pool size | 12 Sep | **Decided 2 Sep, revised same day.** Yes, but only ~1000 extra questions per model for a 700-error pool. Hand-labelling, not inference, is now the bottleneck. See P1.5. |
 | 4 | Workstream ownership | Next meeting | Provisional, see Section 1 |
 | 5 | `I_0` definition, with or without a naive re-ask control | 1 Oct | Open |
 | 6 | `I_crop` conditioning mechanism | 1 Oct | Open |
