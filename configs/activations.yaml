@@ -72,7 +72,15 @@ layers_fallback:
 # GPU type in its SLURM constraint, that type is fixed for the project, and it
 # is recorded next to the library versions in the run config.
 compute_pool: ada
-gpu_type: TBD             # set by workstream A from the P0.1 inventory, then frozen
+gpu_type: 2080ti          # RTX 2080 Ti, sm_75, 11 GiB. Measured 2 Sep, see
+                          # results/ada_filesystem.md Section 4. FROZEN.
+                          # Turing has no bf16 tensor cores and no FlashAttention-2,
+                          # so the project runs fp16 + sdpa. This is part of the
+                          # pin: it changes activations, not just speed.
+gpu_dtype: float16
+gpu_attn_implementation: sdpa
+gpus_per_job: 2           # 16.6 GiB of fp16 weights does not fit 11 GiB of VRAM
+slurm_constraint: "--constraint=2080ti --exclude=gnode077"
 
 # --------------------------------------------------------------------------
 # Models
@@ -108,8 +116,18 @@ storage:
   # exiting (TASKS.md P0.9) or the cache fragments across nodes.
   working_root: /scratch    # node-local, fast, per job
   durable_root: $HOME       # measured in P0.3: the ONLY shared, writable,
-                            # durable path visible from compute nodes
-  durable_quota_gib: 30     # per user
+                            # durable path visible from compute nodes.
+                            # scripts/ada_env.sh stages into
+                            # $HOME/anlp/project/vlm-failures-durable.
+  durable_quota_gib: 30     # per user, hard limit 31 GiB
+
+  # /scratch is bind-mounted to the SAME directory as /tmp (same device and
+  # inode), and tmpreaper runs daily over /tmp/. at the 7-day default. The
+  # oldest surviving entry observed on a node was 5 days old. So the weights
+  # cache on /scratch is never set up once: stage_in_model in
+  # scripts/ada_env.sh repairs it on whichever node a job lands on, which is a
+  # no-op on a warm node. Measured 2 Sep, results/ada_filesystem.md Section 3.
+  working_root_purge_days: 7
   stage_back_required: true
 
   # /share1 has 100 GiB but is mounted only on the head node, and compute nodes

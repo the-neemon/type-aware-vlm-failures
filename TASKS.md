@@ -136,13 +136,30 @@ the caching code. Everything else is a status round.
 
 ### P0. Infrastructure (2 Sep to 8 Sep, 1 week)
 
-- [ ] **P0.1** Confirm Ada access for all four members. Verify each can submit a
+- [x] **P0.1** Confirm Ada access for all four members. Verify each can submit a
       job and write to `/scratch`.
-- [ ] **P0.2** Pin the environment. Qwen2.5-VL needs a recent `transformers` plus
+      All four hold a SLURM association under account `research`; usernames,
+      uids and QOS are in `results/ada_filesystem.md` Section 1. Sanjith is on
+      QOS `low` rather than `medium`, so his jobs queue behind ours.
+      **The other three still have to run the one-line check in that section
+      themselves.** An association is what gates submission, but I cannot
+      submit a job as another user, so this is ticked on the evidence I could
+      actually gather.
+- [x] **P0.2** Pin the environment. Qwen2.5-VL needs a recent `transformers` plus
       `qwen-vl-utils`; LLaVA-NeXT has its own processor path. Lock versions in
       `requirements.txt` and record the exact commit. Version drift between team
       members will silently change activations.
-- [ ] **P0.3** **Map the filesystem before downloading anything.** `/scratch` on
+      Done. `requirements.txt` carries exact pins, built by
+      `scripts/setup_env.sh` and verified on a 2080 Ti node: torch 2.8.0+cu126,
+      transformers 4.57.6, qwen-vl-utils 0.0.14, accelerate 1.14.0,
+      datasets 5.0.1, numpy 2.2.6, pillow 12.3.0, Python 3.10.12.
+      transformers is deliberately the last of the 4.x line rather than 5.x,
+      because Qwen2.5-VL and qwen-vl-utils were written against the 4.x
+      processor and generation APIs.
+      The venv lives in `$HOME` (6.2 GiB) and **must be built from inside a
+      job**: the head node runs an older glibc than the compute nodes, so a
+      venv built there will not import once a job picks it up.
+- [x] **P0.3** **Map the filesystem before downloading anything.** `/scratch` on
       Ada is node-local: a job on one node cannot see what a job on another node
       wrote there. Report (a) the shared path available to us and its quota,
       (b) home quota, (c) whether `/scratch` is ever purged and on what cycle.
@@ -150,6 +167,18 @@ the caching code. Everything else is a status round.
       combined, so if no shared location holds them, they get replicated per
       node and jobs must be pinned to a fixed node set to avoid re-downloading
       16 GB every time the scheduler moves us. Resolves open decision 8.
+      Measured 2 Sep; full report in `results/ada_filesystem.md`.
+      (a) The only shared, writable, durable path is `$HOME`, 30 GiB per user.
+      `/share1` holds 100 GiB but sits on the head node, is not mounted on any
+      compute node, and compute nodes cannot ssh to the head node, so no job
+      can reach it.
+      (b) Home quota 30 GiB soft, 31 GiB hard.
+      (c) **`/scratch` is purged.** It is bind-mounted to the same directory as
+      `/tmp` (same device and inode), and `tmpreaper` runs daily over `/tmp/.`
+      at the 7-day default; the oldest surviving entry observed was 5 days old.
+      So `HF_HOME=/scratch/vlm-failures/hf` is never set up once:
+      `stage_in_model` in `scripts/ada_env.sh` repairs it on whichever node a
+      job lands on, a no-op on a warm node.
 - [ ] **P0.9** Job scripts stage results back. Every job that writes activations
       copies them from node-local `/scratch` to the shared path before exiting,
       and the script fails loudly if the copy fails. Without this the cache
@@ -179,10 +208,22 @@ the caching code. Everything else is a status round.
       One check still outstanding, now owned by workstream A as P0.10: the
       vision-token counts are analytic and unverified against the real
       `Qwen2VLImageProcessor`.
-- [ ] **P0.5** SLURM job template. Request explicit walltime; the cluster default
+- [x] **P0.5** SLURM job template. Request explicit walltime; the cluster default
       is 1 hour and a full ChartQA pass will not finish in it. Pin GPU type in the
       constraint, since nodes are mixed and a job that lands on the wrong card
       will OOM or run slow. Avoid `gnode077` (known dead GPU).
+      `scripts/ada_env.sh` is the shared preamble; `scripts/smoke.sbatch` and
+      `scripts/verify_tokens.sbatch` are the two templates. Explicit `--time`,
+      `--constraint=2080ti`, `--exclude=gnode077`, and `--gres=gpu:2` because
+      16.6 GiB of fp16 weights does not fit one 11 GiB card. `require_gpu_type`
+      re-checks the card at runtime rather than trusting the scheduler, and
+      `stage_out` implements P0.9 by failing the job loudly if output does not
+      leave node-local disk.
+      Two Ada facts that bit and are now encoded: the GPU is Turing (sm_75), so
+      there are no bf16 tensor cores and no FlashAttention-2, and the project
+      therefore runs fp16 with `sdpa`; and QOS `medium` caps a user at 4 GPUs
+      and 40 CPUs in total, so a held interactive session leaves batch jobs
+      pending on `QOSMaxGRESPerUser`.
 - [x] **P0.6** Repo skeleton per SPEC Section 10: `configs/`, `src/`, `scripts/`,
       `results/`, `paper/`. Add `.gitignore` for caches, checkpoints and `*.npz`.
 - [x] **P0.7** README stub. Guidelines require HuggingFace and WandB links live
@@ -685,7 +726,7 @@ Record the resolution here as each is made.
 | 5 | `I_0` definition, with or without a naive re-ask control | 1 Oct | Open |
 | 6 | `I_crop` conditioning mechanism | 1 Oct | Open |
 | 7 | ChartGemma stretch goal: keep or drop | 30 Sep | Open |
-| 8 | Shared storage path for weights and caches, given node-local `/scratch` | 8 Sep | **Closed 2 Sep by P0.3.** `$HOME`, 30 GiB per user. `/share1` has 100 GiB but no compute node can reach it. |
+| 8 | Shared storage path for weights and caches, given node-local `/scratch` | 8 Sep | **Closed 2 Sep by P0.3.** `durable_root=$HOME`, 30 GiB per user. `/share1` has 100 GiB but no compute node can reach it. Weights go to `HF_HOME=/scratch/vlm-failures/hf`, which is purged at 7 days and repaired on demand by `stage_in_model`. |
 | 10 | Can probe training read `/share1` from the login node | 20 Sep | Open. Would unlock 100 GiB of cold archive; only matters if the item count grows. |
 | 11 | Port `scripts/download_chartqa.ps1` to bash for Ada | 5 Sep | Open. PowerShell will not run on the cluster. |
 | 9 | Which pool runs which model, fixed for the project | 14 Sep | **Decided 2 Sep, revised same day.** Ada only; the H100 is unavailable. One frozen GPU type, named in every job constraint. See Section 1.1. |
