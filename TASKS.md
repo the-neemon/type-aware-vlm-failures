@@ -317,18 +317,28 @@ ChartGemma stretch goal, and it should be dropped without discussion.
 
 ### 4.1 Activation storage will explode if you cache raw vision tokens
 
-Qwen2.5-VL-7B has hidden dimension 3584. A chart at reasonable resolution yields
-on the order of 1500 vision tokens after patch merging.
+**Measured, not estimated.** See `results/storage_budget.md`, regenerable with
+`python3 src/extract/storage_budget.py`. Verified dimensions: Qwen2.5-VL-7B is
+3584 wide over 28 layers, LLaVA-NeXT-7B is 4096 over 32. A typical ChartQA
+figure costs Qwen 1044 vision tokens; LLaVA-NeXT is fixed at 2928.
 
-- **Pooled**, at 8 layers and 2 positions, fp16: roughly 115 KB per item. Twenty
-  thousand items is about 2 GB. Comfortable.
-- **Unpooled vision tokens**, 8 layers, fp16: roughly 90 MB per item. Twenty
-  thousand items is about 1.8 TB. Not viable.
+Across both models at 20k items, fp16:
 
-Decide the pooling strategy (mean over vision tokens, last query token, or a
-small fixed set of pooled statistics) in P0.4, write it into `configs/`, and do
-not change it mid-project. Store fp16, not fp32. If a later experiment needs
-unpooled tokens, re-cache a small subsample rather than everything.
+| Schema | 8 layers | All layers |
+| --- | --- | --- |
+| Pooled, 4 vectors per layer | 9.2 GiB | 34.5 GiB |
+| Unpooled vision tokens | 4.6 TiB | 18 TiB |
+
+Two consequences. Unpooled is ruled out by three orders of magnitude, as
+expected. But pooled is so cheap that **subsampling layers saves nothing worth
+having**: full depth costs 3.8x on a 9 GiB base, and buys away the risk of
+having picked the wrong layers, which matters because Liu et al. place the two
+pathways at different depths. This reverses the SPEC's assumption that storage
+forces subsampling.
+
+Store fp16, never fp32. If a later experiment genuinely needs per-token
+activations, re-cache at most a few hundred items rather than changing the
+schema.
 
 ### 4.2 ChartQA scoring is relaxed accuracy, not exact match
 
@@ -466,7 +476,7 @@ Record the resolution here as each is made.
 
 | # | Decision | Needed by | Status |
 | --- | --- | --- | --- |
-| 1 | Pooling strategy and cached layer set | 8 Sep | Open |
+| 1 | Pooling strategy and cached layer set | 8 Sep | Proposal in `configs/activations.yaml`, ratify at the 2 Sep sync |
 | 2 | Judge model and cost ceiling | 10 Sep | Open |
 | 3 | Whether to run ChartQA train split for error yield | 12 Sep | Open |
 | 4 | Workstream ownership | Next meeting | Provisional, see Section 1 |
