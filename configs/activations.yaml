@@ -129,6 +129,26 @@ storage:
   estimated_gib: 10.3
   estimated_gib_with_recache_headroom: 16.2
 
+  # 10.3 GiB is the CACHE alone. The 30 GiB quota covers everything in $HOME,
+  # and the cache is one line item among several:
+  #
+  #     5.0 GiB  python env (torch + transformers)   -> put on /scratch instead
+  #     3.0 GiB  ChartQA images and tables
+  #     0.5 GiB  synthetic figures (~3200 charts)
+  #    10.3 GiB  activation cache, all layers
+  #     5.9 GiB  headroom to re-cache one model
+  #    -------
+  #    24.7 GiB  of 30 GiB, or 82% before anything already in home
+  #
+  # Workable, not comfortable. Moving the env to /scratch takes it to ~66%.
+  # Whoever owns the quota should check actual free space first; 30 GiB is the
+  # quota, not what is currently unused.
+  #
+  # MODEL WEIGHTS DO NOT GO HERE. Qwen2.5-VL-7B is ~16.6 GB and LLaVA-NeXT-7B
+  # ~15.1 GB; together 29.5 GiB, which exhausts the quota on its own. HF_HOME
+  # stays on node-local /scratch with jobs pinned to a fixed node set, per
+  # TASKS.md P0.3.
+
   # Contingencies IN ORDER if the item count grows past ~8,000. Do not shard the
   # cache across teammates' home directories: home dirs are not group-readable
   # by default, one person's quota filling silently breaks a quarter of the
