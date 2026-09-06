@@ -597,7 +597,20 @@ must let a reader see that. And state the constraint in the limitations section:
 the taxonomy's naturalistic evidence is bounded by what four people could label
 by hand, not by anything about the taxonomy itself.
 
-### 5.9 Report the gap, never the raw AUROC alone
+### 5.9 E2 only works on the naturalistic arm
+
+Measured on 2 September (`results/e2-synthetic-is-tautological.md`): on
+synthetic data the surface baseline reaches AUROC 1.000, because the question
+template determines the label by construction and a fabrication item's answer
+cannot appear in a figure that never contained the category. The probe-surface
+gap can only be zero or negative there.
+
+So E2 runs on the naturalistic arm or not at all, and hand-labelling now bounds
+the power of the project's central control rather than just one experiment's
+sample size. If something has to be cut, cut synthetic generation, not
+naturalistic annotation.
+
+### 5.10 Report the gap, never the raw AUROC alone
 
 Every probe number in every table, slide and figure needs its surface baseline
 next to it. A raw 0.85 AUROC with no control is not evidence and reviewers, TAs
