@@ -147,7 +147,7 @@ def generate_bar_chart_dataset(
     min_height_separation=5,
     tick_density="medium",
     split_ratios=(0.7, 0.15, 0.15),
-    seed=16,
+    seed=42,
 ):
     """Generate reproducible bar charts and return their validated manifest."""
     output_dir = Path(output_dir)

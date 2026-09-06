@@ -19,7 +19,7 @@ def parse_arguments():
     parser.add_argument(
         "--tick-density", choices=("sparse", "medium", "dense"), default="medium"
     )
-    parser.add_argument("--seed", type=int, default=16)
+    parser.add_argument("--seed", type=int, default=42)
     return parser.parse_args()
 
 

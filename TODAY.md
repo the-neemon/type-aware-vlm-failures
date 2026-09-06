@@ -4,9 +4,9 @@ One hour each. Pull before you start, push when you stop, even if unfinished.
 Each task sits in its own directory, so you should not hit merge conflicts.
 
 Backlog and reasoning live in [TASKS.md](TASKS.md). Calendar constraints are in
-Section 3 there, and they are tighter than they look: **the mid-submission
-write-up has to be finished by 20 September**, because 21 to 28 September is
-midsems.
+Section 3 there. Midsems are 21 to 24 September, which leaves 25 to 30
+September as full working days for the write-up, so the real internal deadline
+is **experiments done and drafted by 20 September**.
 
 ---
 
@@ -66,10 +66,9 @@ compared your labels to the generator's.
 
 The generators are written. Run them for real.
 
-1. **Pull first.** I changed the default seed from 42 to 16 across
-   `src/synth/`, which is a standing convention on this project. Anything you
-   generated before that pull is not reproducible from the committed defaults,
-   so regenerate rather than keeping it.
+1. Seed stays at **42**, the project convention, now written into TASKS.md
+   Section 4.5 so it does not get changed again. Anything you already generated
+   with it is fine.
 2. Generate to the targets in `configs/labelling.yaml`: **at least 400 items per
    failure type**, which is what E4 needs in every cell. The synthetic arm now
    carries that load, because hand-labelling caps how much the naturalistic arm

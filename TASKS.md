@@ -375,10 +375,10 @@ mid submission is due 30 September, which means the write-up has to be finished
 | Window | Days | Availability | Focus |
 | --- | --- | --- | --- |
 | 3 to 10 Sep | 8 | **Full** | Close P0; inference complete; synthetic arm complete; rubric frozen and piloted; caching implemented |
-| 11 to 14 Sep | 4 | Low, travelling home | **Annotation round 1.** Caching jobs run unattended |
-| 15 to 20 Sep | 6 | Low, exam preparation | Kappa check; probes; **M1 write-up finished** |
-| 21 to 28 Sep | 8 | **Zero, midsems** | Nothing |
-| 29 to 30 Sep | 2 | Full | Assemble, proofread, submit |
+| 11 to 14 Sep | 4 | Low, travelling home | **Annotation round 1**; start the literature review. Caching jobs run unattended |
+| 15 to 20 Sep | 6 | Low, exam preparation | Kappa check; probes; literature review continues |
+| 21 to 24 Sep | 4 | **Zero, midsems** | Nothing |
+| 25 to 30 Sep | 6 | **Full** | Results sections, assembly, submit |
 | 1 to 31 Oct | 31 | Full | E4 matrix, E5 controller, final write-up |
 
 ### 3.1 Hard internal deadlines
@@ -390,26 +390,39 @@ it looks like it should.
 | --- | --- | --- |
 | **10 Sep** | Inference finished on both models | Annotation is the only task that works well in the low-availability travel week. Without an error set by the 10th, that week is wasted and the annotation has nowhere left to go. |
 | **14 Sep** | Annotation round 1 complete | Everything typed depends on labels: E1's type probes, E3, E4's rows, E5's oracle. |
-| **20 Sep** | **M1 write-up complete**, not started | The 8 days before the deadline are exam days. Treat 20 September as the submission date and 29 to 30 September as proofreading only. |
+| **20 Sep** | Experiments done and the write-up drafted | Only 4 exam days follow, but they are followed by 6 working days that have to hold the entire results write-up. Arriving at the 25th with experiments still running is what turns a comfortable window into a scramble. |
 
-### 3.2 What the mid submission realistically contains
+### 3.2 Put the literature review in the low-availability weeks
+
+It is the one substantial piece of the write-up that does not depend on a single
+result. It is reading and writing, it works in a bedroom with no cluster access,
+and it survives being done in 40-minute pieces. The guidelines grade it
+explicitly and it is the section teams most often under-weight.
+
+Drafting it across 11 to 20 September alongside annotation means the 25th to
+30th holds only the results sections, which are the parts that genuinely cannot
+be written earlier. Write it by hand: the course forbids AI-generated reports,
+and that applies to the literature review as much as anything else.
+
+### 3.3 What the mid submission realistically contains
 
 Scope honestly rather than promising E1 to E5. On the effective time available,
 which is roughly 25 to 30 hours per person before the exams, a credible mid
 submission is:
 
 - P0 to P4 complete: pipeline, data, labels, activations cached
-- **E1 partial**: the binary probe, checked against HALP's range as the sanity
-  condition
-- **E2**: the surface baseline built and reported against whatever probes exist
+- **E1**: the binary probe checked against HALP's range as the sanity condition,
+  and the two type probes
+- **E2**: the surface baseline, reported next to every probe number
+- **E3**: cross-transfer between the type probes
 - Literature review, refined problem statement, and the remaining timeline
-- Type probes (the rest of E1, plus E3) as a stretch, not a promise
+- E4 and E5 are October work and are described as planned, not attempted
 
 The guidelines ask for progress and a concrete plan, not finished results. A
 smaller set of honest, controlled numbers reads better than a larger set of
 uncontrolled ones, and E2 is what makes them controlled.
 
-### 3.3 Working independently
+### 3.4 Working independently
 
 Nobody is in the same room. Two consequences worth stating.
 
@@ -483,6 +496,9 @@ shared storage, whereas 4.6 TiB of unpooled activations would have had nowhere
 to live at all.
 
 ### 4.5 Reproducibility hygiene
+
+**The seed for this project is 42**, everywhere, including new code. Written
+down because it is worth not relitigating.
 
 Fix seeds, pin library versions, and write the full run config next to every
 results file. Two team members running "the same" job on different transformers
