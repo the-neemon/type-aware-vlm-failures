@@ -288,8 +288,11 @@ the caching code. Everything else is a status round.
 - [ ] **P5.1** Binary probe (correct vs incorrect), per-layer AUROC, both models.
       Check against HALP's reported range as the sanity condition.
 - [ ] **P5.2** Structural and fabrication one-vs-rest probes, per-layer AUROC.
-- [ ] **P5.3** Layer selection on **validation only**. Write the selection code so
+- [x] **P5.3** Layer selection on **validation only**. Write the selection code so
       test data is not even loaded during selection.
+      Done in `src/probes/sweep.py`: `sweep_layers` takes no test parameter at
+      all, so selecting on test requires deliberately misusing the API rather
+      than forgetting a rule. A test asserts the signature stays that way.
 - [ ] **P5.4** **E2 surface baseline.** Classifier over surface features alone:
       answer present in figure text, answer type, answer length, question
       template, figure type. Report the margin the activation probe exceeds it by.
@@ -434,6 +437,12 @@ the work is unfinished; a branch nobody can see is a branch nobody can unblock.
 When a task is blocked, say so in the repo rather than waiting to be asked.
 Adding a line to the open decisions table in Section 7 is enough.
 
+**Size work for agent-assisted speed.** Everyone here works with a coding
+agent, so a task that reads like an hour of hand-written work lands in about ten
+minutes. Day plans should hand each person a coherent chunk of a phase rather
+than a single task, or the schedule looks far tighter than it is and the scoping
+decisions that follow from it come out wrong.
+
 ## 4. Things To Be Careful About: Infrastructure
 
 ### 4.1 Activation storage will explode if you cache raw vision tokens
@@ -563,6 +572,16 @@ load test data.
 Items sharing a figure are correlated. Item-level bootstrap will produce
 confidence intervals that are too narrow, which matters most in E4 where the
 whole claim is about whether cells differ.
+
+**Measured on 2 September, and the condition is narrower than the usual advice.**
+Clustering widens the interval only when the label *and* the score are both
+correlated within figure; if only one is, the two bootstraps agree to within
+noise. Our case has both, so the guidance stands: a hard figure produces several
+errors at once, and the activations behind one figure's questions share its
+encoding. Both directions are pinned in
+`src/probes/test_sweep.py::TestClusterBootstrap`, the second so that nobody
+drops the grouping after checking it on a case where it genuinely makes no
+difference. `cluster_bootstrap_ci` in `src/common/linear.py` does this.
 
 ### 5.6 A broken pipeline looks exactly like a negative result
 
