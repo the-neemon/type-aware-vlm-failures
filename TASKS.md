@@ -263,8 +263,17 @@ the caching code. Everything else is a status round.
       arm's main scientific contribution. Do not skip it under time pressure.
 - [ ] **P3.5** Figure-level split assignment, written into the manifest at
       generation time so it cannot drift.
-- [ ] **P3.6** Generate at scale with class balance set deliberately, targeting at
-      least 400 items per failure type.
+- [ ] **P3.6** Generate at scale with class balance set deliberately. **400 items
+      per failure type is a floor, not a target.** The E4 power simulation
+      (`results/e4-preregistration.md`) puts the minimum detectable effect at 400
+      per cell at roughly 12 percentage points, which is large; at a true effect
+      of 5 points that design finds nothing 73 percent of the time. Synthetic
+      items are free and the synthetic arm carries E4's cell counts, so generate
+      well past the floor: **target 800 errors per failure type per model**,
+      which buys 0.94 power at a 10-point effect. Note this is 800 *errors*, not
+      800 items; at a plausible 30 percent synthetic error rate that is roughly
+      2,700 items per type per model. E4 needs inference but not activations, so
+      this costs GPU time and nothing in the activation cache.
 
 ### P4. Activation caching (14 Sep to 24 Sep, 1.5 weeks)
 
@@ -342,8 +351,16 @@ Decide and record in the repo:
 - [ ] **P6.5** Run all four interventions across both failure types, both models,
       both data arms.
 - [ ] **P6.6** Bootstrap confidence intervals per cell, clustered by figure.
-- [ ] **P6.7** Test for diagonal structure explicitly. State the test in advance
+      `cluster_bootstrap_ci` in `src/common/linear.py` does this; see Section 5.5
+      for when the clustering actually changes the interval and when it does not.
+- [x] **P6.7** Test for diagonal structure explicitly. State the test in advance
       rather than eyeballing the matrix.
+      Pre-registered on 2 September in `results/e4-preregistration.md`, before
+      any intervention has been run. Primary test is a directional difference in
+      differences on `I_crop` with a cluster-bootstrapped interval;
+      `argmax_flip_stability` is reported beside it, never instead of it.
+      `I_abstain` is excluded by design and the code raises rather than silently
+      returning a number for it. Implementation in `src/intervene/matrix.py`.
 
 ### P7. Controller and utility (15 Oct to 25 Oct, 1.5 weeks): E5
 

@@ -44,7 +44,15 @@ naturalistic:
 # every cell. This was always the synthetic arm's stated purpose (SPEC 5.2), it
 # is just now load-bearing rather than a convenience.
 synthetic:
+  # A FLOOR, not a target. The E4 power simulation
+  # (results/e4-preregistration.md) shows 400 per cell detects only effects
+  # around 12 percentage points; a true 5-point effect is missed 73% of the
+  # time. Synthetic items cost nothing but render time, so go well past this.
   min_items_per_failure_type: 400
+  target_errors_per_failure_type_per_model: 800   # 0.94 power at a 10-point effect
+  # Note: ERRORS, not items. At a ~30% synthetic error rate that is roughly
+  # 2,700 generated items per type per model. E4 needs inference but not
+  # activations, so this costs GPU time and nothing in the activation cache.
   labels: by_construction       # free, exact, no annotator time
 
 # --------------------------------------------------------------------------
