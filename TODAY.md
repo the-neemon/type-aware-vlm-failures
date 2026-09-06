@@ -10,28 +10,64 @@ is **experiments done and drafted by 20 September**.
 
 ---
 
-## Yash — environment and weights (P0.2, P0.3)
+## Sanjith — weights on Ada, then generate the synthetic set (P0.3, P3.6)
 
-The single highest-value hour on the project right now. Inference has to be
-finished by 10 September or the travel week has no annotation work to do, and
-inference cannot start until this is done.
+Two tasks because the first is mostly waiting. Start the download, then generate
+while it runs.
 
-1. Set `HF_HOME` to a path on node-local `/scratch`, **not** `$HOME`. The two
-   checkpoints are 29.5 GiB together and the home quota is 30 GiB total, so they
-   do not fit alongside anything else. See the budget in
-   `configs/activations.yaml`.
-2. Write `requirements.txt` with `transformers` and `qwen-vl-utils` pinned to
-   exact versions. Record the versions in the file itself, not just the lockfile.
-   Activations differ silently across versions, so this is not bookkeeping.
-3. Start the Qwen2.5-VL-7B download and leave it running. It does not need
-   supervision, and starting it today rather than tomorrow is worth a day.
+**First, 15 minutes.** Set `HF_HOME` to a path on node-local `/scratch`, **not**
+`$HOME`. The two checkpoints are 29.5 GiB together and the home quota is 30 GiB
+total, so they do not fit alongside anything else; the full breakdown is in
+`configs/activations.yaml`. Then start the Qwen2.5-VL-7B and LLaVA-NeXT-7B
+downloads and leave them running unattended.
 
-**Done when:** `requirements.txt` is committed with exact pins, and the download
-is running or complete.
+This is the highest-value item on the project right now. Inference has to finish
+by 10 September or the travel week has no annotation work, and inference cannot
+start until the weights are down. Yash already mapped the filesystem, so the
+findings you need are in the repo; nothing here depends on him.
 
-**Note:** `scripts/download_chartqa.ps1` is PowerShell and will not run on Ada.
-Somebody needs a bash port before the images can land there (decision 11). Not
-today unless you finish early.
+*If you cannot get onto Ada within fifteen minutes, stop, do the generation
+below, and say so in the repo so Yash picks the download up. Do not spend the
+hour fighting cluster access.*
+
+**Then, the rest of the hour.** Generate the synthetic set at scale.
+
+1. Seed stays at **42**, the project convention, now written into TASKS.md
+   Section 4.5 so it does not get changed again. Anything you already generated
+   with it is fine.
+2. Generate to the targets in `configs/labelling.yaml`: **at least 400 items per
+   failure type**, which is what E4 needs in every cell. The synthetic arm now
+   carries that load, because hand-labelling caps how much the naturalistic arm
+   can supply.
+3. Verify the manifest: every figure has a split assignment, no figure appears
+   in two splits, and the per-type counts actually clear 400. Assert this in
+   code rather than reading the output.
+
+**Done when:** both downloads are running or complete, and the manifest exists
+with verified counts and a passing split assertion.
+
+---
+
+## Yash — pin the environment and write the job template (P0.2, P0.5)
+
+Both draw on the node and filesystem knowledge you already have from P0.3, and
+neither blocks on the download Sanjith is starting.
+
+1. `requirements.txt` with `transformers` and `qwen-vl-utils` pinned to exact
+   versions. Record the versions in the file itself, not just a lockfile.
+   Activations differ silently across library versions, so this is not
+   bookkeeping: two of us running "the same" job on different versions produce
+   different numbers and neither notices.
+2. The SLURM template. Three things it must do, all of which cost a rerun if
+   missed: request walltime explicitly, because the default is one hour and no
+   real job finishes in it; name **one** GPU type in the constraint, because the
+   nodes are mixed and a model whose answers and activations come from different
+   cards silently breaks the P4.4 coupling; and exclude `gnode077`.
+3. Record the chosen GPU type in `configs/activations.yaml` under `gpu_type`,
+   which is currently `TBD`. Once set, it is frozen for the project.
+
+**Done when:** `requirements.txt` is committed with exact pins and a job template
+exists that a smoke test could use tomorrow.
 
 ---
 
@@ -62,26 +98,6 @@ compared your labels to the generator's.
 
 ---
 
-## Sanjith — generate the synthetic set at scale (P3.6)
-
-The generators are written. Run them for real.
-
-1. Seed stays at **42**, the project convention, now written into TASKS.md
-   Section 4.5 so it does not get changed again. Anything you already generated
-   with it is fine.
-2. Generate to the targets in `configs/labelling.yaml`: **at least 400 items per
-   failure type**, which is what E4 needs in every cell. The synthetic arm now
-   carries that load, because hand-labelling caps how much the naturalistic arm
-   can supply.
-3. Verify the manifest: every figure has a split assignment, no figure appears
-   in two splits, and the per-type counts actually clear 400. Assert this in
-   code rather than reading the output.
-
-**Done when:** the manifest exists with verified counts and the split assertion
-passes.
-
----
-
 ## Naman — surface baseline (P5.4, E2)
 
 Build the E2 control now, before any activations exist, so it cannot get
@@ -106,3 +122,11 @@ what counts as a result.
 
 **Done when:** the classifier trains on the synthetic set and reports a
 per-class AUROC.
+
+---
+
+## Still unassigned
+
+`scripts/download_chartqa.ps1` is PowerShell and will not run on Ada. It needs a
+bash port before the images can land there (decision 11, due 5 September).
+Whoever finishes early takes it.
