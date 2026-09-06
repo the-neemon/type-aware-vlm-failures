@@ -15,12 +15,12 @@ def parse_arguments():
     node_parser.add_argument("--num-figures", type=int, default=20)
     node_parser.add_argument("--path-length", type=int, default=3)
     node_parser.add_argument("--edge-crossings", type=int, default=1)
-    node_parser.add_argument("--seed", type=int, default=42)
+    node_parser.add_argument("--seed", type=int, default=16)
 
     pair_parser = subparsers.add_parser("pairs")
     pair_parser.add_argument("output_dir")
     pair_parser.add_argument("--pair-count", type=int, default=10)
-    pair_parser.add_argument("--seed", type=int, default=42)
+    pair_parser.add_argument("--seed", type=int, default=16)
     return parser.parse_args()
 
 

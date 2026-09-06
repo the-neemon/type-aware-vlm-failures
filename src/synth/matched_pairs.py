@@ -27,7 +27,7 @@ def validate_matched_pair_entries(entries, output_dir):
             raise ValueError(f"{pair_id} variants must share one split")
 
 
-def generate_matched_pair_dataset(output_dir, pair_count=10, seed=42):
+def generate_matched_pair_dataset(output_dir, pair_count=10, seed=16):
     """Generate pairs varying either visual precision or relational depth."""
     import random
 

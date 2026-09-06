@@ -66,20 +66,12 @@ plus re-queries for the intervention matrix, most of which now fall on the
 synthetic arm. That fits on Ada comfortably, but still not in a one-hour
 walltime slot, so see P1.7 on resumability.
 
-### 1.2 Day 1: Wednesday 2 September
+### 1.2 Daily plans
 
-Only track A needs a GPU. Everything else is laptop work, so nobody is blocked
-waiting on cluster access.
+Today's tasks live in [TODAY.md](TODAY.md), rewritten each working day.
+The phase breakdown below is the backlog those tasks are drawn from.
 
-**Naman, first 30 minutes, before anyone else starts:** push the repo skeleton
-(P0.6, P0.7) so the other three have somewhere to commit. Directories per SPEC
-Section 10, a `.gitignore` covering `*.npz`, `*.pt`, `cache/` and `results/*.npz`,
-and a README stub carrying the empty HuggingFace and WandB link section. Then
-grant the TA mentors access (P0.8), which takes two minutes and is otherwise
-the kind of thing that gets remembered on 29 September.
-
-| Who | Today's track | End-of-day deliverable |
-| --- | --- | --- |
+--- | --- | --- |
 | **Yash** | Ada, environment, weights, smoke test, token-count check (P0.1, P0.2, P0.3, P0.5, P0.10) | One Qwen2.5-VL-7B answer to one ChartQA image from a committed `scripts/smoke.sbatch`, plus a pass or fail on `scripts/verify_vision_tokens.py` |
 | **Naman** | Repo skeleton, then the storage budget and caching schema (P0.6, P0.7, P0.8, P0.4) | `configs/activations.yaml` plus the arithmetic behind it, as a proposal for the evening sync |
 | **Shrish** | ChartQA ingest, relaxed accuracy, figure-level splits (P1.1, P1.6, and the P5.4 assertion) | `src/eval/relaxed_accuracy.py` with boundary tests passing, and figure-versus-question counts for every split |
@@ -376,21 +368,58 @@ Decide and record in the repo:
 
 ## 3. Milestone Calendar
 
-| Week | Dates | Focus | Milestone |
+**The team is not available uniformly.** Midsems run 21 to 28 September and the
+mid submission is due 30 September, which means the write-up has to be finished
+*before* the exams start, not after them.
+
+| Window | Days | Availability | Focus |
 | --- | --- | --- | --- |
-| 1 | 2 Sep to 8 Sep | P0 infra, P1 starts, P3 starts | Storage schema decided |
-| 2 | 9 Sep to 14 Sep | P1 runs, P2 judge build, P3 generators | Error yield known |
-| 3 | 15 Sep to 21 Sep | P2 kappa gate, P4 caching, P3 at scale | **Kappa gate passed** |
-| 4 | 22 Sep to 30 Sep | P5 probes and controls, M1 write-up | **Mid submission, go/no-go** |
-| 5 to 6 | 1 Oct to 15 Oct | P6 cross-intervention matrix | E4 matrix complete |
-| 7 | 16 Oct to 25 Oct | P7 controller, risk-coverage | E5 complete |
-| 8 | 26 Oct to 31 Oct | M2 write-up, slides, packaging | **Final submission** |
+| 3 to 10 Sep | 8 | **Full** | Close P0; inference complete; synthetic arm complete; rubric frozen and piloted; caching implemented |
+| 11 to 14 Sep | 4 | Low, travelling home | **Annotation round 1.** Caching jobs run unattended |
+| 15 to 20 Sep | 6 | Low, exam preparation | Kappa check; probes; **M1 write-up finished** |
+| 21 to 28 Sep | 8 | **Zero, midsems** | Nothing |
+| 29 to 30 Sep | 2 | Full | Assemble, proofread, submit |
+| 1 to 31 Oct | 31 | Full | E4 matrix, E5 controller, final write-up |
 
-Slack is thin. Week 3 is the tightest, since the kappa gate, caching and
-synthetic scale-up all land together. If something has to give, it is the
-ChartGemma stretch goal, and it should be dropped without discussion.
+### 3.1 Hard internal deadlines
 
----
+These are not the same as the course deadlines, and missing one costs more than
+it looks like it should.
+
+| By | What | Why it is hard |
+| --- | --- | --- |
+| **10 Sep** | Inference finished on both models | Annotation is the only task that works well in the low-availability travel week. Without an error set by the 10th, that week is wasted and the annotation has nowhere left to go. |
+| **14 Sep** | Annotation round 1 complete | Everything typed depends on labels: E1's type probes, E3, E4's rows, E5's oracle. |
+| **20 Sep** | **M1 write-up complete**, not started | The 8 days before the deadline are exam days. Treat 20 September as the submission date and 29 to 30 September as proofreading only. |
+
+### 3.2 What the mid submission realistically contains
+
+Scope honestly rather than promising E1 to E5. On the effective time available,
+which is roughly 25 to 30 hours per person before the exams, a credible mid
+submission is:
+
+- P0 to P4 complete: pipeline, data, labels, activations cached
+- **E1 partial**: the binary probe, checked against HALP's range as the sanity
+  condition
+- **E2**: the surface baseline built and reported against whatever probes exist
+- Literature review, refined problem statement, and the remaining timeline
+- Type probes (the rest of E1, plus E3) as a stretch, not a promise
+
+The guidelines ask for progress and a concrete plan, not finished results. A
+smaller set of honest, controlled numbers reads better than a larger set of
+uncontrolled ones, and E2 is what makes them controlled.
+
+### 3.3 Working independently
+
+Nobody is in the same room. Two consequences worth stating.
+
+Tasks are assigned so that each person works inside their own directory
+(`src/extract`, `src/label`, `src/synth`, `src/probes`), which keeps merge
+conflicts close to zero. Pull before starting and push when you stop, even if
+the work is unfinished; a branch nobody can see is a branch nobody can unblock.
+
+When a task is blocked, say so in the repo rather than waiting to be asked.
+Adding a line to the open decisions table in Section 7 is enough.
 
 ## 4. Things To Be Careful About: Infrastructure
 
@@ -593,4 +622,5 @@ Record the resolution here as each is made.
 | 7 | ChartGemma stretch goal: keep or drop | 30 Sep | Open |
 | 8 | Shared storage path for weights and caches, given node-local `/scratch` | 8 Sep | **Closed 2 Sep by P0.3.** `$HOME`, 30 GiB per user. `/share1` has 100 GiB but no compute node can reach it. |
 | 10 | Can probe training read `/share1` from the login node | 20 Sep | Open. Would unlock 100 GiB of cold archive; only matters if the item count grows. |
+| 11 | Port `scripts/download_chartqa.ps1` to bash for Ada | 5 Sep | Open. PowerShell will not run on the cluster. |
 | 9 | Which pool runs which model, fixed for the project | 14 Sep | **Decided 2 Sep, revised same day.** Ada only; the H100 is unavailable. One frozen GPU type, named in every job constraint. See Section 1.1. |

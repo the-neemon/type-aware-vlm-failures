@@ -57,7 +57,7 @@ protocol:
   blind: true                   # annotators do not see each other's labels, and
                                 # do not see which model produced the answer
   capture_rationale: true       # one line per item; feeds the appendix
-  rubric: docs/taxonomy.md      # written in P2.1, frozen before the main round
+  rubric: docs/taxonomy.md      # drafted by Sanjith; frozen after the P2.3 pilot
   pilot_items: 50               # all four annotate these, then revise the rubric
 
 # --------------------------------------------------------------------------

@@ -101,7 +101,7 @@ def generate_node_link_dataset(
     path_length=3,
     edge_crossings=1,
     split_ratios=(0.7, 0.15, 0.15),
-    seed=42,
+    seed=16,
 ):
     """Generate controlled node-link figures and a JSONL manifest."""
     import random
