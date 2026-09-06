@@ -224,7 +224,7 @@ the caching code. Everything else is a status round.
 - [ ] **P2.1** Write the two-class definitions with worked edge cases. Include an
       explicit **"neither / ambiguous"** escape hatch so annotators and the judge
       are never forced to pick. Ambiguous items are dropped, not coerced.
-- [ ] **P2.2** Build the **annotation tool**, not a judge pipeline (decision 2:
+- [x] **P2.2** Build the **annotation tool**, not a judge pipeline (decision 2:
       no budget for paid APIs). A minimal local interface is enough: show the
       figure, question, gold answer and model answer, take one of three keys,
       capture a one-line rationale, write to disk, next item. Annotators must
