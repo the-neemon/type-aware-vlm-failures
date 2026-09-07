@@ -82,7 +82,11 @@ def main():
 
     # ---- model -------------------------------------------------------------
     t0 = time.time()
-    processor = AutoProcessor.from_pretrained(args.model, max_pixels=args.max_pixels)
+    # use_fast is pinned, not left to the transformers default: the fast and
+    # slow image processors produce different pixels (P0.10, 7 Sep), and this
+    # project caches what the encoder makes of those pixels.
+    processor = AutoProcessor.from_pretrained(
+        args.model, max_pixels=args.max_pixels, use_fast=True)
 
     # transformers renamed `torch_dtype` to `dtype` partway through the 4.x
     # line and kept the old name as a deprecated alias. Which one is accepted

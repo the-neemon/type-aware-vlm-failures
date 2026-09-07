@@ -44,7 +44,10 @@ def main():
     image_token_id = json.loads(
         (CFG / "qwen2_5_vl_7b.config.json").read_text())["image_token_id"]
 
-    processor = AutoProcessor.from_pretrained(HF_ID, max_pixels=args.max_pixels)
+    # use_fast pinned to match configs/activations.yaml and the inference
+    # path; fast and slow differ in pixels, though not in token counts.
+    processor = AutoProcessor.from_pretrained(
+        HF_ID, max_pixels=args.max_pixels, use_fast=True)
 
     print(f"{'figure':<28} {'size':>12} {'analytic':>9} {'actual':>7}  ok")
     print("-" * 68)

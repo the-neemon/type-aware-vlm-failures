@@ -183,7 +183,7 @@ the caching code. Everything else is a status round.
       copies them from node-local `/scratch` to the shared path before exiting,
       and the script fails loudly if the copy fails. Without this the cache
       silently fragments across nodes and is unusable for training a probe.
-- [ ] **P0.10** **Verify the vision-token counts against the real processor.**
+- [x] **P0.10** **Verify the vision-token counts against the real processor.**
       The storage budget rests on counts that `src/extract/storage_budget.py`
       derives analytically, by reimplementing `smart_resize` from the config.
       Nothing has confirmed that reimplementation matches what
@@ -199,6 +199,25 @@ the caching code. Everything else is a status round.
         starts.
       Depends on P0.2 and P0.3, and on a handful of ChartQA figures from
       Shrish's P1.1 ingest (or download a few directly, five is enough).
+      **PASS, 7 Sep.** All five figures matched exactly, so the analytic
+      `smart_resize` in `src/extract/storage_budget.py` models the real
+      processor correctly and the budget table stands. Observed range **180 to
+      630 tokens**; 800x557 is the common ChartQA size and gives 580. The old
+      planning number of 1044 was a hypothetical 800x1000 figure and has been
+      replaced with the measured 580. This does not move the budget either way:
+      pooled cost per item is vectors x hidden x layers and never references the
+      token count; the count only fed the rejected unpooled schema.
+      Full report in `results/p0_10_vision_tokens.md`.
+      **Secondary finding, and the more consequential one.** transformers 4.57
+      loads the *fast* image processor by default and warns it "may produce
+      slightly different outputs". It does: preprocessed pixels differ from the
+      slow processor on every figure tested, worst absolute difference 0.030 on
+      normalised values. Token counts are unaffected, so P0.10 stands, but the
+      pixels feeding the encoder are not, and that is what we cache. Two of us
+      on different defaults would cache different activations from the same
+      figure and neither would notice. `processor_use_fast: true` is now frozen
+      in `configs/activations.yaml` next to `gpu_type`, and passed explicitly in
+      both the inference and verification paths.
 - [x] **P0.4** **Decide the caching schema and compute the storage budget before
       writing any cache.** This is the single most consequential infra decision
       in the project. See Section 4.1 for the arithmetic.
@@ -719,7 +738,7 @@ Record the resolution here as each is made.
 
 | # | Decision | Needed by | Status |
 | --- | --- | --- | --- |
-| 1 | Pooling strategy and cached layer set | 8 Sep | **Decided 2 Sep, rule revised same day.** Schema B, fp16, `layers: all`. At the planned 6k items the cache is 10.3 GiB against a 30 GiB quota, so it holds. Contingent on P0.10. |
+| 1 | Pooling strategy and cached layer set | 8 Sep | **Decided 2 Sep, rule revised same day.** Schema B, fp16, `layers: all`. At the planned 6k items the cache is 10.3 GiB against a 30 GiB quota, so it holds. **P0.10 passed 7 Sep**, so the token counts behind the budget are measured rather than assumed and the contingency is discharged. |
 | 2 | How the naturalistic arm gets labelled | 10 Sep | **Decided 2 Sep.** No paid API. Hand-annotated, ~1000 items, ~250 each; synthetic arm carries E4. See `configs/labelling.yaml`. |
 | 3 | ChartQA train split and error-pool size | 12 Sep | **Decided 2 Sep, revised same day.** Yes, but only ~1000 extra questions per model for a 700-error pool. Hand-labelling, not inference, is now the bottleneck. See P1.5. |
 | 4 | Workstream ownership | Next meeting | Provisional, see Section 1 |

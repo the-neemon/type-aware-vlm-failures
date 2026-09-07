@@ -10,7 +10,8 @@
 #SBATCH --partition=u22
 #SBATCH --constraint=2080ti
 #SBATCH --exclude=gnode077
-#SBATCH --gres=gpu:1                 # processor only, but keep the node class identical
+#SBATCH --gres=gpu:1                 # processor is CPU-side, but hold the node
+                                     # class identical to the inference jobs
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=24G
 #SBATCH --time=00:30:00
@@ -21,7 +22,10 @@ set -euo pipefail
 PROJ="${PROJ:-$HOME/anlp/project/type-aware-vlm-failures}"
 source "$PROJ/scripts/ada_env.sh"
 
-stage_in_model "Qwen/Qwen2.5-VL-7B-Instruct"
+# Deliberately NOT stage_in_model: this check needs only the processor
+# (preprocessor_config.json plus the tokenizer, a few MB), which AutoProcessor
+# pulls on its own. Staging the full checkpoint would download ~16 GB to run a
+# thirty-second check.
 
 python "$PROJ/scripts/fetch_chartqa_sample.py" \
     --out "$SCRATCH_ROOT/chartqa_sample" --n 5

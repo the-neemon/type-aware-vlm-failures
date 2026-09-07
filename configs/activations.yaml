@@ -79,6 +79,17 @@ gpu_type: 2080ti          # RTX 2080 Ti, sm_75, 11 GiB. Measured 2 Sep, see
                           # pin: it changes activations, not just speed.
 gpu_dtype: float16
 gpu_attn_implementation: sdpa
+
+# Pinned by P0.10 on 7 Sep. transformers 4.57 loads Qwen2VLImageProcessorFast by
+# default and warns that it "may produce slightly different outputs". It does:
+# against the slow processor the preprocessed pixels differ on every ChartQA
+# figure tested, worst absolute difference 0.030 (mean 1e-5) on normalised
+# values. Vision-token COUNTS are unaffected, so the storage budget is safe,
+# but the pixels feeding the encoder are not, and this project measures what
+# the encoder does with them. Two of us on different defaults would cache
+# different activations from the same figure and neither would notice.
+# true is the 4.57 default and the maintained path. FROZEN with gpu_type.
+processor_use_fast: true
 gpus_per_job: 2           # 16.6 GiB of fp16 weights does not fit 11 GiB of VRAM
 slurm_constraint: "--constraint=2080ti --exclude=gnode077"
 
@@ -96,7 +107,19 @@ models:
     # ChartQA figures, which resize identically under both caps. This bounds
     # inference compute and keeps sequence lengths comparable across items.
     max_pixels: 1000000
-    typical_vision_tokens: 1044   # 800x1000 figure under the cap above
+    # MEASURED by P0.10 on 7 Sep against the real Qwen2VLImageProcessor, on 5
+    # ChartQA test figures. The analytic reimplementation of smart_resize in
+    # src/extract/storage_budget.py matched the processor exactly on all five,
+    # so the budget table is sound:
+    #   415x322 -> 180 tokens
+    #   800x557 -> 580 tokens   (the common ChartQA size, hence the planner)
+    #   850x600 -> 630 tokens
+    # The old planning number of 1044 came from a hypothetical 800x1000 figure
+    # and is pessimistic for real ChartQA. It only ever fed the Schema C
+    # (unpooled) estimate, which was rejected anyway; pooled cost per item is
+    # vectors x hidden x layers and does not depend on the token count at all.
+    typical_vision_tokens: 580
+    measured_vision_tokens_range: [180, 630]
 
   llava_next_mistral_7b:
     hf_id: llava-hf/llava-v1.6-mistral-7b-hf
