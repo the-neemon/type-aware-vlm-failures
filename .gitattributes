@@ -1,0 +1,42 @@
+# Line-ending policy.
+#
+# The problem this solves: TASKS.md, README.md, docs/taxonomy.md and six of
+# src/synth/*.py were committed from Windows with CRLF, while everything
+# written on Linux is LF. Editing a CRLF file from Linux rewrites every line,
+# so a five-line change arrives as a 181-line diff, blame is destroyed, and
+# two people editing the same file conflict on every line rather than on the
+# lines they actually touched. This happened three times in one week.
+#
+# `text=auto` makes Git normalise text files to LF *in the repository* on
+# commit, whatever the author's platform. Working copies still check out in
+# each platform's native ending, so nothing changes for the Windows members
+# day to day; the repository simply stops storing two different conventions
+# for the same kind of file.
+* text=auto
+
+# These must be LF in the WORKING TREE, not just in the repository. A shell
+# script whose shebang ends in CRLF fails on Ada with
+#     /usr/bin/env: 'bash\r': No such file or directory
+# which is an obscure way to lose a job, so it is worth forcing rather than
+# leaving to core.eol.
+*.sh       text eol=lf
+*.sbatch   text eol=lf
+*.py       text eol=lf
+*.yaml     text eol=lf
+*.yml      text eol=lf
+
+# PowerShell is Windows-side tooling and stays CRLF.
+*.ps1      text eol=crlf
+
+# Binary: never transform, never diff as text. Most are gitignored, but a
+# stray commit of one should not be mangled.
+*.png      binary
+*.jpg      binary
+*.jpeg     binary
+*.pdf      binary
+*.zip      binary
+*.npz      binary
+*.npy      binary
+*.pt       binary
+*.pth      binary
+*.safetensors binary
