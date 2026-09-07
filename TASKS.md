@@ -747,5 +747,5 @@ Record the resolution here as each is made.
 | 7 | ChartGemma stretch goal: keep or drop | 30 Sep | Open |
 | 8 | Shared storage path for weights and caches, given node-local `/scratch` | 8 Sep | **Closed 2 Sep by P0.3.** `durable_root=$HOME`, 30 GiB per user. `/share1` has 100 GiB but no compute node can reach it. Weights go to `HF_HOME=/scratch/vlm-failures/hf`, which is purged at 7 days and repaired on demand by `stage_in_model`. |
 | 10 | Can probe training read `/share1` from the login node | 20 Sep | Open. Would unlock 100 GiB of cold archive; only matters if the item count grows. |
-| 11 | Port `scripts/download_chartqa.ps1` to bash for Ada | 5 Sep | Open. PowerShell will not run on the cluster. |
+| 11 | Port `scripts/download_chartqa.ps1` to bash for Ada | 5 Sep | **Closed 7 Sep.** `scripts/download_chartqa.sh`, run on gnode055. ChartQA is now on Ada at `$HOME/data/ChartQA`: 32,719 questions over 20,882 figures, 1.1 GiB, and `python -m src.eval.chartqa` loads it with the P5.4 split assertion passing. Images live in `$HOME`, not `/scratch`, because `/scratch` is node-local and purged at 7 days. |
 | 9 | Which pool runs which model, fixed for the project | 14 Sep | **Decided 2 Sep, revised same day.** Ada only; the H100 is unavailable. One frozen GPU type, named in every job constraint. See Section 1.1. |

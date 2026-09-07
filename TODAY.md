@@ -127,6 +127,18 @@ per-class AUROC.
 
 ## Still unassigned
 
-`scripts/download_chartqa.ps1` is PowerShell and will not run on Ada. It needs a
-bash port before the images can land there (decision 11, due 5 September).
-Whoever finishes early takes it.
+~~`scripts/download_chartqa.ps1` is PowerShell and will not run on Ada. It needs
+a bash port before the images can land there (decision 11, due 5 September).
+Whoever finishes early takes it.~~
+
+**Done 7 September by Yash**, whose own P0.2/P0.5 items were already complete.
+`scripts/download_chartqa.sh` is the port, and it has been run: ChartQA is on
+Ada at `$HOME/data/ChartQA`, 32,719 questions over 20,882 figures, 1.1 GiB.
+`python -m src.eval.chartqa ~/data/ChartQA` loads it and the P5.4 no-shared-
+figure assertion passes on the real data.
+
+The images are in `$HOME` rather than `/scratch` on purpose: `/scratch` is
+node-local and purged at 7 days, so images there would have to be re-downloaded
+on whichever node the scheduler picked. The 875 MB zip is staged on `/scratch`
+so it never counts against the 30 GiB home quota, and is deleted after
+extraction. The script is idempotent, so a job can call it unconditionally.
