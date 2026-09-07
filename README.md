@@ -43,24 +43,36 @@ between library versions and this project's claim rests on activations, so a
 teammate who resolves a different `transformers` build has a correctness
 problem, not a convenience one.
 
-### Where the data lives on Ada
+### Getting ChartQA onto Ada
 
-ChartQA is already downloaded, so nobody needs to fetch it again:
+Run this once, on any compute node. It takes a few minutes and is idempotent,
+so it is safe to call unconditionally from a job script:
 
+```bash
+bash scripts/download_chartqa.sh          # ~875 MB download, 1.1 GiB on disk
+bash scripts/download_chartqa.sh --json-only   # laptop: split stats, no images
 ```
-$HOME/data/ChartQA/{train,val,test}/{split}_{human,augmented}.json
-$HOME/data/ChartQA/**/png/*.png
+
+You get 32,719 questions over 20,882 figures, laid out as
+`$HOME/data/ChartQA/{train,val,test}/{split}_{human,augmented}.json` plus the
+PNGs. Check it with:
+
+```bash
+python -m src.eval.chartqa ~/data/ChartQA
 ```
 
-32,719 questions over 20,882 figures, 1.1 GiB. `python -m src.eval.chartqa
-~/data/ChartQA` prints the split summary and runs the P5.4 no-shared-figure
-assertion. To recreate it anywhere, `scripts/download_chartqa.sh` is idempotent
-and safe to call from a job script (`--json-only` skips the images if you only
-want split statistics on a laptop).
+which prints the per-split summary and runs the P5.4 no-shared-figure assertion.
 
-It sits in `$HOME` rather than `/scratch` on purpose: `/scratch` is node-local
+**Each of us needs our own copy.** Home directories on Ada are `drwx------`, so
+one person's download is unreadable by the rest of the team, and there is no
+shared writable path on the cluster to put a single copy in (see
+[results/ada_filesystem.md](results/ada_filesystem.md)). At 1.1 GiB against a
+30 GiB quota that is an acceptable duplication; it is not worth loosening
+permissions on a home directory to avoid.
+
+It goes in `$HOME` rather than `/scratch` on purpose: `/scratch` is node-local
 and purged at 7 days, so images cached there would be re-downloaded on whichever
-node the scheduler picked.
+node the scheduler happened to pick.
 
 ### Three Ada facts that shape every job
 
