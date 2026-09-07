@@ -1,0 +1,9 @@
+# Revisions to skip when running git blame: whitespace-only, no authored change.
+#
+# GitHub reads this file automatically. Locally, enable it once with:
+#     git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# Repo-wide line-ending normalisation (.gitattributes, * text=auto).
+# Touched every line of 14 files that had been committed with CRLF from
+# Windows, and changed no content.
+1e128c98b6dc9bfc056466abfacb4e8b161c9216
