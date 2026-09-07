@@ -43,6 +43,25 @@ between library versions and this project's claim rests on activations, so a
 teammate who resolves a different `transformers` build has a correctness
 problem, not a convenience one.
 
+### Where the data lives on Ada
+
+ChartQA is already downloaded, so nobody needs to fetch it again:
+
+```
+$HOME/data/ChartQA/{train,val,test}/{split}_{human,augmented}.json
+$HOME/data/ChartQA/**/png/*.png
+```
+
+32,719 questions over 20,882 figures, 1.1 GiB. `python -m src.eval.chartqa
+~/data/ChartQA` prints the split summary and runs the P5.4 no-shared-figure
+assertion. To recreate it anywhere, `scripts/download_chartqa.sh` is idempotent
+and safe to call from a job script (`--json-only` skips the images if you only
+want split statistics on a laptop).
+
+It sits in `$HOME` rather than `/scratch` on purpose: `/scratch` is node-local
+and purged at 7 days, so images cached there would be re-downloaded on whichever
+node the scheduler picked.
+
 ### Three Ada facts that shape every job
 
 `scripts/ada_env.sh` encodes all three; the measurements behind them are in

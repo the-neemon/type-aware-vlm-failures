@@ -183,6 +183,12 @@ the caching code. Everything else is a status round.
       copies them from node-local `/scratch` to the shared path before exiting,
       and the script fails loudly if the copy fails. Without this the cache
       silently fragments across nodes and is unusable for training a probe.
+      **The mechanism exists and is in use:** `stage_out` in
+      `scripts/ada_env.sh` copies to `$DURABLE` and `exit 1`s with the stranding
+      node named if the copy fails; `scripts/smoke.sbatch` already calls it.
+      Left unticked deliberately, because the requirement is "every job that
+      writes activations" and no such job exists until P4.1. Whoever writes the
+      caching job calls `stage_out` and ticks this.
 - [x] **P0.10** **Verify the vision-token counts against the real processor.**
       The storage budget rests on counts that `src/extract/storage_budget.py`
       derives analytically, by reimplementing `smart_resize` from the config.
@@ -526,8 +532,20 @@ decisions that follow from it come out wrong.
 
 **Measured, not estimated.** See `results/storage_budget.md`, regenerable with
 `python3 src/extract/storage_budget.py`. Verified dimensions: Qwen2.5-VL-7B is
-3584 wide over 28 layers, LLaVA-NeXT-7B is 4096 over 32. A typical ChartQA
-figure costs Qwen 1044 vision tokens; LLaVA-NeXT is fixed at 2928.
+3584 wide over 28 layers, LLaVA-NeXT-7B is 4096 over 32.
+
+**Vision-token counts confirmed against the real processor on 7 September**
+(P0.10, `results/p0_10_vision_tokens.md`). The analytic `smart_resize` in
+`storage_budget.py` matched `Qwen2VLImageProcessor` exactly on all five real
+ChartQA figures tested, so the table below stands. Real figures cost Qwen
+**180 to 630 tokens**, and the common 800x557 ChartQA size costs **580**. The
+1044 quoted in `results/storage_budget.md` is a hypothetical 800x1000 figure,
+not a measured typical one; use 580 when reasoning about ChartQA. LLaVA-NeXT is
+fixed at 2928.
+
+None of this moves the budget, because pooled cost per item is
+`vectors x hidden x layers` and never references the token count. The count
+only ever fed the unpooled row, which was rejected regardless.
 
 Across both models at 20k items, fp16:
 
@@ -568,9 +586,33 @@ Request explicit walltime; the default is one hour. Nodes carry mixed GPU types,
 so constrain the GPU in the job script or a large model will land on a card that
 cannot hold it. Avoid `gnode077`.
 
-**`/scratch` is node-local, not shared.** It persists across jobs *on the same
-node*, which makes it good working space and a good weights cache, but a job
-that lands elsewhere sees none of it. Two consequences. Model weights cannot be
+**The frozen card is the RTX 2080 Ti** (`--constraint=2080ti`), measured
+7 September: Turing, compute capability **7.5**, **11 GiB** of VRAM. Three
+consequences, and all three fail quietly rather than loudly:
+
+- **A 7B model does not fit on one card.** fp16 weights are about 16.6 GiB, so
+  every inference job asks for `--gres=gpu:2` and shards with
+  `device_map="auto"`. Quantising to fit one card is not available to us: it
+  perturbs the activations this project measures.
+- **Turing has no bf16 tensor cores.** Qwen2.5-VL's reference code runs bf16;
+  here bf16 returns finite numbers and is merely emulated, so nothing errors.
+  **The project runs fp16**, recorded in `configs/activations.yaml`.
+- **No FlashAttention-2** (needs sm_80). Attention is `sdpa`.
+
+**QOS `medium` caps a user at 4 GPUs and 40 CPUs in total.** A held interactive
+session leaves your own batch jobs pending on `QOSMaxGRESPerUser`, which reads
+like a busy cluster and is not. Check `squeue -u $USER` before blaming the
+queue.
+
+**`/scratch` is node-local, not shared, AND it is purged.** Measured 2 and 7
+September, `results/ada_filesystem.md`. A job that lands on another node sees
+none of it. Worse, `/scratch` is bind-mounted to the same directory as `/tmp`
+(same device and inode) and `tmpreaper` runs daily over `/tmp/.` at the 7-day
+default, so anything untouched for a week is deleted; the oldest surviving entry
+observed anywhere on a node was 5 days old. It is good working space and an
+acceptable weights cache **only because `stage_in_model` in
+`scripts/ada_env.sh` re-downloads on demand**, which is a no-op on a warm node.
+Never treat it as somewhere a file stays. Two consequences. Model weights cannot be
 downloaded once and shared through it, so either they live on shared storage or
 they are replicated per node and jobs are pinned to a fixed node set. And
 activations written there must be staged back to shared storage before the job
@@ -589,6 +631,29 @@ down because it is worth not relitigating.
 Fix seeds, pin library versions, and write the full run config next to every
 results file. Two team members running "the same" job on different transformers
 versions will produce different activations and neither will notice.
+
+**Three things beyond the library versions are frozen, because each of them
+changes activations without changing much else.** All three live in
+`configs/activations.yaml` next to the pins:
+
+| Field | Value | Why it is pinned |
+| --- | --- | --- |
+| `gpu_type` | `2080ti` | Answers and activations must come from the same kernels or P4.4's coupling breaks silently. |
+| `gpu_dtype` | `float16` | Turing has no bf16 tensor cores; bf16 here is emulated, not refused. |
+| `processor_use_fast` | `true` | See below. |
+
+`processor_use_fast` is the least obvious and was found by accident during
+P0.10. transformers 4.57 loads `Qwen2VLImageProcessorFast` by default and warns
+that it "may produce slightly different outputs". Measured against the slow
+processor over five ChartQA figures, **no figure came out bit-identical** and
+the worst absolute difference was 0.030 on normalised pixels. Vision-token
+counts are unaffected.
+
+The magnitude is the point: far too small to change an answer, easily large
+enough to change a cached activation. Two of us on different library defaults
+would cache different activations from the same figure, compare them, and have
+no reason to suspect the pipeline. Re-check it after any `transformers` upgrade
+with `python3 scripts/check_processor_parity.py <figures>`.
 
 ---
 
