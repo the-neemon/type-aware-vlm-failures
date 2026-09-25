@@ -1,0 +1,443 @@
+"""Assemble cached activations and labels into probe training sets (P5.1 to P5.3).
+
+`src/probes/sweep.py` already holds the probe primitives. It wants three things
+per task:
+
+    X           : {layer index: (n_items, hidden)}   float array per layer
+    y           : (n_items,)                          binary
+    figure_ids  : (n_items,)                          for the cluster bootstrap
+
+This module is what turns the artefacts on disk into those three, and it is
+where the two mistakes that would quietly invalidate every probe number live.
+
+**Mistake one: joining by position.** The activation cache, the predictions
+manifest and the label files are written by three different programs at three
+different times. Nothing guarantees they share a row order, and filtering to
+"incorrect items only" destroys any order they did share. Everything here joins
+on `item_id` and asserts the join covered what it should.
+
+**Mistake two: splitting by question.** ChartQA has several questions per
+figure, so a question-level split puts the same figure in train and test and
+inflates every probe. Splits are assigned per figure, once, globally, and
+`assert_no_figure_leak` is called on every dataset this module hands out.
+
+Unknowns that are still open are collected in `ProbeConfig` rather than
+scattered through the code. None of them change the shapes, so the pipeline can
+be written and tested before they are decided.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import pathlib
+from dataclasses import dataclass, field
+from typing import Iterable, Literal, Mapping, Sequence
+
+import numpy as np
+
+# The four pooled vectors written per layer by the caching job. Which of these
+# carries the signal is an empirical question: HALP reports Qwen2.5-VL is best
+# served by visual-only features where other architectures rely on late
+# query-token states, so this is swept rather than assumed.
+POSITIONS = ("vision_mean", "vision_max", "query_last", "query_mean")
+
+Task = Literal["binary", "structural", "fabrication"]
+TYPE_TASKS = ("structural", "fabrication")
+
+# Labels that exist in the rubric. "ambiguous" is a real answer, not a failure
+# to decide, and it is dropped from the type probes rather than coerced.
+STRUCTURAL, FABRICATION, AMBIGUOUS = "structural", "fabrication", "ambiguous"
+
+
+# ---------------------------------------------------------------------------
+# Open hyperparameters
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class ProbeConfig:
+    """Everything not yet decided, in one place.
+
+    Defaults are placeholders chosen to be safe, not chosen to be right. Each
+    is annotated with who decides it and what it would take to settle it.
+    """
+
+    # OPEN. Which layers were cached is Yash's call and lands in
+    # configs/activations.yaml. None means "every layer present in the file",
+    # which is also what `layers: all` resolves to.
+    layers: tuple[int, ...] | None = None
+
+    # OPEN. Which pooled position to probe. Swept, not assumed: run the whole
+    # pipeline once per position and report all four. `query_last` is the
+    # pre-generation state the hypothesis is literally about, so it is the
+    # default, but SPEC 4.1 expects vision-side features to win for Qwen.
+    position: str = "query_last"
+
+    # OPEN. L2 strength. Selected on validation only, never on test.
+    l2: float = 1.0
+
+    # OPEN, and it changes what E3 can say. SPEC calls the type probes
+    # "structural one-vs-rest" and "fabrication one-vs-rest" without saying
+    # what "rest" is.
+    #
+    #   "errors_only"     rest = the other failure type. This is the hypothesis
+    #                     as written: the state before a structural misreading
+    #                     is distinguishable from the state before a
+    #                     fabrication. But with exactly two classes the two
+    #                     probes are the same probe with the label flipped, so
+    #                     AUROC(fabrication) == 1 - AUROC(structural) exactly,
+    #                     and E3's off-diagonal is algebraically forced rather
+    #                     than measured. Report the diagonal and say so; do not
+    #                     present the off-diagonal as evidence.
+    #
+    #   "include_correct" rest = the other failure type AND the correct items.
+    #                     The two probes are then genuinely different models and
+    #                     cross-transfer carries information. Costs a class
+    #                     imbalance, since correct items outnumber errors ~4:1.
+    #
+    # Run both. They answer different questions and neither is wrong.
+    type_probe_rest: str = "errors_only"
+
+    # Split sizes. Figure-level. Seed is the project-wide 42 (TASKS 4.5).
+    val_fraction: float = 0.2
+    test_fraction: float = 0.2
+    seed: int = 42
+
+    def __post_init__(self):
+        if self.position not in POSITIONS:
+            raise ValueError(f"position must be one of {POSITIONS}, got {self.position!r}")
+        if self.type_probe_rest not in ("errors_only", "include_correct"):
+            raise ValueError(
+                "type_probe_rest must be 'errors_only' or 'include_correct', "
+                f"got {self.type_probe_rest!r}")
+        if not 0 < self.val_fraction + self.test_fraction < 1:
+            raise ValueError("val + test fractions must leave a non-empty train split")
+
+
+@dataclass(frozen=True)
+class ProbeDataset:
+    """One task, split three ways, ready for `sweep_layers`/`evaluate_at`."""
+    task: str
+    X: dict[str, dict[int, np.ndarray]]      # split -> layer -> (n, hidden)
+    y: dict[str, np.ndarray]                 # split -> (n,)
+    figure_ids: dict[str, np.ndarray]        # split -> (n,)
+    item_ids: dict[str, np.ndarray]          # split -> (n,)
+    # The underlying class per item: "structural", "fabrication" or "correct".
+    # Kept separately from the binary `y` because E3's cross-transfer needs to
+    # tell the three groups apart, and collapsing them into y loses "correct".
+    classes: dict[str, np.ndarray] = field(default_factory=dict)
+    dropped_ambiguous: int = 0
+    layers: tuple[int, ...] = field(default_factory=tuple)
+
+    def n(self, split: str) -> int:
+        return len(self.y[split])
+
+    def positive_rate(self, split: str) -> float:
+        return float(np.mean(self.y[split])) if self.n(split) else float("nan")
+
+
+# ---------------------------------------------------------------------------
+# Loading
+# ---------------------------------------------------------------------------
+
+def load_activations(
+    path: str | pathlib.Path,
+    position: str,
+    layers: Sequence[int] | None = None,
+) -> tuple[dict[int, np.ndarray], list[str], list[str]]:
+    """Read one pooled position out of the cache.
+
+    Returns `(by_layer, item_ids, figure_ids)`. `item_ids[i]` names the item in
+    row `i` of every array, which is what makes the join checkable rather than
+    assumed.
+    """
+    if position not in POSITIONS:
+        raise ValueError(f"position must be one of {POSITIONS}, got {position!r}")
+
+    with np.load(path, allow_pickle=True) as npz:
+        if "item_ids" not in npz:
+            raise ValueError(
+                f"{path} has no `item_ids` array. Row order is then unknowable "
+                "and the cache cannot be joined to labels; re-run the caching "
+                "job (see inf.md Section 3.3).")
+        item_ids = [str(x) for x in npz["item_ids"]]
+        figure_ids = ([str(x) for x in npz["figure_ids"]]
+                      if "figure_ids" in npz else [])
+
+        suffix = f"_{position}"
+        found = {}
+        for key in npz.files:
+            if key.startswith("L") and key.endswith(suffix):
+                layer = int(key[1:-len(suffix)])
+                found[layer] = npz[key]
+
+    if not found:
+        raise ValueError(
+            f"{path} contains no arrays for position {position!r}. "
+            f"Available keys look like: {sorted(k for k in found)[:5] or 'none'}")
+
+    if layers is not None:
+        missing = set(layers) - set(found)
+        if missing:
+            raise ValueError(f"requested layers absent from cache: {sorted(missing)}")
+        found = {L: found[L] for L in layers}
+
+    n = len(item_ids)
+    for L, arr in found.items():
+        if arr.shape[0] != n:
+            raise ValueError(
+                f"layer {L} has {arr.shape[0]} rows but there are {n} item_ids; "
+                "the cache is internally inconsistent")
+
+    return found, item_ids, figure_ids
+
+
+def load_predictions(path: str | pathlib.Path) -> dict[str, dict]:
+    """Read the inference manifest into `{item_id: row}`.
+
+    Expects the schema in inf.md Section 3.2. `item_id` is required: without it
+    there is nothing to join on.
+    """
+    rows: dict[str, dict] = {}
+    with open(path, "r", encoding="utf-8") as f:
+        for lineno, line in enumerate(f, 1):
+            line = line.strip()
+            if not line:
+                continue
+            obj = json.loads(line)
+            iid = obj.get("item_id")
+            if not iid:
+                raise ValueError(
+                    f"{path}:{lineno} has no item_id. The predictions file must "
+                    "carry it (inf.md Section 3.2); recomputing it here would "
+                    "duplicate the hash definition and invite drift.")
+            if iid in rows:
+                raise ValueError(f"{path}:{lineno} duplicate item_id {iid!r}")
+            rows[iid] = obj
+    return rows
+
+
+def resolve_labels(
+    annotations_dir: str | pathlib.Path,
+    min_raters: int = 1,
+) -> tuple[dict[str, str], dict[str, int]]:
+    """Collapse per-rater annotation files into one label per item.
+
+    Every top-level `*.jsonl` under *annotations_dir* is one rater, matching the
+    convention in `src/label/multi_rater.py`, so Claude's labels and the humans'
+    labels are read the same way.
+
+    Resolution rule, deliberately conservative:
+      - one rater          -> that label
+      - clear majority     -> the majority label
+      - tie, or any rater said `ambiguous` and no majority -> `ambiguous`
+
+    A tie becomes `ambiguous` rather than being broken arbitrarily, because an
+    item two people read differently is exactly what the rubric calls
+    unresolvable. Those items are dropped from the type probes and counted.
+
+    Returns `(labels, stats)`.
+    """
+    from src.label.multi_rater import load_raters
+
+    ratings, bad_lines = load_raters(annotations_dir)
+
+    per_item: dict[str, list[str]] = {}
+    for _rater, by_item in ratings.items():
+        for iid, rec in by_item.items():
+            per_item.setdefault(iid, []).append(rec["label"])
+
+    labels: dict[str, str] = {}
+    n_tied = 0
+    for iid, votes in per_item.items():
+        if len(votes) < min_raters:
+            continue
+        counts: dict[str, int] = {}
+        for v in votes:
+            counts[v] = counts.get(v, 0) + 1
+        top = max(counts.values())
+        winners = [k for k, c in counts.items() if c == top]
+        if len(winners) == 1:
+            labels[iid] = winners[0]
+        else:
+            labels[iid] = AMBIGUOUS
+            n_tied += 1
+
+    stats = {
+        "n_raters": len(ratings),
+        "n_items_labelled": len(labels),
+        "n_ties_to_ambiguous": n_tied,
+        "n_bad_lines": bad_lines,
+    }
+    return labels, stats
+
+
+# ---------------------------------------------------------------------------
+# Figure-level splits (TASKS 5.4)
+# ---------------------------------------------------------------------------
+
+def assign_figure_splits(
+    figure_ids: Iterable[str],
+    val_fraction: float = 0.2,
+    test_fraction: float = 0.2,
+    seed: int = 42,
+) -> dict[str, str]:
+    """Map every figure to exactly one of train/val/test.
+
+    Assigned per figure and once, globally, so that the binary probe and the two
+    type probes share a split even though they run over different populations.
+    If each task split independently, an item could be train for one probe and
+    test for another, and the comparison between probes would be meaningless.
+
+    Assignment is by hashing the figure id rather than by shuffling, so it is
+    stable when figures are added: re-running after more inference does not
+    reshuffle the figures already assigned.
+    """
+    if not 0 < val_fraction + test_fraction < 1:
+        raise ValueError("val + test fractions must leave a non-empty train split")
+
+    out: dict[str, str] = {}
+    for fid in dict.fromkeys(figure_ids):          # dedupe, keep order
+        h = hashlib.sha1(f"{seed}\x1f{fid}".encode("utf-8")).hexdigest()
+        u = int(h[:8], 16) / 0xFFFFFFFF            # deterministic uniform in [0,1]
+        if u < test_fraction:
+            out[fid] = "test"
+        elif u < test_fraction + val_fraction:
+            out[fid] = "val"
+        else:
+            out[fid] = "train"
+    return out
+
+
+def assert_no_figure_leak(figure_ids_by_split: Mapping[str, Sequence[str]]) -> None:
+    """Fail if any figure appears in more than one split.
+
+    Called on every dataset this module produces. TASKS 5.4 asks for an
+    assertion in code rather than trust in the split script, because a leak
+    inflates every probe number and looks like a good result.
+    """
+    seen: dict[str, str] = {}
+    for split, fids in figure_ids_by_split.items():
+        for fid in set(fids):
+            if fid in seen and seen[fid] != split:
+                raise AssertionError(
+                    f"figure {fid!r} appears in both {seen[fid]!r} and {split!r}. "
+                    "A figure contributes several questions, so this leaks the "
+                    "figure across the split boundary and inflates the probe.")
+            seen[fid] = split
+
+
+# ---------------------------------------------------------------------------
+# Assembly
+# ---------------------------------------------------------------------------
+
+def build_dataset(
+    task: Task,
+    activations_path: str | pathlib.Path,
+    predictions_path: str | pathlib.Path,
+    annotations_dir: str | pathlib.Path | None = None,
+    config: ProbeConfig | None = None,
+) -> ProbeDataset:
+    """Assemble one probe task.
+
+    Populations differ by task, and deliberately so:
+
+      binary       every item that was run, correct and incorrect alike. The
+                   probe asks "is this answer wrong", so it needs both classes.
+      structural   incorrect items only, y = (label == "structural")
+      fabrication  incorrect items only, y = (label == "fabrication")
+
+    The type probes need `annotations_dir`; the binary probe does not, and runs
+    before any labelling exists. `ambiguous` items are dropped from the type
+    probes and counted in `dropped_ambiguous`.
+    """
+    cfg = config or ProbeConfig()
+    if task not in ("binary",) + TYPE_TASKS:
+        raise ValueError(f"unknown task {task!r}")
+    if task in TYPE_TASKS and annotations_dir is None:
+        raise ValueError(f"task {task!r} needs annotations_dir")
+
+    by_layer, act_ids, act_figs = load_activations(
+        activations_path, cfg.position, cfg.layers)
+    preds = load_predictions(predictions_path)
+
+    row_of = {iid: i for i, iid in enumerate(act_ids)}
+
+    # Figure ids: prefer the cache's own copy, fall back to the manifest.
+    if act_figs:
+        fig_of = dict(zip(act_ids, act_figs))
+    else:
+        fig_of = {iid: preds[iid]["figure_id"] for iid in act_ids if iid in preds}
+
+    labels: dict[str, str] = {}
+    dropped = 0
+    if task in TYPE_TASKS:
+        labels, _stats = resolve_labels(annotations_dir)
+
+    # --- choose the population -------------------------------------------
+    keep: list[str] = []
+    for iid in act_ids:
+        row = preds.get(iid)
+        if row is None:
+            continue                       # cached but never scored; skip
+        if task == "binary":
+            keep.append(iid)
+            continue
+        if row["correct"]:
+            # Correct items are the negative class only when "rest" is defined
+            # to include them; see ProbeConfig.type_probe_rest.
+            if cfg.type_probe_rest == "include_correct":
+                keep.append(iid)
+            continue
+        lab = labels.get(iid)
+        if lab is None:
+            continue                       # not yet labelled
+        if lab == AMBIGUOUS:
+            dropped += 1
+            continue
+        keep.append(iid)
+
+    if not keep:
+        raise ValueError(
+            f"task {task!r} has no usable items. Check that the predictions and "
+            "the activation cache share item_ids (inf.md Section 3.1).")
+
+    # --- split by figure --------------------------------------------------
+    split_of_figure = assign_figure_splits(
+        (fig_of[i] for i in act_ids if i in fig_of),
+        cfg.val_fraction, cfg.test_fraction, cfg.seed)
+
+    buckets: dict[str, list[str]] = {"train": [], "val": [], "test": []}
+    for iid in keep:
+        buckets[split_of_figure[fig_of[iid]]].append(iid)
+
+    # --- materialise ------------------------------------------------------
+    X: dict[str, dict[int, np.ndarray]] = {}
+    y: dict[str, np.ndarray] = {}
+    figs: dict[str, np.ndarray] = {}
+    iids: dict[str, np.ndarray] = {}
+    klass: dict[str, np.ndarray] = {}
+
+    for split, members in buckets.items():
+        idx = np.array([row_of[i] for i in members], dtype=int)
+        X[split] = {L: arr[idx] for L, arr in by_layer.items()}
+        if task == "binary":
+            vals = [not preds[i]["correct"] for i in members]
+        else:
+            # A correct item is a negative for both type probes: it is neither
+            # a structural misreading nor a fabrication.
+            vals = [(not preds[i]["correct"]) and labels[i] == task
+                    for i in members]
+        y[split] = np.asarray(vals, dtype=float)
+        figs[split] = np.array([fig_of[i] for i in members], dtype=object)
+        iids[split] = np.array(members, dtype=object)
+        klass[split] = np.array(
+            ["correct" if preds[i]["correct"] else labels.get(i, AMBIGUOUS)
+             for i in members], dtype=object)
+
+    assert_no_figure_leak({s: figs[s] for s in figs})
+
+    return ProbeDataset(
+        task=task, X=X, y=y, figure_ids=figs, item_ids=iids, classes=klass,
+        dropped_ambiguous=dropped, layers=tuple(sorted(by_layer)),
+    )
