@@ -1,0 +1,3 @@
+# Laptop-side annotation UI only (src/label/app.py). Kept separate from
+# requirements.txt, which is the pinned Ada inference environment.
+streamlit==1.64.0
