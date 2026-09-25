@@ -31,28 +31,77 @@ import pathlib
 
 import numpy as np
 
-from src.probes.dataset import ProbeConfig, TYPE_TASKS, build_dataset
+from src.probes.dataset import (
+    POSITIONS, ProbeConfig, TYPE_TASKS, build_dataset, validate_cache,
+)
 from src.probes.sweep import (
     cross_transfer, evaluate_at, select_layer, sweep_layers,
 )
 
 
-def _run_one(ds, l2: float) -> dict:
-    """Sweep on validation, pick a layer, score test once."""
-    res = sweep_layers(ds.X["train"], ds.y["train"],
-                       ds.X["val"], ds.y["val"], l2=l2)
-    layer = select_layer(res)
-    scored = evaluate_at(layer, res, ds.X["test"], ds.y["test"],
+def _run_one(task, paths, cfg, positions, l2_grid) -> tuple[dict, object, object]:
+    """Sweep every (position, layer) on validation, then score test once.
+
+    The extractor caches four pooled positions per layer, so there are two
+    things to choose rather than one. **Both are chosen on validation.**
+
+    That is the whole point. Picking the best layer by test AUROC is the classic
+    way to invent a result, and `sweep_layers` is shaped so it cannot happen by
+    accident. Sweeping positions re-opens the same hole one level up: four
+    positions times 28 layers is 112 chances to find something, and picking the
+    winner by test score would inflate the reported number just as effectively.
+    So the joint argmax is taken over validation only, and test is touched once,
+    at the pair already fixed.
+
+    One consequence to state in the paper rather than hide: the *validation*
+    number is optimistically biased, because it is the maximum over 4 positions
+    x 28 layers x |l2_grid| combinations, which is several hundred draws on a
+    validation set of a few hundred items. The *test* number is not, because
+    test is scored exactly once at a configuration chosen without it. Report the
+    test AUROC with its interval; use the validation curve to show shape, never
+    as the headline.
+    """
+    from dataclasses import replace
+
+    results, datasets = {}, {}
+    for pos in positions:
+        ds = build_dataset(task, paths["activations"], paths["predictions"],
+                           paths["annotations"], config=replace(cfg, position=pos))
+        datasets[pos] = ds
+        for l2 in l2_grid:
+            results[(pos, l2)] = sweep_layers(
+                ds.X["train"], ds.y["train"], ds.X["val"], ds.y["val"], l2=l2)
+
+    # Joint argmax on VALIDATION over (position, L2, layer). Deterministic:
+    # ties break toward the earlier position, the smaller L2 and the shallower
+    # layer, because the iteration order is fixed and the test is strict.
+    best, best_val = None, -1.0
+    for (pos, l2), res in results.items():
+        for layer, a in res.auroc_by_layer.items():
+            if not np.isnan(a) and a > best_val:
+                best, best_val = (pos, l2, layer), a
+    best_pos, best_l2, best_layer = best
+
+    ds = datasets[best_pos]
+    scored = evaluate_at(best_layer, results[(best_pos, best_l2)],
+                         ds.X["test"], ds.y["test"],
                          figure_ids=ds.figure_ids["test"])
     return {
-        "task": ds.task,
-        "n": {s: ds.n(s) for s in ("train", "val", "test")},
-        "positive_rate": {s: ds.positive_rate(s) for s in ("train", "val", "test")},
+        "task": task,
+        "n": {k: ds.n(k) for k in ("train", "val", "test")},
+        "positive_rate": {k: ds.positive_rate(k) for k in ("train", "val", "test")},
         "dropped_ambiguous": ds.dropped_ambiguous,
-        "auroc_by_layer_val": {str(k): v for k, v in res.auroc_by_layer.items()},
-        "selected_layer": layer,
+        "auroc_by_layer_val": {
+            pos: {str(k): v
+                  for k, v in results[(pos, best_l2)].auroc_by_layer.items()}
+            for pos in positions},
+        "selected_position": best_pos,
+        "selected_l2": best_l2,
+        "selected_layer": best_layer,
+        "selection_val_auroc": best_val,
+        "l2_grid": list(l2_grid),
         "test": scored,
-    }, res
+    }, results[(best_pos, best_l2)], ds
 
 
 def main() -> int:
@@ -62,9 +111,12 @@ def main() -> int:
     ap.add_argument("--annotations", type=pathlib.Path,
                     help="directory of per-rater .jsonl files; omit to run the "
                          "binary probe alone, which needs no labels")
-    ap.add_argument("--position", default="query_last",
-                    help="which pooled vector to probe; sweep all four and "
-                         "report them all rather than picking one")
+    ap.add_argument("--position", default="all",
+                    help="'all' sweeps every cached pooled position and picks "
+                         "the (position, layer) pair on VALIDATION; or name one "
+                         "of vision_mean/vision_max/query_last/query_mean")
+    ap.add_argument("--no-validate", action="store_true",
+                    help="skip the activation-cache structure check")
     ap.add_argument("--layers", type=int, nargs="*", default=None,
                     help="subset of cached layers; default is every layer present")
     ap.add_argument("--rest", default="errors_only",
@@ -73,20 +125,39 @@ def main() -> int:
                          "errors_only matches the hypothesis but makes E3's "
                          "off-diagonal algebraically forced; include_correct "
                          "makes cross-transfer informative. Run both.")
-    ap.add_argument("--l2", type=float, default=1.0)
+    ap.add_argument("--l2", type=float, nargs="*",
+                    default=[0.1, 1.0, 10.0, 100.0, 1000.0],
+                    help="L2 grid, selected on VALIDATION. The default spans "
+                         "four orders of magnitude because the probe runs at "
+                         "p >> n: 3584 features against ~1500 training rows "
+                         "for the binary probe and ~240 for the type probes. "
+                         "A single weak value overfits and reports chance.")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--out", type=pathlib.Path)
     args = ap.parse_args()
 
+    positions = list(POSITIONS) if args.position == "all" else [args.position]
     cfg = ProbeConfig(
         layers=tuple(args.layers) if args.layers else None,
-        position=args.position, l2=args.l2, seed=args.seed,
+        position=positions[0], l2=args.l2[0], seed=args.seed,
         type_probe_rest=args.rest,
     )
 
+    if not args.no_validate:
+        rep = validate_cache(args.activations)
+        print(f"cache OK: {rep['n_items']} items, "
+              f"positions {sorted(k for k, v in rep['layers_by_position'].items() if v)}, "
+              f"{len(rep['layers_by_position'][positions[0]])} layers")
+        for w in rep["warnings"]:
+            print(f"  warning: {w}")
+
+    paths = {"activations": args.activations, "predictions": args.predictions,
+             "annotations": args.annotations}
+
     report: dict = {
         "config": {
-            "position": cfg.position, "l2": cfg.l2, "seed": cfg.seed,
+            "positions_swept": positions, "l2_grid": args.l2,
+            "seed": cfg.seed,
             "type_probe_rest": cfg.type_probe_rest,
             "layers": list(cfg.layers) if cfg.layers else "all",
             "activations": str(args.activations),
@@ -97,24 +168,22 @@ def main() -> int:
     }
 
     # --- E1: binary ------------------------------------------------------
-    binary = build_dataset("binary", args.activations, args.predictions, config=cfg)
-    report["probes"]["binary"], _ = _run_one(binary, cfg.l2)
+    report["probes"]["binary"], _, _ = _run_one("binary", paths, cfg, positions, args.l2)
     _print(report["probes"]["binary"])
 
     # --- E1: the two type probes, and E3 --------------------------------
     if args.annotations:
-        sweeps = {}
         for task in TYPE_TASKS:
-            ds = build_dataset(task, args.activations, args.predictions,
-                               args.annotations, config=cfg)
-            report["probes"][task], sweeps[task] = _run_one(ds, cfg.l2)
+            report["probes"][task], _, _ = _run_one(task, paths, cfg, positions, args.l2)
             _print(report["probes"][task])
 
-        # E3 needs one layer and one population; use the structural probe's
-        # selected layer, since both type probes share the same items.
-        ds = build_dataset("structural", args.activations, args.predictions,
-                           args.annotations, config=cfg)
+        # E3 needs one (position, layer) and one population. Use whatever the
+        # structural probe selected on validation; both type probes share items.
+        from dataclasses import replace as _replace
+        sel_pos = report["probes"]["structural"]["selected_position"]
         layer = report["probes"]["structural"]["selected_layer"]
+        ds = build_dataset("structural", args.activations, args.predictions,
+                           args.annotations, config=_replace(cfg, position=sel_pos))
         # Use the true class per item. Deriving it from the binary y would
         # relabel every correct item as "fabrication" and collapse the three
         # groups back into two, which forces the off-diagonal even in
@@ -124,10 +193,10 @@ def main() -> int:
             ds.X["test"], ds.classes["test"],
             layer=layer, classes=list(TYPE_TASKS), l2=cfg.l2)
         report["cross_transfer"] = {
-            "layer": layer,
+            "position": sel_pos, "layer": layer,
             "cells": {f"{a}->{b}": v for (a, b), v in transfer.items()},
         }
-        print("\nE3 cross-transfer at layer", layer)
+        print(f"\nE3 cross-transfer at {sel_pos} layer {layer}")
         for (a, b), v in sorted(transfer.items()):
             mark = "" if a == b else "   <- off-diagonal"
             print(f"  trained {a:<12} tested {b:<12} AUROC {v:.3f}{mark}")
@@ -161,14 +230,18 @@ def _print(r: dict) -> None:
           f"   positive rate (train) {r['positive_rate']['train']:.3f}")
     if r["dropped_ambiguous"]:
         print(f"  dropped ambiguous: {r['dropped_ambiguous']}")
-    best = sorted(((float(v), k) for k, v in r["auroc_by_layer_val"].items()),
-                  reverse=True)[:5]
-    print("  top validation layers: " +
-          ", ".join(f"L{k}={v:.3f}" for v, k in best))
+    for pos, by_layer in r["auroc_by_layer_val"].items():
+        top = sorted(((float(v), k) for k, v in by_layer.items()), reverse=True)[:3]
+        star = " *" if pos == r["selected_position"] else "  "
+        print(f" {star} {pos:<12} best val: " +
+              ", ".join(f"L{k}={v:.3f}" for v, k in top))
+    print(f"  selected on VALIDATION: {r['selected_position']} "
+          f"L{r['selected_layer']} l2={r['selected_l2']:g} "
+          f"(val {r['selection_val_auroc']:.3f})")
     t = r["test"]
     ci = t.get("ci95")
     ci_s = f"  95% CI [{ci[0]:.3f}, {ci[1]:.3f}]" if ci else ""
-    print(f"  TEST at layer {t['layer']}: AUROC {t['auroc']:.3f}{ci_s}")
+    print(f"  TEST: AUROC {t['auroc']:.3f}{ci_s}")
 
 
 if __name__ == "__main__":

@@ -137,8 +137,110 @@ class ProbeDataset:
 
 
 # ---------------------------------------------------------------------------
+# Cache validation
+# ---------------------------------------------------------------------------
+
+def validate_cache(
+    path: str | pathlib.Path,
+    expect_layers: int | None = 28,
+    expect_hidden: int | None = 3584,
+    expect_positions: Sequence[str] = POSITIONS,
+) -> dict:
+    """Check the activation cache is shaped the way the extractor promised.
+
+    Cheap, and it runs before any probe is fitted. The failures it catches are
+    the ones that otherwise produce a number rather than an error: a missing
+    pooling position quietly narrows the sweep, and a NaN row makes
+    `fit_logistic` return weights that score like noise. Neither raises on its
+    own.
+
+    Returns a report dict; raises only on structural problems.
+    """
+    report: dict = {"path": str(path), "problems": [], "warnings": []}
+
+    with np.load(path, allow_pickle=True) as npz:
+        keys = list(npz.files)
+        if "item_ids" not in keys:
+            raise ValueError(f"{path}: no item_ids array; the cache cannot be joined")
+
+        item_ids = [str(x) for x in npz["item_ids"]]
+        report["n_items"] = len(item_ids)
+        report["n_unique_item_ids"] = len(set(item_ids))
+        if len(set(item_ids)) != len(item_ids):
+            report["problems"].append("duplicate item_ids")
+        report["has_figure_ids"] = "figure_ids" in keys
+        if "figure_ids" not in keys:
+            report["problems"].append(
+                "no figure_ids array; the cluster bootstrap would have to "
+                "re-join to the predictions file to group by figure")
+
+        found: dict[str, set[int]] = {p: set() for p in expect_positions}
+        other = []
+        for k in keys:
+            if k in ("item_ids", "figure_ids"):
+                continue
+            for pos in expect_positions:
+                if k.startswith("L") and k.endswith(f"_{pos}"):
+                    found[pos].add(int(k[1:-len(pos) - 1]))
+                    break
+            else:
+                other.append(k)
+        report["layers_by_position"] = {p: sorted(v) for p, v in found.items()}
+        report["unrecognised_keys"] = other
+
+        for pos in expect_positions:
+            if not found[pos]:
+                report["problems"].append(f"position {pos!r} absent from the cache")
+            elif expect_layers is not None and len(found[pos]) != expect_layers:
+                report["warnings"].append(
+                    f"position {pos!r} has {len(found[pos])} layers, "
+                    f"expected {expect_layers}")
+
+        # dtype, shape and finiteness on the arrays that are present
+        n_nonfinite = 0
+        for k in keys:
+            if k in ("item_ids", "figure_ids") or k in other:
+                continue
+            arr = npz[k]
+            if arr.shape[0] != len(item_ids):
+                report["problems"].append(
+                    f"{k} has {arr.shape[0]} rows, expected {len(item_ids)}")
+            if expect_hidden is not None and arr.shape[-1] != expect_hidden:
+                report["problems"].append(
+                    f"{k} has width {arr.shape[-1]}, expected {expect_hidden}")
+            if arr.dtype != np.float16:
+                report["warnings"].append(f"{k} is {arr.dtype}, expected float16")
+            bad = int((~np.isfinite(arr.astype(np.float32))).sum())
+            n_nonfinite += bad
+        report["n_nonfinite_values"] = n_nonfinite
+        if n_nonfinite:
+            report["problems"].append(
+                f"{n_nonfinite} non-finite values; a NaN row does not raise, it "
+                "makes the probe score like noise")
+
+    if report["problems"]:
+        raise ValueError(
+            f"activation cache at {path} failed validation:\n  - "
+            + "\n  - ".join(report["problems"]))
+    return report
+
+
+# ---------------------------------------------------------------------------
 # Loading
 # ---------------------------------------------------------------------------
+
+# One entry per (path, position, layers). The sweep calls build_dataset once
+# per position per task, which is 12 reads of a ~1.9 GiB compressed file if
+# nothing is held. Decompression dominates the runtime otherwise. Each cached
+# position is about 0.5 GiB at full scale, so the whole cache is ~1.9 GiB of
+# RAM, which is nothing on a compute node. Call `clear_activation_cache()` if
+# that is ever the wrong trade.
+_ACT_CACHE: dict[tuple, tuple] = {}
+
+
+def clear_activation_cache() -> None:
+    _ACT_CACHE.clear()
+
 
 def load_activations(
     path: str | pathlib.Path,
@@ -150,7 +252,12 @@ def load_activations(
     Returns `(by_layer, item_ids, figure_ids)`. `item_ids[i]` names the item in
     row `i` of every array, which is what makes the join checkable rather than
     assumed.
+
+    Memoised: see `_ACT_CACHE`.
     """
+    key = (str(path), position, tuple(layers) if layers is not None else None)
+    if key in _ACT_CACHE:
+        return _ACT_CACHE[key]
     if position not in POSITIONS:
         raise ValueError(f"position must be one of {POSITIONS}, got {position!r}")
 
@@ -189,6 +296,7 @@ def load_activations(
                 f"layer {L} has {arr.shape[0]} rows but there are {n} item_ids; "
                 "the cache is internally inconsistent")
 
+    _ACT_CACHE[key] = (found, item_ids, figure_ids)
     return found, item_ids, figure_ids
 
 
