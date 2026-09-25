@@ -178,7 +178,7 @@ def check_predictions(rows: Mapping[str, dict], model_key: str, expected: int) -
             continue
         if row["model"] != model_key:
             problems.append(f"row {iid} has model {row['model']!r}, expected {model_key!r}")
-        if item_id(model_key, row["figure_id"], row["question"]) != iid:
+        if item_id(model_key, row["figure_id"], row["question"], row.get("source")) != iid:
             problems.append(f"row {iid} does not hash to its own item_id")
     return problems
 

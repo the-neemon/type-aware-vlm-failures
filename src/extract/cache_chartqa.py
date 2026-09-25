@@ -152,9 +152,9 @@ def paths_for(model_key: str, tag: str, predictions_dir: pathlib.Path,
 def load_items(cfg: RunConfig, limit: int | None = None) -> list[dict]:
     """ChartQA items in dataset order, each carrying its item_id.
 
-    test_human and test_augmented share 103 figures, which is fine: the key is
-    (model, figure, question). A repeated key would silently merge two items,
-    so it is checked here, before any GPU time is spent.
+    test_human and test_augmented share 103 figures, and some repeated questions
+    occur in both sources. The source is part of the key so every question remains
+    a distinct item.
     """
     data = load_chartqa(cfg.data_root, splits=tuple({s.split("_")[0] for s in cfg.splits}))
     missing = [s for s in cfg.splits if s not in data]
@@ -165,9 +165,9 @@ def load_items(cfg: RunConfig, limit: int | None = None) -> list[dict]:
         raise SystemExit(f"loaded {len(items)} questions, configs/inference.yaml expects "
                          f"{cfg.expected_items}")
     for it in items:
-        it["item_id"] = item_id(cfg.model_key, it["figure_id"], it["question"])
+        it["item_id"] = item_id(cfg.model_key, it["figure_id"], it["question"], it["source"])
     if len({it["item_id"] for it in items}) != len(items):
-        raise SystemExit("two ChartQA items share (figure_id, question), so their item_ids collide")
+        raise SystemExit("ChartQA items still have duplicate item_ids after source disambiguation")
     return items[:limit] if limit else items
 
 

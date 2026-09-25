@@ -119,14 +119,14 @@ labelling pipeline is built on it:
 ```python
 from src.label.pool import item_id
 
-iid = item_id(model, figure_id, question)
+iid = item_id(model, figure_id, question, source)
 ```
 
 For reference, that function is:
 
 ```python
-def item_id(model: str, figure_id: str, question: str) -> str:
-    raw = f"{model}\x1f{figure_id}\x1f{question}".encode("utf-8")
+def item_id(model: str, figure_id: str, question: str, source: str) -> str:
+    raw = f"{model}\x1f{source}\x1f{figure_id}\x1f{question}".encode("utf-8")
     return hashlib.sha1(raw).hexdigest()[:12]
 ```
 
@@ -150,13 +150,15 @@ module holds the one definition does not matter.
   shows `--source qwen=...`; when it is run against this output it must be
   invoked as `--source qwen2_5_vl_7b=results/predictions/qwen2_5_vl_7b_test.jsonl`,
   or every id changes.
+- `source` is the literal ChartQA source, `"human"` or `"augmented"`. It is
+  required because some source files repeat the same figure/question pair.
 - `figure_id` is the image filename with no directory, exactly as
   `ChartQAItem.figure_id` gives it.
 - `question` is the raw question string, **unmodified**. Do not strip, lowercase
   or normalise it. The labelling step recomputes this hash from the manifest, so
   any cleaning silently breaks the join.
 
-This triple is also the resumability key in Section 7, so compute it once per
+This four-field tuple is also the resumability key in Section 7, so compute it once per
 item and reuse it.
 
 **Already verified compatible:** `src/label/pool.py` builds its annotation pool

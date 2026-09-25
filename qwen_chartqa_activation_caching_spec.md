@@ -202,14 +202,14 @@ Every artefact must join by a deterministic `item_id`.
 ```python
 from src.label.pool import item_id
 
-iid = item_id("qwen2_5_vl_7b", figure_id, question)
+iid = item_id("qwen2_5_vl_7b", figure_id, question, source)
 ```
 
 For reference, that committed function is:
 
 ```python
-def item_id(model: str, figure_id: str, question: str) -> str:
-    raw = f"{model}\x1f{figure_id}\x1f{question}".encode("utf-8")
+def item_id(model: str, figure_id: str, question: str, source: str) -> str:
+    raw = f"{model}\x1f{source}\x1f{figure_id}\x1f{question}".encode("utf-8")
     return hashlib.sha1(raw).hexdigest()[:12]
 ```
 

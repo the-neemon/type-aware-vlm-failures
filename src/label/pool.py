@@ -6,7 +6,7 @@ Two steps, both deterministic (seed 42, the project convention):
     assign : pool.jsonl -> tasks/<annotator>.jsonl, with a designed overlap
 
 Item IDs are taken unchanged from the predictions file, which mints them with
-`item_id()` below (inf.md 3.1), a hash of (model, figure, question). Reusing them is what lets
+`item_id()` below (inf.md 3.1), a hash of (model, source, figure, question). Reusing them is what lets
 human labels join to the predictions, the Claude labels, the activations and
 E4. Minting a separate ID here would silently join nothing. Because the model is
 inside the hash, the ID is also opaque to annotators, and two models erring on
@@ -53,13 +53,16 @@ def sanitize(name: str) -> str:
     return stem
 
 
-def item_id(model: str, figure_id: str, question: str) -> str:
+def item_id(model: str, figure_id: str, question: str, source: str | None = None) -> str:
     """The project's one join key (inf.md 3.1). Inference imports this; never restate it.
 
     `\x1f` is the ASCII unit separator, which cannot occur inside a question or
-    a filename, so the fields cannot run into each other.
+    a filename, so the fields cannot run into each other. ``source`` distinguishes
+    human and augmented rows when ChartQA repeats a question for one figure.
     """
-    raw = f"{model}\x1f{figure_id}\x1f{question}".encode("utf-8")
+    fields = (model, source, figure_id, question) if source is not None else (
+        model, figure_id, question)
+    raw = "\x1f".join(fields).encode("utf-8")
     return hashlib.sha1(raw).hexdigest()[:12]
 
 
