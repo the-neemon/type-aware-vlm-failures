@@ -1,7 +1,7 @@
-"""The E4 repairs: what gets re-asked, with which image and which prompt (P6.1 to P6.4).
+"""The E4 interventions: what gets re-asked, with which image and prompt (P6.1 to P6.4).
 
 Pure functions on images and strings, so everything here is testable without a
-GPU. `run_e4.py` feeds the results to the model.
+GPU. `run_matrix.py` feeds the results to the model. Spec: cross.md.
 
 | Name         | Image                          | Prompt              | Decoding       |
 | ------------ | ------------------------------ | ------------------- | -------------- |
@@ -46,9 +46,9 @@ from dataclasses import dataclass, field
 
 from PIL import Image
 
-# Must match the inference run's prompt exactly (inf.md 4.1): the repairs are
-# only comparable to the original answer if the question is asked the same way.
-ANSWER_SUFFIX = "\nAnswer the question using a single word or phrase."
+# The prompt and pixel budget come from the one module that loads the model, so
+# a repair asks the question exactly as the original run did (cross.md 3.3).
+from src.extract.qwen import ANSWER_SUFFIX, MAX_PIXELS
 
 VERIFY_SUFFIX = (
     "\nFirst name the part of the chart that supports your answer, such as a bar, "
@@ -56,8 +56,6 @@ VERIFY_SUFFIX = (
     "starting with 'Answer:', using a single word or phrase."
 )
 
-MAX_PIXELS = 1_000_000     # pinned in configs/activations.yaml; the processor
-                           # shrinks anything larger, which would undo the upscale
 MAX_SCALE = 4.0            # beyond this, upscaling only blurs
 CROP_MARGIN = 12           # pixels either side of the target bars
 

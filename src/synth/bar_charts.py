@@ -98,7 +98,7 @@ def save_bar_chart(
     Boxes are [left, top, right, bottom] in image pixels, origin top-left. They
     are recorded here because the renderer knows them exactly, including for a
     zero-height bar that leaves no pixels to detect afterwards. E4's
-    question-conditioned crop reads them (src/intervene/repairs.py).
+    question-conditioned crop reads them (src/intervene/interventions.py).
     """
     figure, axis = plt.subplots(figsize=(8, 6), dpi=120)
     bars = axis.bar(categories, values, color="#4C78A8", width=0.65)

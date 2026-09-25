@@ -5,11 +5,16 @@ and a labels file keyed by the same `item_id`. Only incorrect answers labelled
 `structural` or `fabrication` are used; `ambiguous` items are dropped, as the
 rubric says. Run on Ada inside the pinned environment (inf.md Section 2):
 
-    python -m src.intervene.run_e4 \\
+    python -m src.intervene.run_matrix \\
         --predictions results/predictions/qwen2_5_vl_7b_test.jsonl \\
-        --labels results/labels/qwen2_5_vl_7b_test.human.jsonl \\
+        --labels annotations \\
         --image-root ~/data/ChartQA \\
-        --out results/e4/qwen2_5_vl_7b_test.jsonl
+        --out results/e4/qwen2_5_vl_7b_test.outcomes.jsonl
+
+`--labels` takes either the `annotations/` folder (cross.md 3.2), whose
+per-person files are merged first, or a single labels file keyed by `item_id`.
+In the folder case, items the annotators disagree on and nobody has adjudicated
+are left out and counted, rather than settled by picking one person's label.
 
 For synthetic charts, add `--figures <synth dir>/manifest.jsonl` with
 `--image-root <synth dir>`: that supplies each chart's bar geometry, which is
@@ -37,16 +42,17 @@ from typing import Callable, Iterable
 from PIL import Image
 
 from src.eval.relaxed_accuracy import is_correct
+from src.extract import qwen
 from src.intervene.matrix import (
     Outcome, argmax_flip_stability, cell_counts, did_with_ci, recovery_matrix,
 )
-from src.intervene.repairs import (
-    BASELINE, CROP, MAX_PIXELS, REASK, REQUERIED, UPSAMPLE, VERIFY, Figure, Query,
+from src.intervene.interventions import (
+    BASELINE, CROP, REASK, REQUERIED, UPSAMPLE, VERIFY, Figure, Query,
     build_query, parse_verified,
 )
+from src.label.multi_rater import consensus, load_raters
 
 TYPES = ("structural", "fabrication")
-SEED = 42
 Responder = Callable[[Query], str]
 
 
@@ -57,6 +63,24 @@ Responder = Callable[[Query], str]
 def read_jsonl(path: str | pathlib.Path) -> list[dict]:
     with open(path, encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
+
+
+def load_labels(path: str | pathlib.Path) -> tuple[list[dict], int]:
+    """Labels keyed by item_id, from a file or from the annotations folder.
+
+    Returns (labels, unresolved). For the folder, every human rater file is
+    merged through the consensus step. LLM rater files are excluded, since E4's
+    labels are the human ground truth, and `adjudicated.jsonl` settles
+    disagreements the way it does everywhere else.
+    """
+    path = pathlib.Path(path)
+    if not path.is_dir():
+        return read_jsonl(path), 0
+    ratings, _ = load_raters(path)
+    humans = [r for r in ratings
+              if r != "adjudicated" and "claude" not in r and "llm" not in r]
+    labels, unresolved = consensus(ratings, humans)
+    return labels, len(unresolved)
 
 
 def select_items(predictions: Iterable[dict], labels: Iterable[dict]) -> tuple[list[dict], dict]:
@@ -97,45 +121,14 @@ def figure_loader(image_root: str | pathlib.Path,
 # ---------------------------------------------------------------------------
 
 class QwenResponder:
-    """Qwen2.5-VL loaded exactly as the inference run loads it (inf.md 4.3).
+    """The model, loaded and queried through `src.extract.qwen` (cross.md 3.3)."""
 
-    Every setting that shifts outputs is pinned to the original run's: fp16 on
-    Turing, SDPA attention, the fast image processor, max_pixels. A repair that
-    changed any of them would be measuring the setting, not the repair.
-    """
-
-    def __init__(self, model_id: str = "Qwen/Qwen2.5-VL-7B-Instruct"):
-        import torch
-        from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
-
-        if not torch.cuda.is_available():
-            raise SystemExit("no CUDA device; refusing to fall back to CPU")
-        major = torch.cuda.get_device_capability(0)[0]
-        dtype = torch.float16 if major < 8 else torch.bfloat16
-        self.torch = torch
-        self.processor = AutoProcessor.from_pretrained(
-            model_id, max_pixels=MAX_PIXELS, use_fast=True)
-        self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            model_id, dtype=dtype, device_map="auto",
-            attn_implementation="sdpa" if major < 8 else "flash_attention_2")
-        got = next(self.model.parameters()).dtype
-        if got != dtype:
-            raise SystemExit(f"asked for {dtype}, model loaded as {got}")
+    def __init__(self):
+        self.model, self.processor = qwen.load()
 
     def __call__(self, q: Query) -> str:
-        torch = self.torch
-        messages = [{"role": "user", "content": [
-            {"type": "image"}, {"type": "text", "text": q.prompt}]}]
-        text = self.processor.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True)
-        inputs = self.processor(text=[text], images=[q.image], return_tensors="pt")
-        inputs = inputs.to(self.model.get_input_embeddings().weight.device)
-        torch.manual_seed(SEED)
-        kw = dict(do_sample=True, temperature=0.7) if q.sample else dict(do_sample=False)
-        with torch.inference_mode():
-            out = self.model.generate(**inputs, max_new_tokens=q.max_new_tokens, **kw)
-        gen = out[:, inputs["input_ids"].shape[1]:]
-        return self.processor.batch_decode(gen, skip_special_tokens=True)[0].strip()
+        return qwen.generate(self.model, self.processor, q.image, q.prompt,
+                             sample=q.sample, max_new_tokens=q.max_new_tokens)
 
 
 # ---------------------------------------------------------------------------
@@ -230,7 +223,8 @@ def main() -> None:
     ap.add_argument("--out", type=pathlib.Path, required=True)
     ap.add_argument("--summarize", action="store_true", help="print results from --out and exit")
     ap.add_argument("--predictions", type=pathlib.Path)
-    ap.add_argument("--labels", type=pathlib.Path)
+    ap.add_argument("--labels", type=pathlib.Path,
+                    help="the annotations/ folder, or one labels file")
     ap.add_argument("--image-root", type=pathlib.Path)
     ap.add_argument("--figures", type=pathlib.Path, help="synthetic manifest with bar geometry")
     ap.add_argument("--interventions", nargs="+", default=list(REQUERIED), choices=REQUERIED)
@@ -243,8 +237,9 @@ def main() -> None:
     if not (args.predictions and args.labels and args.image_root):
         ap.error("--predictions, --labels and --image-root are required to run")
 
-    items, counts = select_items(read_jsonl(args.predictions), read_jsonl(args.labels))
-    print("items:", json.dumps(counts))
+    labels, unresolved = load_labels(args.labels)
+    items, counts = select_items(read_jsonl(args.predictions), labels)
+    print("items:", json.dumps({**counts, "unresolved_disagreements": unresolved}))
     if counts["unlabelled"]:
         print(f"warning: {counts['unlabelled']} incorrect answers have no label and are skipped")
     run(items[:args.limit] if args.limit else items,

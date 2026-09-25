@@ -5,7 +5,7 @@
 # continues from the last saved answer.
 #
 #   PREDICTIONS=results/predictions/qwen2_5_vl_7b_test.jsonl \
-#   LABELS=results/labels/test.human.jsonl \
+#   LABELS=annotations \
 #   sbatch scripts/intervene.sbatch
 #
 # Synthetic arm, where I_crop has bar geometry to work with: also set
@@ -27,7 +27,7 @@ PROJ="${PROJ:-$HOME/anlp/project/type-aware-vlm-failures}"
 source "$PROJ/scripts/ada_env.sh"
 
 : "${PREDICTIONS:?set PREDICTIONS to an inf.md predictions file}"
-: "${LABELS:?set LABELS to a labels file keyed by item_id}"
+: "${LABELS:?set LABELS to the annotations/ folder or a labels file}"
 IMAGE_ROOT="${IMAGE_ROOT:-$HOME/data/ChartQA}"
 
 require_gpu_type "2080 Ti"
@@ -35,11 +35,11 @@ stage_in_model "Qwen/Qwen2.5-VL-7B-Instruct"
 
 # Written straight to $HOME, not node-local /scratch: a resubmitted job may land
 # on a different node, and resuming needs to see every answer already saved.
-OUT="$DURABLE/e4/$(basename "$PREDICTIONS" .jsonl).jsonl"
+OUT="$DURABLE/e4/$(basename "$PREDICTIONS" .jsonl).outcomes.jsonl"
 mkdir -p "$(dirname "$OUT")"
 
 cd "$PROJ"
-python -m src.intervene.run_e4 \
+python -m src.intervene.run_matrix \
     --predictions "$PREDICTIONS" --labels "$LABELS" \
     --image-root "$IMAGE_ROOT" ${FIGURES:+--figures "$FIGURES"} \
     --out "$OUT"

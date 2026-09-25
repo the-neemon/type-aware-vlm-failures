@@ -807,7 +807,7 @@ Record the resolution here as each is made.
 | 2 | How the naturalistic arm gets labelled | 10 Sep | **Decided 2 Sep.** No paid API. Hand-annotated, ~1000 items, ~250 each; synthetic arm carries E4. See `configs/labelling.yaml`. |
 | 3 | ChartQA train split and error-pool size | 12 Sep | **Decided 2 Sep, revised same day.** Yes, but only ~1000 extra questions per model for a 700-error pool. Hand-labelling, not inference, is now the bottleneck. See P1.5. |
 | 4 | Workstream ownership | Next meeting | Provisional, see Section 1 |
-| 5 | `I_0` definition, with or without a naive re-ask control | 1 Oct | **Decided 25 Sep.** `I_0` stays the pre-registered baseline (original answer), plus a sampled `I_reask` control. See `src/intervene/repairs.py`. |
+| 5 | `I_0` definition, with or without a naive re-ask control | 1 Oct | **Decided 25 Sep.** `I_0` stays the pre-registered baseline (original answer), plus a sampled `I_reask` control. See `src/intervene/interventions.py`. |
 | 6 | `I_crop` conditioning mechanism | 1 Oct | **Decided 25 Sep.** Target bars plus the y-axis strip, from bar geometry recorded at render time; synthetic only for now. `I_upsample` is the floor everywhere. ChartQA text-matched crop needs OCR, not built. |
 | 7 | ChartGemma stretch goal: keep or drop | 30 Sep | Open |
 | 8 | Shared storage path for weights and caches, given node-local `/scratch` | 8 Sep | **Closed 2 Sep by P0.3.** `durable_root=$HOME`, 30 GiB per user. `/share1` has 100 GiB but no compute node can reach it. Weights go to `HF_HOME=/scratch/vlm-failures/hf`, which is purged at 7 days and repaired on demand by `stage_in_model`. |

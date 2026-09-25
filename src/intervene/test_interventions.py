@@ -9,11 +9,13 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from src.intervene.repairs import (
+from src.intervene.interventions import (
     ANSWER_SUFFIX, CROP, REASK, UPSAMPLE, VERIFY, VERIFY_SUFFIX, Figure, build_query,
     parse_verified, question_crop, question_targets, upscale_to_budget,
 )
-from src.intervene.run_e4 import figure_loader, read_jsonl, run, select_items, summarize
+from src.intervene.run_matrix import (
+    figure_loader, load_labels, read_jsonl, run, select_items, summarize,
+)
 from src.synth.bar_charts import generate_bar_chart_dataset
 
 BAR_RGB = np.array([76, 120, 168])
@@ -221,3 +223,20 @@ class TestRunner:
         crop = [r for r in read_jsonl(out) if r["intervention"] == CROP]
         assert crop == [{"item_id": "i1", "figure_id": "x.png", "failure_type": "structural",
                          "gold": "5", "intervention": CROP, "applicable": False}]
+
+    def test_labels_from_annotations_folder(self, tmp_path):
+        rows = {"naman": [("a", "structural"), ("b", "fabrication")],
+                "yash": [("a", "structural"), ("b", "structural"), ("c", "fabrication")],
+                "qwen2_5_vl_7b_test.claude": [("a", "fabrication")]}
+        for name, recs in rows.items():
+            (tmp_path / f"{name}.jsonl").write_text("".join(
+                json.dumps({"item_id": i, "label": l}) + "\n" for i, l in recs))
+        labels, unresolved = load_labels(tmp_path)
+        # the Claude file is not ground truth; the tie on b is held back
+        assert {l["item_id"]: l["label"] for l in labels} == {"a": "structural", "c": "fabrication"}
+        assert unresolved == 1
+
+    def test_labels_from_file(self, tmp_path):
+        p = tmp_path / "labels.jsonl"
+        p.write_text(json.dumps({"item_id": "a", "label": "structural"}) + "\n")
+        assert load_labels(p) == ([{"item_id": "a", "label": "structural"}], 0)
