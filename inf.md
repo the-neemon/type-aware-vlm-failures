@@ -113,27 +113,56 @@ key**: it breaks the moment anything is filtered, sorted or resumed.
 
 ### 3.1 The join key
 
+**Do not write your own.** One already exists and is committed, and the
+labelling pipeline is built on it:
+
 ```python
-import hashlib
+from src.label.pool import item_id
 
-def make_item_id(model: str, figure_id: str, question: str) -> str:
-    """Stable id for one (model, figure, question) triple.
-
-    Derived from the data, never assigned by position, so the same item gets
-    the same id no matter which script writes it or in what order.
-    """
-    raw = f"{model}|{figure_id}|{question}".encode("utf-8")
-    return hashlib.sha1(raw).hexdigest()[:16]
+iid = item_id(model, figure_id, question)
 ```
 
-Use `model="qwen2_5_vl_7b"` (the key already used in `configs/activations.yaml`),
-not the HuggingFace id and not a display name. `figure_id` is the image filename
-with no directory, exactly as `ChartQAItem.figure_id` gives it. `question` is the
-raw question string, unmodified: do not strip, lowercase or normalise it, or the
-id stops matching what the labelling step computes.
+For reference, that function is:
+
+```python
+def item_id(model: str, figure_id: str, question: str) -> str:
+    raw = f"{model}\x1f{figure_id}\x1f{question}".encode("utf-8")
+    return hashlib.sha1(raw).hexdigest()[:12]
+```
+
+Import it rather than copying it. An earlier draft of this spec defined a
+near-identical function with `|` as the separator and 16 hex characters instead
+of 12. Same inputs, same algorithm, **different output string**, so the two sets
+of ids would not have joined and nothing would have raised an error: the pool
+would simply have come out empty, or worse, half-populated. `\x1f` is the ASCII
+unit separator and cannot occur inside a question or a filename, which is why it
+is the better choice and why its version wins.
+
+If a shared location for this helper is preferred later, move it once and have
+both sides import from the new home. Two definitions is the failure mode; which
+module holds the one definition does not matter.
+
+**Three details that feed the hash, so they must match exactly:**
+
+- `model` must be the literal string **`"qwen2_5_vl_7b"`**, the key already used
+  in `configs/activations.yaml`. Not the HuggingFace id, not a display name, and
+  not the shorter `qwen`. Note that `src/label/pool.py`'s own usage example
+  shows `--source qwen=...`; when it is run against this output it must be
+  invoked as `--source qwen2_5_vl_7b=results/predictions/qwen2_5_vl_7b_test.jsonl`,
+  or every id changes.
+- `figure_id` is the image filename with no directory, exactly as
+  `ChartQAItem.figure_id` gives it.
+- `question` is the raw question string, **unmodified**. Do not strip, lowercase
+  or normalise it. The labelling step recomputes this hash from the manifest, so
+  any cleaning silently breaks the join.
 
 This triple is also the resumability key in Section 7, so compute it once per
 item and reuse it.
+
+**Already verified compatible:** `src/label/pool.py` builds its annotation pool
+by calling `read_manifest()` on this file, and `read_manifest` reads its five
+named fields and ignores the rest. So the extra `item_id`, `model`, `split` and
+`source` fields specified below are safe to add and do not need a separate file.
 
 ### 3.2 Predictions: `results/predictions/qwen2_5_vl_7b_test.jsonl`
 
