@@ -152,9 +152,8 @@ def paths_for(model_key: str, tag: str, predictions_dir: pathlib.Path,
 def load_items(cfg: RunConfig, limit: int | None = None) -> list[dict]:
     """ChartQA items in dataset order, each carrying its item_id.
 
-    test_human and test_augmented share 103 figures, and some repeated questions
-    occur in both sources. The source is part of the key so every question remains
-    a distinct item.
+    ChartQA contains repeated figure/question pairs, including repeats within one
+    source. A deterministic occurrence number keeps every question distinct.
     """
     data = load_chartqa(cfg.data_root, splits=tuple({s.split("_")[0] for s in cfg.splits}))
     missing = [s for s in cfg.splits if s not in data]
@@ -164,8 +163,14 @@ def load_items(cfg: RunConfig, limit: int | None = None) -> list[dict]:
     if len(items) != cfg.expected_items:
         raise SystemExit(f"loaded {len(items)} questions, configs/inference.yaml expects "
                          f"{cfg.expected_items}")
+    occurrences: dict[tuple[str, str, str], int] = {}
     for it in items:
-        it["item_id"] = item_id(cfg.model_key, it["figure_id"], it["question"], it["source"])
+        key = (it["source"], it["figure_id"], it["question"])
+        occurrence = occurrences.get(key, 0)
+        occurrences[key] = occurrence + 1
+        it["occurrence"] = occurrence
+        it["item_id"] = item_id(
+            cfg.model_key, it["figure_id"], it["question"], it["source"], occurrence)
     if len({it["item_id"] for it in items}) != len(items):
         raise SystemExit("ChartQA items still have duplicate item_ids after source disambiguation")
     return items[:limit] if limit else items
@@ -295,6 +300,7 @@ def run(cfg: RunConfig, paths: Paths, limit: int | None, shard_size: int) -> Non
                        "gold": it["gold"], "prediction": prediction,
                        "correct": is_correct(it["gold"], prediction),
                        "split": it["split"], "source": it["source"],
+                       "occurrence": it["occurrence"],
                        "n_vision_tokens": masks.n_vision}
                 previous = stored.get(it["item_id"])
                 if previous is None:

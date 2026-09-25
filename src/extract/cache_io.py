@@ -30,7 +30,8 @@ from src.label.pool import item_id
 from src.probes.dataset import load_predictions
 
 PREDICTION_FIELDS = ("item_id", "model", "figure_id", "question", "gold",
-                     "prediction", "correct", "split", "source")
+                     "prediction", "correct", "split", "source", "occurrence",
+                     "n_vision_tokens")
 
 
 # ---------------------------------------------------------------------------
@@ -178,7 +179,8 @@ def check_predictions(rows: Mapping[str, dict], model_key: str, expected: int) -
             continue
         if row["model"] != model_key:
             problems.append(f"row {iid} has model {row['model']!r}, expected {model_key!r}")
-        if item_id(model_key, row["figure_id"], row["question"], row.get("source")) != iid:
+        if item_id(model_key, row["figure_id"], row["question"], row.get("source"),
+                   row.get("occurrence", 0)) != iid:
             problems.append(f"row {iid} does not hash to its own item_id")
     return problems
 
