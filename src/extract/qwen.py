@@ -16,8 +16,10 @@ that produces the answer, which is what TASKS P4.4 requires.
 from __future__ import annotations
 
 MODEL_ID = "Qwen/Qwen2.5-VL-7B-Instruct"
+MODEL_KEY = "qwen2_5_vl_7b" # hashed into every item_id (inf.md 3.1)
 MAX_PIXELS = 1_000_000      # configs/activations.yaml
 SEED = 42
+MAX_NEW_TOKENS = 32         # configs/inference.yaml
 REASK_TEMPERATURE = 0.7     # I_reask only; everything else is greedy
 ANSWER_SUFFIX = "\nAnswer the question using a single word or phrase."   # inf.md 4.1
 
@@ -58,11 +60,22 @@ def build_inputs(model, processor, image, prompt: str):
 
 
 def generate(model, processor, image, prompt: str, *, sample: bool = False,
-             max_new_tokens: int = 32) -> str:
+             max_new_tokens: int = MAX_NEW_TOKENS) -> str:
     """One answer. Greedy unless `sample`; decoded answer is whitespace-stripped only."""
+    inputs = build_inputs(model, processor, image, prompt)
+    return generate_from_inputs(model, processor, inputs, sample=sample,
+                                max_new_tokens=max_new_tokens)
+
+
+def generate_from_inputs(model, processor, inputs, *, sample: bool = False,
+                         max_new_tokens: int = MAX_NEW_TOKENS) -> str:
+    """`generate` on inputs already built, for callers that need them too.
+
+    Activation caching builds its pooling masks from `inputs` before the call,
+    and its hooks capture the prefill inside this same `model.generate`.
+    """
     import torch
 
-    inputs = build_inputs(model, processor, image, prompt)
     torch.manual_seed(SEED)
     kw = dict(do_sample=True, temperature=REASK_TEMPERATURE) if sample else dict(do_sample=False)
     with torch.inference_mode():

@@ -1,0 +1,28 @@
+# Inference settings for the ChartQA runs (TASKS P1.2, inf.md Section 4).
+#
+# Every downstream label refers to one specific answer string, so the answer
+# must be reproducible. These values are the record of what was run. The code
+# that queries the model reads them from src/extract/qwen.py, which is shared
+# with E4's repairs (cross.md 3.3). src/extract/cache_chartqa.py refuses to
+# start if this file and that module disagree, so the two cannot drift apart.
+
+model_id: Qwen/Qwen2.5-VL-7B-Instruct
+model_key: qwen2_5_vl_7b     # hashed into every item_id; never the HF id
+
+# inf.md 4.1. The standard ChartQA prompt for this model family, not a tuned
+# one. Without it Qwen answers in prose, and prose scores as wrong.
+prompt_suffix: "\nAnswer the question using a single word or phrase."
+
+decoding:
+  do_sample: false           # greedy: no temperature, top-p, top-k or beams
+  max_new_tokens: 32
+  seed: 42                   # project-wide, TASKS 4.5
+batch_size: 1                # padding would contaminate the mean pools (inf.md 5.3)
+
+# The prediction is whitespace-stripped and nothing else before scoring with
+# src.eval.relaxed_accuracy.is_correct. Any other cleaning changes the error set.
+
+dataset:
+  root: ~/data/ChartQA
+  splits: [test_human, test_augmented]   # 2,500 questions over 1,509 figures
+  expected_items: 2500
