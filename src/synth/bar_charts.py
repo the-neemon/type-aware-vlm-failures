@@ -93,9 +93,15 @@ def save_bar_chart(
     axis_max,
     tick_density,
 ):
-    """Render one bar chart to a PNG file."""
+    """Render one bar chart to a PNG file and return its pixel geometry.
+
+    Boxes are [left, top, right, bottom] in image pixels, origin top-left. They
+    are recorded here because the renderer knows them exactly, including for a
+    zero-height bar that leaves no pixels to detect afterwards. E4's
+    question-conditioned crop reads them (src/intervene/repairs.py).
+    """
     figure, axis = plt.subplots(figsize=(8, 6), dpi=120)
-    axis.bar(categories, values, color="#4C78A8", width=0.65)
+    bars = axis.bar(categories, values, color="#4C78A8", width=0.65)
     axis.set_ylim(axis_min, axis_max)
     tick_count = TICK_COUNTS[tick_density]
     tick_step = (axis_max - axis_min) / (tick_count - 1)
@@ -104,8 +110,18 @@ def save_bar_chart(
     axis.set_ylabel("Value")
     axis.grid(axis="y", alpha=0.25)
     figure.tight_layout()
+    figure.canvas.draw()
+    height = figure.canvas.get_width_height()[1]
+
+    def box(extent):
+        x0, y0, x1, y1 = extent.extents
+        return [round(x0), round(height - y1), round(x1), round(height - y0)]
+
+    geometry = {"bar_boxes": [box(bar.get_window_extent()) for bar in bars],
+                "plot_box": box(axis.get_window_extent())}
     figure.savefig(image_path)
     plt.close(figure)
+    return geometry
 
 
 def validate_manifest_entries(entries, output_dir, min_height_separation):
@@ -187,7 +203,7 @@ def generate_bar_chart_dataset(
             min_height_separation,
             random.Random(chart_seed),
         )
-        save_bar_chart(
+        geometry = save_bar_chart(
             image_path,
             categories,
             values,
@@ -209,6 +225,7 @@ def generate_bar_chart_dataset(
                 "tick_density": tick_density,
                 "values": values,
                 "questions": build_bar_questions(categories, values),
+                **geometry,
             }
         )
 

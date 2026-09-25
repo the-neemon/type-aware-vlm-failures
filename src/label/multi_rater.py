@@ -21,6 +21,7 @@ Two statistics, for different questions:
 
 from __future__ import annotations
 
+import argparse
 import collections
 import itertools
 import json
@@ -143,3 +144,51 @@ def disagreements(ratings: Ratings, raters: Sequence[str]) -> list[dict]:
 def label_counts(ratings: Ratings) -> dict[str, dict[str, int]]:
     return {r: {c: sum(rec["label"] == c for rec in recs.values()) for c in ALLOWED_LABELS}
             for r, recs in ratings.items()}
+
+
+def consensus(ratings: Ratings, raters: Sequence[str],
+              adjudicator: str = "adjudicated") -> tuple[list[dict], list[str]]:
+    """One label per item, for E4 and the type probes. Returns (labels, unresolved ids).
+
+    An item gets a label when every selected rater who labelled it agrees, or
+    when the `adjudicated` rater file has settled it after discussion; that
+    file overrides everyone. Disagreements nobody has settled are held back
+    rather than broken by vote, because with two raters there is no majority.
+    """
+    by_item: dict[str, list[str]] = collections.defaultdict(list)
+    for r in raters:
+        for iid, rec in ratings[r].items():
+            by_item[iid].append(rec["label"])
+    settled = ratings.get(adjudicator, {})
+
+    labels, unresolved = [], []
+    for iid in sorted(set(by_item) | set(settled)):
+        if iid in settled:
+            labels.append({"item_id": iid, "label": settled[iid]["label"], "how": "adjudicated"})
+        elif len(set(by_item[iid])) == 1:
+            how = "agreed" if len(by_item[iid]) > 1 else "single"
+            labels.append({"item_id": iid, "label": by_item[iid][0], "how": how})
+        else:
+            unresolved.append(iid)
+    return labels, unresolved
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="Merge annotator files into one label per item")
+    ap.add_argument("--annotations", type=pathlib.Path, default=pathlib.Path("annotations"))
+    ap.add_argument("--out", type=pathlib.Path, default=pathlib.Path("results/labels/test.human.jsonl"))
+    args = ap.parse_args()
+
+    ratings, bad = load_raters(args.annotations)
+    humans = [r for r in ratings if r != "adjudicated"]
+    labels, unresolved = consensus(ratings, humans)
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    with open(args.out, "w", encoding="utf-8") as f:
+        for row in labels:
+            f.write(json.dumps(row) + "\n")
+    print(f"{len(labels)} labels -> {args.out}; {len(unresolved)} unresolved "
+          f"disagreements (settle them in annotations/adjudicated.jsonl); {bad} bad lines")
+
+
+if __name__ == "__main__":
+    main()

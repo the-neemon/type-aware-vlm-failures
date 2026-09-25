@@ -2,16 +2,19 @@
 
 Two steps, both deterministic (seed 42, the project convention):
 
-    build  : inference manifests -> pool.jsonl (blind) + pool_key.jsonl (private)
+    build  : predictions files -> pool.jsonl (blind) + pool_key.jsonl (private)
     assign : pool.jsonl -> tasks/<annotator>.jsonl, with a designed overlap
 
-Blinding is enforced here rather than trusted to the UI. Two leaks it closes:
+Item IDs are taken unchanged from the predictions file, which mints them with
+`item_id()` below (inf.md 3.1), a hash of (model, figure, question). Reusing them is what lets
+human labels join to the predictions, the Claude labels, the activations and
+E4. Minting a separate ID here would silently join nothing. Because the model is
+inside the hash, the ID is also opaque to annotators, and two models erring on
+the same question stay two items.
 
-1. Item IDs are opaque hashes of (model, figure, question). An ID built from
-   `figure::question` alone would collide whenever both models get the same
-   question wrong, silently merging two different answers into one item.
-2. The pool is shuffled, so an annotator cannot infer the model from position
-   (every Qwen error first, then every LLaVA error).
+Blinding is enforced here rather than trusted to the UI: the pool carries no
+model field, and it is shuffled, so an annotator cannot infer the model from
+position (every Qwen error first, then every LLaVA error).
 
 The model for each item lives only in pool_key.jsonl, which annotators never
 need to open. Joining labels back to models happens after annotation.
@@ -21,9 +24,8 @@ exactly two annotators, cycling through every pair, so all four people are
 checked against each other rather than one pair carrying the whole agreement
 estimate. Usage:
 
-    python -m src.label.pool build --split test \\
-        --source qwen=results/qwen_chartqa_test.jsonl \\
-        --source llava=results/llava_chartqa_test.jsonl \\
+    python -m src.label.pool build \\
+        --predictions results/predictions/qwen2_5_vl_7b_test.jsonl \\
         --out annotations/tasks
     python -m src.label.pool assign --pool annotations/tasks/pool.jsonl \\
         --annotators naman yash shrish sanjith --overlap 200 --out annotations/tasks
@@ -40,8 +42,6 @@ import random
 import re
 from typing import Sequence
 
-from src.eval.manifest import read_manifest
-
 SEED = 42
 
 
@@ -54,32 +54,35 @@ def sanitize(name: str) -> str:
 
 
 def item_id(model: str, figure_id: str, question: str) -> str:
+    """The project's one join key (inf.md 3.1). Inference imports this; never restate it.
+
+    `\x1f` is the ASCII unit separator, which cannot occur inside a question or
+    a filename, so the fields cannot run into each other.
+    """
     raw = f"{model}\x1f{figure_id}\x1f{question}".encode("utf-8")
     return hashlib.sha1(raw).hexdigest()[:12]
 
 
-def build_pool(sources: Sequence[tuple[str, str | pathlib.Path]],
-               split: str) -> tuple[list[dict], list[dict]]:
-    """Keep only incorrect answers, mint opaque IDs, shuffle. Returns (pool, key)."""
+def build_pool(paths: Sequence[str | pathlib.Path]) -> tuple[list[dict], list[dict]]:
+    """Keep only incorrect answers, keep their IDs, shuffle. Returns (pool, key)."""
     pool, key = [], []
-    for model, path in sources:
-        for row in read_manifest(path):
-            if row.correct:
+    for path in paths:
+        for row in _read(pathlib.Path(path)):
+            if row["correct"]:
                 continue
-            iid = item_id(model, row.figure_id, row.question)
             pool.append({
-                "item_id": iid,
-                "image_path": f"{split}/png/{row.figure_id}",
-                "question": row.question,
-                "gold_answer": row.gold,
-                "model_answer": row.prediction,
+                "item_id": row["item_id"],
+                "image_path": f"{row['split']}/png/{row['figure_id']}",
+                "question": row["question"],
+                "gold_answer": row["gold"],
+                "model_answer": row["prediction"],
             })
-            key.append({"item_id": iid, "model": model,
-                        "figure_id": row.figure_id, "split": split})
+            key.append({k: row.get(k) for k in
+                        ("item_id", "model", "figure_id", "split", "source")})
 
     ids = [p["item_id"] for p in pool]
     if len(ids) != len(set(ids)):
-        raise ValueError("duplicate item IDs: a manifest repeats a (figure, question)")
+        raise ValueError("duplicate item IDs across the predictions files")
 
     random.Random(SEED).shuffle(pool)
     return pool, key
@@ -136,10 +139,9 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    b = sub.add_parser("build", help="inference manifests -> blind pool + private key")
-    b.add_argument("--source", action="append", required=True,
-                   metavar="MODEL=MANIFEST", help="repeat once per model")
-    b.add_argument("--split", required=True, choices=["train", "val", "test"])
+    b = sub.add_parser("build", help="predictions files -> blind pool + private key")
+    b.add_argument("--predictions", action="append", required=True, type=pathlib.Path,
+                   help="inf.md 3.2 format; repeat once per model")
     b.add_argument("--out", type=pathlib.Path, default=pathlib.Path("annotations/tasks"))
 
     a = sub.add_parser("assign", help="pool -> one task file per annotator")
@@ -150,8 +152,7 @@ def main() -> None:
 
     args = ap.parse_args()
     if args.cmd == "build":
-        sources = [tuple(s.split("=", 1)) for s in args.source]
-        pool, key = build_pool(sources, args.split)
+        pool, key = build_pool(args.predictions)
         _write(pool, args.out / "pool.jsonl")
         _write(key, args.out / "pool_key.jsonl")
         print(f"pool: {len(pool)} incorrect answers -> {args.out / 'pool.jsonl'}")

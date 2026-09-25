@@ -6,58 +6,71 @@ import collections
 import json
 import math
 
-from src.eval.manifest import ManifestRow, write_manifest
 from src.label.multi_rater import (
-    disagreements, fleiss_kappa, load_raters, pairwise, shared_items,
+    consensus, disagreements, fleiss_kappa, load_raters, pairwise, shared_items,
 )
-from src.label.pool import assign, build_pool, item_id, sanitize
+from src.label.pool import assign, build_pool, item_id as _iid, sanitize
 
 
-def _manifests(tmp_path):
-    rows = [ManifestRow(f"fig{i}.png", f"q{i}", "10", "12" if i % 2 else "10", i % 2 == 0)
-            for i in range(40)]
-    a, b = tmp_path / "qwen.jsonl", tmp_path / "llava.jsonl"
-    write_manifest(rows, a)
-    write_manifest(rows, b)          # same questions wrong for both models
-    return [("qwen", a), ("llava", b)]
+def _predictions(tmp_path):
+    paths = []
+    for model in ("qwen2_5_vl_7b", "llava_next_mistral_7b"):
+        p = tmp_path / f"{model}_test.jsonl"
+        with open(p, "w") as f:
+            for i in range(40):     # same questions for both models, half wrong
+                f.write(json.dumps({
+                    "item_id": _iid(model, f"fig{i}.png", f"q{i}"), "model": model,
+                    "figure_id": f"fig{i}.png", "question": f"q{i}", "gold": "10",
+                    "prediction": "12" if i % 2 else "10", "correct": i % 2 == 0,
+                    "split": "test", "source": "human"}) + "\n")
+        paths.append(p)
+    return paths
 
 
 class TestBuildPool:
     def test_keeps_only_incorrect(self, tmp_path):
-        pool, key = build_pool(_manifests(tmp_path), "test")
+        pool, key = build_pool(_predictions(tmp_path))
         assert len(pool) == len(key) == 40      # 20 wrong per model
 
-    def test_same_question_two_models_does_not_collide(self, tmp_path):
-        # the bug an ID of figure::question would have: both models erring on
-        # one question would merge into a single item
-        pool, _ = build_pool(_manifests(tmp_path), "test")
+    def test_ids_carried_through_unchanged(self, tmp_path):
+        # the join key for predictions, Claude labels, activations and E4
+        pool, key = build_pool(_predictions(tmp_path))
+        expected = {_iid(m, f"fig{i}.png", f"q{i}")
+                    for m in ("qwen2_5_vl_7b", "llava_next_mistral_7b") for i in range(1, 40, 2)}
+        assert {p["item_id"] for p in pool} == expected
+
+    def test_same_question_two_models_stays_two_items(self, tmp_path):
+        pool, _ = build_pool(_predictions(tmp_path))
         assert len({p["item_id"] for p in pool}) == 40
 
     def test_pool_is_blind(self, tmp_path):
-        pool, _ = build_pool(_manifests(tmp_path), "test")
+        pool, _ = build_pool(_predictions(tmp_path))
         for p in pool:
             assert set(p) == {"item_id", "image_path", "question",
                               "gold_answer", "model_answer"}
             assert "qwen" not in json.dumps(p) and "llava" not in json.dumps(p)
 
     def test_order_does_not_reveal_model(self, tmp_path):
-        pool, key = build_pool(_manifests(tmp_path), "test")
+        pool, key = build_pool(_predictions(tmp_path))
         model = {k["item_id"]: k["model"] for k in key}
         first_half = [model[p["item_id"]] for p in pool[:20]]
-        assert 0 < first_half.count("qwen") < 20
+        assert 0 < first_half.count("qwen2_5_vl_7b") < 20
 
     def test_image_path_uses_split(self, tmp_path):
-        pool, _ = build_pool(_manifests(tmp_path), "test")
+        pool, _ = build_pool(_predictions(tmp_path))
         assert all(p["image_path"].startswith("test/png/") for p in pool)
 
     def test_deterministic(self, tmp_path):
-        a, _ = build_pool(_manifests(tmp_path), "test")
-        b, _ = build_pool(_manifests(tmp_path), "test")
-        assert a == b
+        paths = _predictions(tmp_path)
+        assert build_pool(paths) == build_pool(paths)
 
-    def test_id_is_stable_and_opaque(self):
-        assert item_id("qwen", "f.png", "q") == item_id("qwen", "f.png", "q")
-        assert item_id("qwen", "f.png", "q") != item_id("llava", "f.png", "q")
+    def test_duplicate_ids_raise(self, tmp_path):
+        p = _predictions(tmp_path)[0]
+        try:
+            build_pool([p, p])
+        except ValueError:
+            return
+        raise AssertionError("the same predictions file twice should raise")
 
 
 def _pool(n):
@@ -160,3 +173,30 @@ class TestRaters:
         assert set(shared_items(ratings, ["a", "b"])) == {"x", "y"}
         (d,) = disagreements(ratings, ["a", "b"])
         assert d["item_id"] == "y" and d["votes"]["b"][0] == "structural"
+
+    def test_consensus(self, tmp_path):
+        _write_rater(tmp_path, "a", [("x", "structural"), ("y", "fabrication"), ("z", "structural")])
+        _write_rater(tmp_path, "b", [("x", "structural"), ("y", "structural"), ("w", "ambiguous")])
+        ratings, _ = load_raters(tmp_path)
+        labels, unresolved = consensus(ratings, ["a", "b"])
+        assert {l["item_id"]: (l["label"], l["how"]) for l in labels} == {
+            "x": ("structural", "agreed"), "z": ("structural", "single"),
+            "w": ("ambiguous", "single")}
+        assert unresolved == ["y"]              # a tie is not broken by vote
+
+    def test_adjudication_overrides(self, tmp_path):
+        _write_rater(tmp_path, "a", [("y", "fabrication")])
+        _write_rater(tmp_path, "b", [("y", "structural")])
+        _write_rater(tmp_path, "adjudicated", [("y", "structural")])
+        ratings, _ = load_raters(tmp_path)
+        labels, unresolved = consensus(ratings, ["a", "b"])
+        assert labels == [{"item_id": "y", "label": "structural", "how": "adjudicated"}]
+        assert unresolved == []
+
+
+def test_item_id_is_the_inf_md_scheme():
+    # pinned: inference mints ids with this function, so any change to it
+    # orphans every label and activation already written
+    import hashlib
+    raw = "qwen2_5_vl_7b\x1ffig.png\x1fWhat is A?".encode()
+    assert _iid("qwen2_5_vl_7b", "fig.png", "What is A?") == hashlib.sha1(raw).hexdigest()[:12]

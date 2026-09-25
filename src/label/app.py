@@ -148,13 +148,16 @@ def annotate() -> None:
 
 def agreement() -> None:
     ratings, bad = load_raters(ANN_DIR)
+    llm_ratings, llm_bad = load_raters(REPO / "results" / "labels")   # inf.md 10
+    ratings.update({r: v for r, v in llm_ratings.items() if not r.endswith(".human")})
+    bad += llm_bad
     if bad:
         st.warning(f"Skipped {bad} malformed line(s) across the rater files.")
     if len(ratings) < 2:
         st.info(f"Need at least two rater files in `annotations/`; found {len(ratings)}.")
         return
 
-    llm = [r for r in ratings if "claude" in r or "llm" in r]
+    llm = [r for r in ratings if "claude" in r or "llm" in r or r == "adjudicated"]
     selected = st.multiselect(
         "Raters in the headline kappa", sorted(ratings),
         default=[r for r in sorted(ratings) if r not in llm],
