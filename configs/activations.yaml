@@ -119,7 +119,12 @@ models:
     # (unpooled) estimate, which was rejected anyway; pooled cost per item is
     # vectors x hidden x layers and does not depend on the token count at all.
     typical_vision_tokens: 580
-    measured_vision_tokens_range: [180, 630]
+    measured_vision_tokens_range: [180, 630]   # P0.10, 5 figures only
+    # Superseded by the full run (26 Sep, all 2,500 items): min 77, max 1272,
+    # mean 584, median 580. The 5-figure sample was too narrow; 363 items fall
+    # outside it. Not a bug: 1272 is the ceiling max_pixels=1M was expected to
+    # impose. Pooled cost is unaffected (pooling removes the token axis).
+    observed_vision_tokens_full_run: {min: 77, max: 1272, mean: 584.1, median: 580}
 
   llava_next_mistral_7b:
     hf_id: llava-hf/llava-v1.6-mistral-7b-hf

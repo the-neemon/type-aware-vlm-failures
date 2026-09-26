@@ -194,7 +194,9 @@ def test_activation_rows_follow_their_own_item_id():
         tmp = pathlib.Path(t)
         rows, ids, figs, acts = _world()
         preds, npz = _write_world(tmp, rows, ids, figs, acts)
-        ds = build_dataset("binary", npz, preds)
+        # alignment, not scaling, is under test here, so compare raw rows
+        ds = build_dataset("binary", npz, preds,
+                           config=ProbeConfig(standardize=False))
 
         raw = acts["L3_query_last"]
         pos = {iid: i for i, iid in enumerate(ids)}
@@ -387,6 +389,45 @@ def test_classes_field_distinguishes_all_three_groups():
         for split in ("train", "val", "test"):
             seen2 |= set(errors_only.classes[split].tolist())
         assert "correct" not in seen2
+
+
+def test_standardisation_uses_train_statistics_only():
+    """Val and test must be scaled with TRAIN mean and std, never their own.
+
+    If each split were standardised with its own statistics, the test set's
+    distribution would leak into the features the probe is scored on.
+    """
+    from src.probes.dataset import standardize_by_train
+    rng = np.random.default_rng(0)
+    X = {"train": {0: rng.normal(5.0, 2.0, size=(200, 4))},
+         "val":   {0: rng.normal(50.0, 9.0, size=(80, 4))},     # deliberately shifted
+         "test":  {0: rng.normal(-30.0, 0.5, size=(80, 4))}}
+    Z = standardize_by_train(X)
+    assert np.allclose(Z["train"][0].mean(axis=0), 0.0, atol=1e-5)
+    assert np.allclose(Z["train"][0].std(axis=0), 1.0, atol=1e-4)
+    # val/test keep their shift relative to train, proving train stats were used
+    assert Z["val"][0].mean() > 10
+    assert Z["test"][0].mean() < -10
+
+
+def test_standardisation_leaves_constant_features_finite():
+    from src.probes.dataset import standardize_by_train
+    X = {"train": {0: np.ones((50, 3))}, "val": {0: np.ones((10, 3))},
+         "test": {0: np.ones((10, 3))}}
+    Z = standardize_by_train(X)
+    assert all(np.isfinite(Z[s][0]).all() for s in Z)
+
+
+def test_build_dataset_standardises_by_default_and_can_be_disabled():
+    with tempfile.TemporaryDirectory() as t:
+        tmp = pathlib.Path(t)
+        rows, ids, figs, acts = _world(n_figures=30)
+        preds, npz = _write_world(tmp, rows, ids, figs, acts)
+        on = build_dataset("binary", npz, preds)
+        off = build_dataset("binary", npz, preds, config=ProbeConfig(standardize=False))
+        assert abs(float(on.X["train"][3].mean())) < 1e-4
+        assert on.X["train"][3].dtype == np.float32
+        assert off.X["train"][3].dtype == np.float16    # raw, untouched
 
 
 def test_config_rejects_unknown_rest_definition():

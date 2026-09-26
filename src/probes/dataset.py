@@ -98,6 +98,19 @@ class ProbeConfig:
     # Run both. They answer different questions and neither is wrong.
     type_probe_rest: str = "errors_only"
 
+    # z-score every feature per layer, with mean and std estimated on TRAIN
+    # rows only and then applied to val and test.
+    #
+    # Why it is on by default: on the real Qwen cache the activation norm grows
+    # roughly 50x with depth (query_last is ~15 at L0 and ~812 at L27), and
+    # fit_logistic applies one L2 penalty to raw features. Unstandardised, a
+    # given l2 is ~50x weaker at the last layer than the first, so the L2 sweep
+    # and the layer sweep become entangled and a layer can "win" because its
+    # scale happens to suit the grid. That distorts the per-layer curve, which
+    # is the E1 deliverable. Train-only statistics, for the same reason
+    # residualise() takes fit_on: pooled statistics leak test information.
+    standardize: bool = True
+
     # Split sizes. Figure-level. Seed is the project-wide 42 (TASKS 4.5).
     val_fraction: float = 0.2
     test_fraction: float = 0.2
@@ -436,6 +449,32 @@ def assert_no_figure_leak(figure_ids_by_split: Mapping[str, Sequence[str]]) -> N
 
 
 # ---------------------------------------------------------------------------
+# Standardisation
+# ---------------------------------------------------------------------------
+
+def standardize_by_train(
+    X: Mapping[str, Mapping[int, np.ndarray]],
+    eps: float = 1e-6,
+) -> dict[str, dict[int, np.ndarray]]:
+    """z-score each layer's features using statistics from the train split only.
+
+    Returns float32 arrays. Constant features (std below `eps` on train) are
+    left centred rather than divided by ~0, which would turn a dead unit into a
+    huge one.
+    """
+    out: dict[str, dict[int, np.ndarray]] = {s: {} for s in X}
+    for layer in X["train"]:
+        tr = X["train"][layer].astype(np.float32)
+        mu = tr.mean(axis=0)
+        sd = tr.std(axis=0)
+        sd = np.where(sd < eps, 1.0, sd)
+        for split in X:
+            out[split][layer] = ((X[split][layer].astype(np.float32) - mu) / sd
+                                 ).astype(np.float32)
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Assembly
 # ---------------------------------------------------------------------------
 
@@ -542,6 +581,9 @@ def build_dataset(
         klass[split] = np.array(
             ["correct" if preds[i]["correct"] else labels.get(i, AMBIGUOUS)
              for i in members], dtype=object)
+
+    if cfg.standardize:
+        X = standardize_by_train(X)
 
     assert_no_figure_leak({s: figs[s] for s in figs})
 

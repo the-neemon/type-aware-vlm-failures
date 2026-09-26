@@ -1,0 +1,16 @@
+# Probe-training environment. Separate from requirements.txt on purpose.
+#
+# The probes are L2 logistic regressions fitted with scipy's L-BFGS on cached
+# activations. They never import torch or transformers, so there is no reason
+# to rebuild the 6 GB inference stack to train them. This env is ~234 MB.
+#
+# numpy is pinned to the SAME version as the inference env (requirements.txt),
+# so float16 activation arrays written by the extractor round-trip identically.
+# Resolved and verified on Ada gnode077, 26 September 2026, Python 3.10.12.
+#
+# Build it from inside a job (the head node's python3 is 3.6):
+#     python3 -m venv ~/envs/probes
+#     ~/envs/probes/bin/pip install -r requirements-probes.txt
+numpy==2.2.6
+scipy==1.15.3
+pytest==9.1.1
