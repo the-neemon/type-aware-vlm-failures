@@ -347,11 +347,12 @@ def resolve_labels(
     annotations_dir: str | pathlib.Path,
     min_raters: int = 1,
 ) -> tuple[dict[str, str], dict[str, int]]:
-    """Collapse per-rater annotation files into one label per item.
+    """Collapse annotation files into one label per item.
 
-    Every top-level `*.jsonl` under *annotations_dir* is one rater, matching the
-    convention in `src/label/multi_rater.py`, so Claude's labels and the humans'
-    labels are read the same way.
+    *annotations_dir* may be a directory, in which case every top-level
+    `*.jsonl` is one rater (the convention in `src/label/multi_rater.py`), or a
+    single `.jsonl` file, read as one rater. The single-file form is how the
+    LLM labels are stored.
 
     Resolution rule, deliberately conservative:
       - one rater          -> that label
@@ -366,7 +367,31 @@ def resolve_labels(
     """
     from src.label.multi_rater import load_raters
 
-    ratings, bad_lines = load_raters(annotations_dir)
+    path = pathlib.Path(annotations_dir)
+    if path.is_file():
+        # A single label file, which is how the LLM labeller's output is stored
+        # (docs/annotation.md: results/labels/<model>_<split>.claude.jsonl). It
+        # lives outside annotations/ on purpose, so it never counts as a rater
+        # in the human kappa. Read it as one rater; later lines win, matching
+        # multi_rater's append-only convention.
+        ratings, bad_lines = {path.stem: {}}, 0
+        with open(path, "r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    bad_lines += 1
+                    continue
+                if not rec.get("item_id") or rec.get("label") not in (
+                        STRUCTURAL, FABRICATION, AMBIGUOUS):
+                    bad_lines += 1
+                    continue
+                ratings[path.stem][rec["item_id"]] = rec
+    else:
+        ratings, bad_lines = load_raters(path)
 
     per_item: dict[str, list[str]] = {}
     for _rater, by_item in ratings.items():

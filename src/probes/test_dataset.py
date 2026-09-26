@@ -430,6 +430,35 @@ def test_build_dataset_standardises_by_default_and_can_be_disabled():
         assert off.X["train"][3].dtype == np.float16    # raw, untouched
 
 
+def test_resolve_labels_reads_a_single_llm_label_file():
+    """Claude's labels are one file outside annotations/, per docs/annotation.md."""
+    with tempfile.TemporaryDirectory() as t:
+        f = pathlib.Path(t) / "qwen2_5_vl_7b_test.claude.jsonl"
+        f.write_text("\n".join([
+            json.dumps({"item_id": "a", "label": "structural", "rationale": "misread"}),
+            json.dumps({"item_id": "b", "label": "fabrication", "rationale": "absent"}),
+            json.dumps({"item_id": "c", "label": "nonsense"}),        # rejected
+            "not json",                                              # rejected
+            json.dumps({"item_id": "a", "label": "ambiguous"}),      # later line wins
+        ]) + "\n")
+        labels, stats = resolve_labels(f)
+        assert labels == {"a": "ambiguous", "b": "fabrication"}
+        assert stats["n_raters"] == 1 and stats["n_bad_lines"] == 2
+
+
+def test_type_task_accepts_a_label_file_path():
+    with tempfile.TemporaryDirectory() as t:
+        tmp = pathlib.Path(t)
+        rows, ids, figs, acts = _world(n_figures=30)
+        preds, npz = _write_world(tmp, rows, ids, figs, acts)
+        d = _write_labels(tmp, rows)                   # directory with claude.jsonl
+        via_dir = build_dataset("structural", npz, preds, d)
+        via_file = build_dataset("structural", npz, preds, d / "claude.jsonl")
+        for split in ("train", "val", "test"):
+            assert list(via_dir.item_ids[split]) == list(via_file.item_ids[split])
+            assert np.array_equal(via_dir.y[split], via_file.y[split])
+
+
 def test_config_rejects_unknown_rest_definition():
     try:
         ProbeConfig(type_probe_rest="everything_else")

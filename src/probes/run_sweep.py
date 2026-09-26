@@ -1,9 +1,12 @@
-"""E1 binary probe and the P4.5 sanity probe, swept in parallel.
+"""E1 probes and the P4.5 sanity probe, swept in parallel.
 
     # sanity first: can the cache decode something it obviously contains?
-    python -m src.probes.run_binary --target source --out runs/sanity
-    # then the real probe, with its controls
-    python -m src.probes.run_binary --target binary --out runs/binary
+    python -m src.probes.run_sweep --target source --out runs/sanity
+    # the binary probe, with its controls
+    python -m src.probes.run_sweep --target binary --out runs/binary
+    # the failure-type probes, once labels exist
+    python -m src.probes.run_sweep --target structural \
+        --labels results/labels/qwen2_5_vl_7b_test.claude.jsonl --out runs/structural
 
 Selection of (position, l2, layer) is on VALIDATION only; test is scored once,
 at the configuration already fixed.
@@ -24,6 +27,11 @@ sit at the very top of this module.
            baseline and scored WITHIN each question source, because ~80% of
            errors are human-written questions and a probe that only detected
            question style would still score well overall.
+  structural / fabrication
+           E1 type probes, one-vs-rest. Need --labels. --rest chooses what the
+           negative class is (ProbeConfig.type_probe_rest): errors_only makes
+           the two probes one probe with the label flipped, include_correct
+           makes them genuinely different. Run both.
 """
 
 import os
@@ -46,8 +54,11 @@ DEFAULT_L2 = (1.0, 10.0, 100.0, 1000.0, 10000.0)
 N_LAYERS = 28
 
 
+TYPE_TARGETS = ("structural", "fabrication")
+
+
 def _y(target, ds, split, preds):
-    if target == "binary":
+    if target in ("binary",) + TYPE_TARGETS:
         return ds.y[split]
     if target == "source":
         return np.array([preds[i]["source"] == "human" for i in ds.item_ids[split]],
@@ -55,12 +66,18 @@ def _y(target, ds, split, preds):
     raise ValueError(target)
 
 
+def _dataset(target, npz, pred, labels, rest, pos, layers):
+    task = target if target in TYPE_TARGETS else "binary"
+    return build_dataset(task, npz, pred, labels if task in TYPE_TARGETS else None,
+                         config=ProbeConfig(position=pos, layers=layers,
+                                            type_probe_rest=rest))
+
+
 def _fit_cell(args):
     """One (position, layer): fit every L2 on train, score on val."""
-    target, npz, pred, pos, layer, l2_grid = args
+    target, npz, pred, labels, rest, pos, layer, l2_grid = args
     preds = load_predictions(pred)
-    ds = build_dataset("binary", npz, pred,
-                       config=ProbeConfig(position=pos, layers=(layer,)))
+    ds = _dataset(target, npz, pred, labels, rest, pos, (layer,))
     Xtr, Xva = ds.X["train"][layer], ds.X["val"][layer]
     ytr, yva = _y(target, ds, "train", preds), _y(target, ds, "val", preds)
     out = {}
@@ -70,8 +87,10 @@ def _fit_cell(args):
     return pos, layer, out
 
 
-def sweep(target, npz, pred, positions, layers, l2_grid, jobs):
-    cells = [(target, str(npz), str(pred), p, L, tuple(l2_grid))
+def sweep(target, npz, pred, positions, layers, l2_grid, jobs, labels=None,
+          rest="errors_only"):
+    cells = [(target, str(npz), str(pred), str(labels) if labels else None, rest,
+              p, L, tuple(l2_grid))
              for p in positions for L in layers]
     curves = {(p, l2): {} for p in positions for l2 in l2_grid}
     t0 = time.time()
@@ -91,6 +110,11 @@ def select(curves):
         for L, a in by_layer.items():
             if not np.isnan(a) and a > best_val:
                 best, best_val = (p, l2, L), a
+    if best is None:
+        raise SystemExit(
+            "every validation AUROC is undefined: the validation split holds only one "
+            "class for this target. With few labelled items of one type this happens; "
+            "it means there is not enough data to select a layer, not a bug.")
     return best, best_val
 
 
@@ -102,23 +126,31 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--activations", required=True, type=pathlib.Path)
     ap.add_argument("--predictions", required=True, type=pathlib.Path)
-    ap.add_argument("--target", choices=("source", "binary"), required=True)
+    ap.add_argument("--target", choices=("source", "binary") + TYPE_TARGETS, required=True)
+    ap.add_argument("--labels", type=pathlib.Path,
+                    help="label file or annotations directory; required for type targets")
+    ap.add_argument("--rest", choices=("errors_only", "include_correct"),
+                    default="errors_only")
     ap.add_argument("--positions", nargs="*", default=list(POSITIONS))
     ap.add_argument("--layers", nargs="*", type=int, default=list(range(N_LAYERS)))
     ap.add_argument("--l2", nargs="*", type=float, default=list(DEFAULT_L2))
     ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     ap.add_argument("--out", type=pathlib.Path, required=True)
     args = ap.parse_args()
+    if args.target in TYPE_TARGETS and not args.labels:
+        ap.error(f"--target {args.target} needs --labels")
     args.out.mkdir(parents=True, exist_ok=True)
 
     print(f"target={args.target} positions={args.positions} layers={len(args.layers)} "
           f"l2={args.l2} jobs={args.jobs}", flush=True)
     t0 = time.time()
     curves = sweep(args.target, args.activations, args.predictions,
-                   args.positions, args.layers, args.l2, args.jobs)
+                   args.positions, args.layers, args.l2, args.jobs,
+                   labels=args.labels, rest=args.rest)
     (pos, l2, L), best_val = select(curves)
 
-    report = {"target": args.target, "l2_grid": args.l2, "positions": args.positions,
+    report = {"target": args.target, "labels": str(args.labels) if args.labels else None,
+              "rest": args.rest, "l2_grid": args.l2, "positions": args.positions,
               "layers": args.layers,
               "val_curves": {f"{p}|{l}": {str(k): v for k, v in sorted(c.items())}
                              for (p, l), c in curves.items()},
@@ -139,6 +171,34 @@ def main():
             print("  The cache cannot decode question style, which is written into the "
                   "prompt tokens.\n  Treat every downstream number as a pipeline bug "
                   "until this is explained.")
+    elif args.target in TYPE_TARGETS:
+        ds = _dataset(args.target, args.activations, args.predictions, args.labels,
+                      args.rest, pos, (L,))
+        w = fit_logistic(ds.X["train"][L], ds.y["train"], l2)
+        s = predict_scores(ds.X["test"][L], w)
+        y, f = ds.y["test"], ds.figure_ids["test"]
+        counts = {sp: {"n": ds.n(sp), "positive": int(ds.y[sp].sum())}
+                  for sp in ("train", "val", "test")}
+        print(f"\n=== {args.target.upper()} PROBE (rest = {args.rest}) ===")
+        for sp, c in counts.items():
+            print(f"  {sp:<5} n={c['n']:<5} {args.target}={c['positive']}")
+        print(f"  dropped as ambiguous: {ds.dropped_ambiguous}")
+        a = auroc(y, s)
+        if np.isnan(a):
+            print("  TEST AUROC undefined: the test split holds only one class.")
+            report["test"] = {"auroc": None, "counts": counts}
+        else:
+            lo, hi = _ci(y, s, f)
+            print(f"  TEST AUROC {a:.3f}  95% CI [{lo:.3f}, {hi:.3f}]")
+            if counts["test"]["positive"] < 20:
+                print(f"  WARNING: only {counts['test']['positive']} positives in test; "
+                      "treat this interval as the result, not the point estimate.")
+            report["test"] = {"auroc": a, "ci95": [lo, hi], "counts": counts}
+        if args.rest == "errors_only":
+            print("  NOTE: with rest = errors_only the structural and fabrication probes "
+                  "are one probe\n  with the label flipped; report one of them, not both "
+                  "as separate evidence.")
+        report["dropped_ambiguous"] = ds.dropped_ambiguous
     else:
         preds = load_predictions(args.predictions)
         ds = build_dataset("binary", args.activations, args.predictions,
