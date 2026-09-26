@@ -70,7 +70,8 @@ def test_loader_gives_two_items_per_chart_with_image_paths(generated):
 
 
 @pytest.mark.parametrize("prediction, outcome", [
-    ("35", "fabricated"), ("0", "fabricated"), ("42.5%", "fabricated"), ("1,200.", "fabricated"),
+    ("35", "fabricated"), ("0", "zero"), ("0.0", "zero"), ("42.5%", "fabricated"),
+    ("1,200.", "fabricated"),
     ("Not shown", "rejected"), ("None", "rejected"), ("N/A", "rejected"),
     ("There is no Guava bar", "rejected"), ("No data", "rejected"), ("Unknown.", "rejected"),
     ("Mango", "unclear"), ("45 (not shown)", "unclear"), ("", "unclear"),

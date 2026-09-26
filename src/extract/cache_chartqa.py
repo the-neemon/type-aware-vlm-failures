@@ -348,7 +348,8 @@ def run(cfg: RunConfig, paths: Paths, limit: int | None, shard_size: int) -> Non
 def summarize(rows: list[dict], vision_range: tuple[int, int]) -> dict:
     """Accuracy per sub-split (inf.md 8.3), error yield (8.4) and vision tokens (8.5).
 
-    Synthetic rows also get accuracy per template and the absent-question outcomes.
+    Synthetic rows also get accuracy per template and, per absent template, the
+    counts of each outcome (src/synth/items.py).
     Their `answerable` accuracy leaves out absent questions, whose correct answer
     is a refusal: that is the number the pipeline floor applies to.
     """
@@ -364,8 +365,9 @@ def summarize(rows: list[dict], vision_range: tuple[int, int]) -> dict:
                      for t in sorted({r["template"] for r in rows})}} if synthetic else
                  {src: accuracy([r for r in rows if r["source"] == src])
                   for src in ("human", "augmented")})
-    extra = ({"absent_outcomes": dict(sorted(
-        Counter(r["outcome"] for r in rows if r["absent"]).items()))}
+    extra = ({"absent_outcomes": {
+        t: dict(sorted(Counter(r["outcome"] for r in rows if r["template"] == t).items()))
+        for t in sorted({r["template"] for r in rows if r["absent"]})}}
         if synthetic else {})
     return {
         "relaxed_accuracy": {
