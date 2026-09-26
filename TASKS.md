@@ -352,16 +352,24 @@ the caching code. Everything else is a status round.
 - [ ] **P4.4** Couple caches to answers. Either cache during the same forward pass
       that produced the labelled answer, or re-run and assert the regenerated
       answer matches the stored one byte for byte.
-- [ ] **P4.5** **Pipeline sanity probe.** Train a probe to predict something
+- [x] **P4.5** **Pipeline sanity probe.** Train a probe to predict something
       trivially decodable from the activations, such as figure type or question
       template. If that does not hit high AUROC, the caching is broken and every
       downstream null is meaningless. Run this before trusting any negative
       result.
+      **PASS, 26 Sep, Qwen.** Target: human-written vs augmented question.
+      Validation AUROC 1.000 from query_last and query_mean, 0.95 from the
+      vision positions. `results/probes/binary_qwen2_5_vl_7b_test.md`.
 
 ### P5. Probes and controls (20 Sep to 30 Sep, 1.5 weeks): E1, E2, E3
 
 - [ ] **P5.1** Binary probe (correct vs incorrect), per-layer AUROC, both models.
       Check against HALP's reported range as the sanity condition.
+      **Qwen done 26 Sep; LLaVA-NeXT not run.** Test AUROC 0.877
+      [0.832, 0.916] at query_last layer 21, against a partial surface baseline
+      of 0.715 [0.654, 0.773]. Holds within each question source (human 0.829,
+      augmented 0.878), so it is not reading question style. Full E2 still
+      outstanding. `results/probes/binary_qwen2_5_vl_7b_test.md`.
 - [ ] **P5.2** Structural and fabrication one-vs-rest probes, per-layer AUROC.
 - [x] **P5.3** Layer selection on **validation only**. Write the selection code so
       test data is not even loaded during selection.
