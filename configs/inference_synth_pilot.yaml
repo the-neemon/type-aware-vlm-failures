@@ -1,0 +1,45 @@
+# Synthetic fabrication pilot (src/synth/absent_pairs.py): 300 bar charts, each
+# asked about one bar that is there and one plausible name that is not.
+# Everything above the dataset block is configs/inference.yaml unchanged, and
+# must stay so: the probes compare these activations with the ChartQA ones.
+#
+# Generate the data first, on Ada, from the committed code (deterministic):
+#   python -m src.synth.absent_pairs ~/data/synth/absent_pilot_v1 --num-charts 300
+#   python -m src.synth.absent_pairs ~/data/synth/absent_pilot_v1 --verify
+#   sha256sum ~/data/synth/absent_pilot_v1/manifest.jsonl
+#     20e801194601b521a5932f795b81119ba29159f3eefc5b30e064e4ee95ba3035
+#     (Python 3.10, matplotlib 3.10.0 and pillow 12.3.0 from requirements.txt;
+#     another matplotlib build shifts bar geometry, see requirements.txt)
+# then:
+#   TAG=synth_pilot INFERENCE_CONFIG=configs/inference_synth_pilot.yaml \
+#       sbatch scripts/cache_chartqa.sbatch
+#
+# Inference settings for the ChartQA runs (TASKS P1.2, inf.md Section 4).
+#
+# Every downstream label refers to one specific answer string, so the answer
+# must be reproducible. These values are the record of what was run. The code
+# that queries the model reads them from src/extract/qwen.py, which is shared
+# with E4's repairs (cross.md 3.3). src/extract/cache_chartqa.py refuses to
+# start if this file and that module disagree, so the two cannot drift apart.
+
+model_id: Qwen/Qwen2.5-VL-7B-Instruct
+model_key: qwen2_5_vl_7b     # hashed into every item_id; never the HF id
+
+# inf.md 4.1. The standard ChartQA prompt for this model family, not a tuned
+# one. Without it Qwen answers in prose, and prose scores as wrong.
+prompt_suffix: "\nAnswer the question using a single word or phrase."
+
+decoding:
+  do_sample: false           # greedy: no temperature, top-p, top-k or beams
+  max_new_tokens: 32
+  seed: 42                   # project-wide, TASKS 4.5
+batch_size: 1                # padding would contaminate the mean pools (inf.md 5.3)
+
+# The prediction is whitespace-stripped and nothing else before scoring with
+# src.eval.relaxed_accuracy.is_correct. Any other cleaning changes the error set.
+
+dataset:
+  root: ~/data/synth/absent_pilot_v1
+  manifest: manifest.jsonl                 # relative to root; switches the loader to synthetic
+  splits: [train, validation, test]        # the manifest's figure splits: all of them
+  expected_items: 600                      # 300 charts x (1 present + 1 absent question)

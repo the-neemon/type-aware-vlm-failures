@@ -214,3 +214,55 @@ def test_wrong_item_count_is_caught_before_any_gpu_work(setup):
     with pytest.raises(SystemExit, match="expects 4"):
         cache_chartqa.run(replace(cfg, expected_items=4), paths, limit=None, shard_size=2)
     assert fake.generated == []
+
+
+# ---------------------------------------------------------------------------
+# A synthetic manifest instead of ChartQA
+# ---------------------------------------------------------------------------
+
+def test_a_synthetic_manifest_runs_and_scores_absent_questions(setup, tmp_path):
+    from PIL import Image
+
+    cfg, paths, fake = setup
+    root = tmp_path / "synth"
+    (root / "images").mkdir(parents=True)
+    figures = []
+    for i, (bar, absent, split) in enumerate([("Mango", "Guava", "train"),
+                                              ("Paris", "Oslo", "test")]):
+        Image.new("RGB", (8, 8), "white").save(root / "images" / f"f{i}.png")
+        figures.append({"figure_id": f"f{i}", "split": split, "image_path": f"images/f{i}.png",
+                        "questions": [
+                            {"template": "read_value", "absent": False, "phrasing": "value_of",
+                             "asks_about": bar, "question": f"What is the value of {bar}?",
+                             "gold_answer": 40},
+                            {"template": "absent_category", "absent": True,
+                             "phrasing": "value_of", "asks_about": absent,
+                             "question": f"What is the value of {absent}?",
+                             "gold_answer": "not present"}]})
+    (root / "manifest.jsonl").write_text("".join(json.dumps(f) + "\n" for f in figures))
+    fake.answers = {"What is the value of Mango?": "40", "What is the value of Guava?": "35",
+                    "What is the value of Paris?": "40", "What is the value of Oslo?": "Not shown"}
+    cfg = replace(cfg, data_root=root, manifest=root / "manifest.jsonl",
+                  splits=("train", "validation", "test"), expected_items=4)
+
+    cache_chartqa.run(cfg, paths, limit=None, shard_size=250)
+    rows = lines(paths.predictions)
+    assert [r["correct"] for r in rows] == [True, False, True, True]
+    assert [r.get("outcome") for r in rows] == [None, "fabricated", None, "rejected"]
+    assert all(r["source"] == "synthetic" for r in rows)
+
+    assert assemble_and_validate(cfg, paths) == 0
+    summary = json.loads(paths.summary.read_text())
+    assert summary["relaxed_accuracy"]["answerable"] == 1.0
+    assert summary["absent_outcomes"] == {"fabricated": 1, "rejected": 1}
+
+    # the manifest's splits filter figures, so a test-only config sees one chart
+    assert len(cache_chartqa.load_items(replace(cfg, splits=("test",), expected_items=2))) == 2
+
+
+def test_the_synthetic_pilot_config_agrees_with_the_code():
+    cfg = load_config(REPO / "configs/inference_synth_pilot.yaml",
+                      REPO / "configs/activations.yaml")
+    assert cfg.manifest is not None and cfg.manifest.name == "manifest.jsonl"
+    chartqa = load_config(REPO / "configs/inference.yaml", REPO / "configs/activations.yaml")
+    assert chartqa.manifest is None

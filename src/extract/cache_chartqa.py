@@ -43,6 +43,7 @@ import pathlib
 import platform
 import statistics
 import time
+from collections import Counter
 from dataclasses import dataclass
 
 import yaml
@@ -52,6 +53,7 @@ from src.eval.relaxed_accuracy import is_correct
 from src.extract import cache_io, qwen
 from src.extract.prefill import POSITIONS
 from src.label.pool import item_id
+from src.synth import items as synth_items
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 MIN_ACCURACY = 0.60      # below this the prompt or the pipeline is broken (inf.md 8.3)
@@ -73,6 +75,9 @@ class RunConfig:
     hidden_size: int
     positions: tuple[str, ...]
     vision_token_range: tuple[int, int]
+    # A synthetic manifest (src/synth/items.py) instead of ChartQA: `splits` then
+    # name the manifest's figure splits. None for every ChartQA run.
+    manifest: pathlib.Path | None = None
 
 
 def resolve_layers(setting, n_layers: int) -> tuple[int, ...]:
@@ -115,9 +120,11 @@ def load_config(inference_yaml: pathlib.Path, activations_yaml: pathlib.Path) ->
         raise SystemExit("config conflict, refusing to run:\n  " + "\n  ".join(conflicts))
 
     n_layers = model["num_hidden_layers"]
+    data_root = pathlib.Path(inf["dataset"]["root"]).expanduser()
+    manifest = inf["dataset"].get("manifest")
     return RunConfig(
         model_key=inf["model_key"],
-        data_root=pathlib.Path(inf["dataset"]["root"]).expanduser(),
+        data_root=data_root,
         splits=tuple(inf["dataset"]["splits"]),
         expected_items=inf["dataset"]["expected_items"],
         layers_setting=act["layers"],
@@ -126,6 +133,7 @@ def load_config(inference_yaml: pathlib.Path, activations_yaml: pathlib.Path) ->
         hidden_size=model["hidden_size"],
         positions=tuple(act["positions"]),
         vision_token_range=tuple(model["measured_vision_tokens_range"]),
+        manifest=data_root / manifest if manifest else None,
     )
 
 
@@ -150,16 +158,21 @@ def paths_for(model_key: str, tag: str, predictions_dir: pathlib.Path,
 
 
 def load_items(cfg: RunConfig, limit: int | None = None) -> list[dict]:
-    """ChartQA items in dataset order, each carrying its item_id.
+    """Items in dataset order, each carrying its item_id and image path.
 
-    ChartQA contains repeated figure/question pairs, including repeats within one
-    source. A deterministic occurrence number keeps every question distinct.
+    ChartQA, or a synthetic manifest when the config names one. ChartQA contains
+    repeated figure/question pairs, including repeats within one source. A
+    deterministic occurrence number keeps every question distinct.
     """
-    data = load_chartqa(cfg.data_root, splits=tuple({s.split("_")[0] for s in cfg.splits}))
-    missing = [s for s in cfg.splits if s not in data]
-    if missing:
-        raise SystemExit(f"ChartQA splits {missing} not found under {cfg.data_root}")
-    items = [dict(it) for split in cfg.splits for it in data[split]]
+    if cfg.manifest is not None:
+        items = synth_items.load_manifest_items(cfg.manifest, cfg.splits)
+    else:
+        data = load_chartqa(cfg.data_root, splits=tuple({s.split("_")[0] for s in cfg.splits}))
+        missing = [s for s in cfg.splits if s not in data]
+        if missing:
+            raise SystemExit(f"ChartQA splits {missing} not found under {cfg.data_root}")
+        items = [dict(it, image=cfg.data_root / it["split"] / "png" / it["figure_id"])
+                 for split in cfg.splits for it in data[split]]
     if len(items) != cfg.expected_items:
         raise SystemExit(f"loaded {len(items)} questions, configs/inference.yaml expects "
                          f"{cfg.expected_items}")
@@ -213,6 +226,8 @@ def frozen_settings(cfg: RunConfig, model, processor) -> dict:
         "dataset_splits": list(cfg.splits),
         "expected_items": cfg.expected_items,
     }
+    if cfg.manifest is not None:        # absent for ChartQA, so its runs still resume
+        settings["dataset_manifest"] = str(cfg.manifest)
     return json.loads(json.dumps(settings))       # the form it takes on disk
 
 
@@ -287,7 +302,7 @@ def run(cfg: RunConfig, paths: Paths, limit: int | None, shard_size: int) -> Non
         try:
             for n, it in enumerate(todo, 1):
                 t0 = time.time()
-                image = Image.open(cfg.data_root / it["split"] / "png" / it["figure_id"]).convert("RGB")
+                image = Image.open(it["image"]).convert("RGB")
                 inputs = qwen.build_inputs(model, processor, image, it["question"] + qwen.ANSWER_SUFFIX)
                 masks = build_pool_masks(inputs["input_ids"], inputs["attention_mask"],
                                          image_token_id, special_ids)
@@ -302,6 +317,8 @@ def run(cfg: RunConfig, paths: Paths, limit: int | None, shard_size: int) -> Non
                        "split": it["split"], "source": it["source"],
                        "occurrence": it["occurrence"],
                        "n_vision_tokens": masks.n_vision}
+                if cfg.manifest is not None:
+                    row.update(synth_items.score(it, prediction))
                 previous = stored.get(it["item_id"])
                 if previous is None:
                     cache_io.append_prediction(row, paths.predictions)
@@ -329,19 +346,33 @@ def run(cfg: RunConfig, paths: Paths, limit: int | None, shard_size: int) -> Non
 # ---------------------------------------------------------------------------
 
 def summarize(rows: list[dict], vision_range: tuple[int, int]) -> dict:
-    """Accuracy per sub-split (inf.md 8.3), error yield (8.4) and vision tokens (8.5)."""
+    """Accuracy per sub-split (inf.md 8.3), error yield (8.4) and vision tokens (8.5).
+
+    Synthetic rows also get accuracy per template and the absent-question outcomes.
+    Their `answerable` accuracy leaves out absent questions, whose correct answer
+    is a refusal: that is the number the pipeline floor applies to.
+    """
     def accuracy(subset):
         return round(sum(r["correct"] for r in subset) / len(subset), 4) if subset else None
 
     n_correct = sum(r["correct"] for r in rows)
     tokens = [r["n_vision_tokens"] for r in rows]
     lo, hi = vision_range
+    synthetic = any("template" in r for r in rows)
+    by_source = ({"answerable": accuracy([r for r in rows if not r["absent"]]),
+                  **{t: accuracy([r for r in rows if r["template"] == t])
+                     for t in sorted({r["template"] for r in rows})}} if synthetic else
+                 {src: accuracy([r for r in rows if r["source"] == src])
+                  for src in ("human", "augmented")})
+    extra = ({"absent_outcomes": dict(sorted(
+        Counter(r["outcome"] for r in rows if r["absent"]).items()))}
+        if synthetic else {})
     return {
         "relaxed_accuracy": {
             "overall": accuracy(rows),
-            **{src: accuracy([r for r in rows if r["source"] == src])
-               for src in ("human", "augmented")},
+            **by_source,
         },
+        **extra,
         "n_correct": n_correct,
         "n_incorrect": len(rows) - n_correct,
         "error_rate": round(1 - n_correct / len(rows), 4) if rows else None,
@@ -363,7 +394,8 @@ def validate(cfg: RunConfig, paths: Paths, cache: pathlib.Path, limit: int | Non
     problems += cache_io.check_cache(cache, rows, cfg.layers, cfg.positions, cfg.hidden_size)
 
     summary = summarize(list(rows.values()), cfg.vision_token_range)
-    overall = summary["relaxed_accuracy"]["overall"]
+    accuracy = summary["relaxed_accuracy"]
+    overall = accuracy.get("answerable", accuracy["overall"])
     if overall is not None and overall < MIN_ACCURACY:
         problems.append(f"relaxed accuracy {overall:.3f} is below {MIN_ACCURACY}: check the "
                         "prompt, decoding and scoring before labelling any of these errors")
@@ -374,8 +406,9 @@ def validate(cfg: RunConfig, paths: Paths, cache: pathlib.Path, limit: int | Non
     paths.summary.parent.mkdir(parents=True, exist_ok=True)
     paths.summary.write_text(json.dumps(report, indent=2) + "\n")
 
-    print(json.dumps({k: report[k] for k in ("relaxed_accuracy", "n_correct", "n_incorrect",
-                                             "error_rate", "vision_tokens")}, indent=2))
+    print(json.dumps({k: report[k] for k in ("relaxed_accuracy", "absent_outcomes", "n_correct",
+                                             "n_incorrect", "error_rate", "vision_tokens")
+                      if k in report}, indent=2))
     if summary["vision_tokens"] and summary["vision_tokens"]["outside_measured_range"]:
         print(f"note: {summary['vision_tokens']['outside_measured_range']} items fall outside "
               f"the measured {list(cfg.vision_token_range)} vision-token range")

@@ -36,3 +36,10 @@ tokenizers==0.22.2
 safetensors==0.8.0
 numpy==2.2.6
 pillow==12.3.0
+
+# Synthetic charts (src/synth). Rendered on Ada, in this environment, so the
+# bar geometry recorded at render time is the geometry Qwen sees. The PyPI
+# wheel bundles FreeType 2.6.1; a matplotlib built against another FreeType
+# (conda's, for one) sizes tick labels differently and moves every bar by a
+# few pixels, so pixel hashes only match across identical installs.
+matplotlib==3.10.0

@@ -12,6 +12,11 @@
 #   TAG=val_human INFERENCE_CONFIG=configs/inference_val_human.yaml \
 #       sbatch scripts/cache_chartqa.sbatch
 #
+# Synthetic charts work the same way, once generated (the config says how):
+#
+#   TAG=synth_pilot INFERENCE_CONFIG=configs/inference_synth_pilot.yaml \
+#       sbatch scripts/cache_chartqa.sbatch
+#
 # Resumable: after a timeout or eviction, resubmit the same command. Items whose
 # activations are already in a shard are skipped, on whichever node the job
 # lands. Resubmitting the smoke run once it has finished is also a cheap check
