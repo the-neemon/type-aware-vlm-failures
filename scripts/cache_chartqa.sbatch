@@ -5,6 +5,13 @@
 #   LIMIT=6 SHARD_SIZE=4 TAG=smoke sbatch scripts/cache_chartqa.sbatch   # first: a smoke run
 #   sbatch scripts/cache_chartqa.sbatch                                  # then: all 2,500
 #
+# Another ChartQA split: point INFERENCE_CONFIG at a config whose dataset block
+# names it, and give it its own TAG so its shards and outputs never mix with
+# the test run's:
+#
+#   TAG=val_human INFERENCE_CONFIG=configs/inference_val_human.yaml \
+#       sbatch scripts/cache_chartqa.sbatch
+#
 # Resumable: after a timeout or eviction, resubmit the same command. Items whose
 # activations are already in a shard are skipped, on whichever node the job
 # lands. Resubmitting the smoke run once it has finished is also a cheap check
@@ -38,7 +45,11 @@ else
     PRED_DIR="${PRED_DIR:-$PROJ/results/predictions}"
 fi
 
-ARGS=(--tag "$TAG" --predictions-dir "$PRED_DIR" --activations-dir "$ACT_DIR")
+INFERENCE_CONFIG="${INFERENCE_CONFIG:-$PROJ/configs/inference.yaml}"
+case "$INFERENCE_CONFIG" in /*) ;; *) INFERENCE_CONFIG="$PROJ/$INFERENCE_CONFIG" ;; esac
+
+ARGS=(--tag "$TAG" --predictions-dir "$PRED_DIR" --activations-dir "$ACT_DIR"
+      --inference-config "$INFERENCE_CONFIG")
 if [ -n "${LIMIT:-}" ]; then ARGS+=(--limit "$LIMIT"); fi
 
 require_gpu_type "2080 Ti"
