@@ -285,22 +285,27 @@ def load_activations(
                       if "figure_ids" in npz else [])
 
         suffix = f"_{position}"
-        found = {}
+        # Map layer -> key WITHOUT reading anything. An .npz decompresses a
+        # member only when it is indexed, so selecting keys first means asking
+        # for one layer costs one decompression, not 28.
+        available = {}
         for key in npz.files:
             if key.startswith("L") and key.endswith(suffix):
-                layer = int(key[1:-len(suffix)])
-                found[layer] = npz[key]
+                available[int(key[1:-len(suffix)])] = key
 
-    if not found:
-        raise ValueError(
-            f"{path} contains no arrays for position {position!r}. "
-            f"Available keys look like: {sorted(k for k in found)[:5] or 'none'}")
+        if not available:
+            raise ValueError(
+                f"{path} contains no arrays for position {position!r}. "
+                f"Keys present: {sorted(npz.files)[:6]}")
 
-    if layers is not None:
-        missing = set(layers) - set(found)
-        if missing:
-            raise ValueError(f"requested layers absent from cache: {sorted(missing)}")
-        found = {L: found[L] for L in layers}
+        if layers is not None:
+            missing = set(layers) - set(available)
+            if missing:
+                raise ValueError(f"requested layers absent from cache: {sorted(missing)}")
+            wanted = list(layers)
+        else:
+            wanted = sorted(available)
+        found = {L: npz[available[L]] for L in wanted}
 
     n = len(item_ids)
     for L, arr in found.items():
