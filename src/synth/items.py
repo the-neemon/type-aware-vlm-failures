@@ -22,7 +22,9 @@ question was designed to induce). Outcomes, by question:
     fabricated      any other bare number
   "Which is larger, Guava or Apple?"  (absent_compare)
     rejected        says one of them is not there
-    fabricated      names the absent one
+    fabricated      names the absent one, or a bar that was not asked about: on
+                    pilot 2 those were all Guava's lookalike ("Osaka" for Oslo),
+                    the same substitution that fabricated values copy
     picked_present  names the present one: arguably the same escape as "0"
   "Which bar is immediately to the right of Guava?"  (absent_neighbor)
     rejected        says it is not there
@@ -68,14 +70,15 @@ def classify_absent(prediction: str) -> str:
     return "rejected" if _refuses(text) else "unclear"
 
 
-def classify_compare(prediction: str, absent: str, present: str) -> str:
+def classify_compare(prediction: str, absent: str, present: str,
+                     categories: list[str] = ()) -> str:
     """rejected / fabricated / picked_present / unclear, for "Which is larger, absent or present?"."""
-    text = _clean(prediction)
-    if text.lower() == absent.lower():
-        return "fabricated"
-    if text.lower() == present.lower():
+    text = _clean(prediction).lower()
+    if text == present.lower():
         return "picked_present"
-    return "rejected" if _refuses(text) else "unclear"
+    if text == absent.lower() or text in {c.lower() for c in categories}:
+        return "fabricated"
+    return "rejected" if _refuses(prediction) else "unclear"
 
 
 def classify_neighbor(prediction: str, categories: list[str]) -> str:
@@ -98,7 +101,8 @@ def score(item: dict, prediction: str) -> dict:
         fields["correct"] = is_correct(item["gold"], prediction)
         return fields
     if item["template"] == "absent_compare":
-        outcome = classify_compare(prediction, item["asks_about"], item["compared_with"])
+        outcome = classify_compare(prediction, item["asks_about"], item["compared_with"],
+                                   item["categories"])
     elif item["template"] == "absent_neighbor":
         outcome = classify_neighbor(prediction, item["categories"])
     else:                                   # absent_category (pilot 1), absent_value

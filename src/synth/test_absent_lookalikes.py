@@ -70,6 +70,11 @@ def test_classify_compare(prediction, outcome):
     assert items.classify_compare(prediction, "Guava", "Apple") == outcome
 
 
+def test_naming_another_bar_in_a_compare_is_a_substitution():
+    # pilot 2: "Which has a higher value, Oslo or Seoul?" -> "Osaka", Oslo's lookalike
+    assert items.classify_compare("Osaka", "Oslo", "Seoul", ["Seoul", "Osaka"]) == "fabricated"
+
+
 @pytest.mark.parametrize("prediction, outcome", [
     ("Mango", "fabricated"), ("mango", "fabricated"), ("None", "rejected"),
     ("There is no Guava", "rejected"), ("Kiwi", "unclear"),
