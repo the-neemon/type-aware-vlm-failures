@@ -12,39 +12,43 @@ change a cached activation, which is the quantity this project reports on. So
 whatever the installed library happens to default to.
 
 This script is the check behind that decision. It does not need a GPU and it
-does not need the model weights, only the processor files.
+does not need the model weights, only the processor files. It compares the two
+IMAGE processors directly, since the pixels are the question; for LLaVA-NeXT
+that also avoids the slow tokenizer, which needs the unpinned sentencepiece.
+
+LLaVA-NeXT, measured offline 28 Sep: the fast and slow image processors differ
+too (max 0.015 to 0.030), so its use_fast is pinned for the same reason.
 
     python scripts/check_processor_parity.py <figures...>
+    python scripts/check_processor_parity.py --model llava <figures...>
 """
 
 import argparse
 import pathlib
 import sys
 
-HF_ID = "Qwen/Qwen2.5-VL-7B-Instruct"
+HF_IDS = {"qwen": "Qwen/Qwen2.5-VL-7B-Instruct",
+          "llava": "llava-hf/llava-v1.6-mistral-7b-hf"}
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("images", nargs="+", type=pathlib.Path)
+    ap.add_argument("--model", choices=sorted(HF_IDS), default="qwen")
     ap.add_argument("--max-pixels", type=int, default=1_000_000,
                     help="must match models.qwen2_5_vl_7b.max_pixels in "
-                         "configs/activations.yaml")
+                         "configs/activations.yaml (Qwen only)")
     args = ap.parse_args()
 
     import torch
     from PIL import Image
-    from transformers import AutoProcessor
+    from transformers import AutoImageProcessor
 
-    fast = AutoProcessor.from_pretrained(
-        HF_ID, max_pixels=args.max_pixels, use_fast=True)
-    slow = AutoProcessor.from_pretrained(
-        HF_ID, max_pixels=args.max_pixels, use_fast=False)
-
-    messages = [{"role": "user", "content": [
-        {"type": "image"},
-        {"type": "text", "text": "What is the value of the tallest bar?"},
-    ]}]
+    # Qwen's pixel budget; LLaVA-NeXT has none, its anyres grid decides instead
+    kw = {"max_pixels": args.max_pixels} if args.model == "qwen" else {}
+    fast = AutoImageProcessor.from_pretrained(HF_IDS[args.model], use_fast=True, **kw)
+    slow = AutoImageProcessor.from_pretrained(HF_IDS[args.model], use_fast=False, **kw)
+    print(f"{args.model}: {type(fast).__name__} vs {type(slow).__name__}")
 
     print(f"{'figure':<28} {'patches':>8} {'max|diff|':>11} {'mean|diff|':>11}  identical")
     print("-" * 74)
@@ -55,9 +59,7 @@ def main():
         image = Image.open(path).convert("RGB")
         out = {}
         for name, proc in (("fast", fast), ("slow", slow)):
-            text = proc.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True)
-            out[name] = proc(text=[text], images=[image], return_tensors="pt")
+            out[name] = proc(images=[image], return_tensors="pt")
 
         a = out["fast"]["pixel_values"].float()
         b = out["slow"]["pixel_values"].float()

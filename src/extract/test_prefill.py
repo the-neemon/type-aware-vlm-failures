@@ -8,7 +8,7 @@ torch = pytest.importorskip("torch")
 from torch import nn  # noqa: E402
 
 from src.extract.prefill import (  # noqa: E402
-    POSITIONS, PrefillCapture, build_pool_masks, decoder_layers, pool,
+    POSITIONS, TENSOR, PrefillCapture, build_pool_masks, decoder_layers, pool,
 )
 
 IMG, SPECIAL = 9, 0
@@ -151,6 +151,32 @@ class TestPrefillCapture:
             with pytest.raises(TypeError, match="1-tuple"):
                 layers[0](torch.zeros(1, self.masks.seq_len, HIDDEN))
 
+    def test_bare_tensor_blocks_are_captured_in_tensor_mode(self):
+        # MistralDecoderLayer (LLaVA-NeXT) returns hidden_states, not a 1-tuple
+        class TensorBlock(nn.Module):
+            def forward(self, h):
+                return h + 1
+        layers = nn.ModuleList(TensorBlock() for _ in range(2))
+        with PrefillCapture(layers, [0, 1], HIDDEN, TENSOR) as cap:
+            cap.arm(self.masks)
+            h = torch.zeros(1, self.masks.seq_len, HIDDEN)
+            for block in layers:                          # prefill
+                h = block(h)
+            for block in layers:                          # one decode step
+                block(h[:, -1:])
+            acts = cap.collect()
+        assert torch.all(acts[0] == 1) and torch.all(acts[1] == 2)
+
+    def test_tensor_mode_refuses_a_tuple(self):
+        with PrefillCapture(self.layers, [0], HIDDEN, TENSOR) as cap:
+            cap.arm(self.masks)
+            with pytest.raises(TypeError, match="expected a tensor"):
+                fake_generate(self.layers, self.masks.seq_len)
+
+    def test_unknown_decoder_output_is_refused(self):
+        with pytest.raises(ValueError, match="decoder_output"):
+            PrefillCapture(self.layers, [0], HIDDEN, "list")
+
     def test_hooks_are_removed_on_exit(self):
         with PrefillCapture(self.layers, [0, 1, 2], HIDDEN):
             pass
@@ -164,6 +190,7 @@ class TestDecoderLayers:
 
     def test_finds_the_blocks(self):
         assert len(decoder_layers(self.model(28), 28)) == 28
+        assert len(decoder_layers(self.model(32), 32)) == 32      # LLaVA-NeXT's Mistral
 
     def test_wrong_count_raises(self):
         with pytest.raises(RuntimeError, match="expected 28"):

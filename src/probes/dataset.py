@@ -259,6 +259,22 @@ def clear_activation_cache() -> None:
     _ACT_CACHE.clear()
 
 
+def cached_layers(path: str | pathlib.Path, position: str = "query_last") -> list[int]:
+    """Every layer index cached for `position`, read from the key names alone.
+
+    The probe scripts default to this rather than to a fixed count, because the
+    models differ: Qwen2.5-VL has 28 decoder layers, LLaVA-NeXT 32, and a
+    hard-coded 28 would silently drop LLaVA's deepest four.
+    """
+    suffix = f"_{position}"
+    with np.load(path, allow_pickle=True) as npz:
+        layers = sorted(int(k[1:-len(suffix)]) for k in npz.files
+                        if k.startswith("L") and k.endswith(suffix))
+    if not layers:
+        raise ValueError(f"{path} has no arrays for position {position!r}")
+    return layers
+
+
 def load_activations(
     path: str | pathlib.Path,
     position: str,

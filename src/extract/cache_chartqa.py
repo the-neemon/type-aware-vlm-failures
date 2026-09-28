@@ -1,4 +1,4 @@
-"""Qwen2.5-VL-7B over ChartQA test: answers plus prefill activations (inf.md, TASKS P1.3, P4.1-P4.4).
+"""A VLM over ChartQA or a synthetic set: answers plus prefill activations (inf.md, TASKS P1.3, P4.1-P4.4).
 
 Spec: qwen_chartqa_activation_caching_spec.md. Three steps, run in this order
 by scripts/cache_chartqa.sbatch:
@@ -27,16 +27,20 @@ resubmitted after a timeout may land on another node, and resuming has to see
 every shard already written. The final .npz is compressed on /scratch and
 staged back with `stage_out`, like every other job here.
 
-Settings are not chosen here. The model is loaded and queried through
-src/extract/qwen.py, the module E4's repairs also use, and this script refuses
-to start if configs/inference.yaml or configs/activations.yaml disagree with it.
+The model comes from the inference config's `model_key`: qwen2_5_vl_7b (the
+default config) or llava_next_mistral_7b (configs/llava/). Its outputs are named
+by that key, so the two models never share a file.
+
+Settings are not chosen here. The model is loaded and queried through its module
+in `MODELS` (src/extract/qwen.py, which E4's repairs also use, or
+src/extract/llava.py), and this script refuses to start if the inference config
+or configs/activations.yaml disagree with it.
 """
 
 from __future__ import annotations
 
 import argparse
 import datetime
-import importlib.metadata
 import json
 import os
 import pathlib
@@ -50,13 +54,24 @@ import yaml
 
 from src.eval.chartqa import load_chartqa
 from src.eval.relaxed_accuracy import is_correct
-from src.extract import cache_io, qwen
+from src.extract import cache_io, llava, qwen
 from src.extract.prefill import POSITIONS
 from src.label.pool import item_id
 from src.synth import items as synth_items
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
-MIN_ACCURACY = 0.60      # below this the prompt or the pipeline is broken (inf.md 8.3)
+
+# The model modules, by the model_key an inference config names. Each supplies
+# MODEL_ID, MODEL_KEY, ANSWER_SUFFIX, SEED, MAX_NEW_TOKENS, DECODER_OUTPUT,
+# MIN_ACCURACY, config_checks, processor_settings, load, build_inputs and
+# generate_from_inputs.
+MODELS = {m.MODEL_KEY: m for m in (qwen, llava)}
+
+
+def model_module(model_key: str):
+    if model_key not in MODELS:
+        raise SystemExit(f"unknown model_key {model_key!r}; known: {sorted(MODELS)}")
+    return MODELS[model_key]
 
 
 # ---------------------------------------------------------------------------
@@ -93,26 +108,27 @@ def resolve_layers(setting, n_layers: int) -> tuple[int, ...]:
 
 
 def load_config(inference_yaml: pathlib.Path, activations_yaml: pathlib.Path) -> RunConfig:
-    """Read both configs and fail loudly wherever they disagree with src/extract/qwen.py."""
+    """Read both configs and fail loudly wherever they disagree with the model's module."""
     inf = yaml.safe_load(inference_yaml.read_text())
     act = yaml.safe_load(activations_yaml.read_text())
+    m = model_module(inf["model_key"])
     model = act["models"][inf["model_key"]]
 
     checks = [
-        ("inference model_id", inf["model_id"], qwen.MODEL_ID),
-        ("inference model_key", inf["model_key"], qwen.MODEL_KEY),
-        ("inference prompt_suffix", inf["prompt_suffix"], qwen.ANSWER_SUFFIX),
+        ("inference model_id", inf["model_id"], m.MODEL_ID),
+        ("inference model_key", inf["model_key"], m.MODEL_KEY),
+        ("inference prompt_suffix", inf["prompt_suffix"], m.ANSWER_SUFFIX),
         ("inference decoding.do_sample", inf["decoding"]["do_sample"], False),
-        ("inference decoding.max_new_tokens", inf["decoding"]["max_new_tokens"], qwen.MAX_NEW_TOKENS),
-        ("inference decoding.seed", inf["decoding"]["seed"], qwen.SEED),
+        ("inference decoding.max_new_tokens", inf["decoding"]["max_new_tokens"], m.MAX_NEW_TOKENS),
+        ("inference decoding.seed", inf["decoding"]["seed"], m.SEED),
         ("inference batch_size", inf["batch_size"], 1),
         ("activations dtype", act["dtype"], "float16"),
         ("activations gpu_dtype", act["gpu_dtype"], "float16"),
         ("activations gpu_attn_implementation", act["gpu_attn_implementation"], "sdpa"),
         ("activations processor_use_fast", act["processor_use_fast"], True),
-        ("activations hf_id", model["hf_id"], qwen.MODEL_ID),
-        ("activations max_pixels", model["max_pixels"], qwen.MAX_PIXELS),
+        ("activations hf_id", model["hf_id"], m.MODEL_ID),
         ("activations positions", list(act["positions"]), list(POSITIONS)),
+        *m.config_checks(model),
     ]
     conflicts = [f"{name}: config says {got!r}, the code uses {want!r}"
                  for name, got, want in checks if got != want]
@@ -195,28 +211,29 @@ def load_items(cfg: RunConfig, limit: int | None = None) -> list[dict]:
 
 def frozen_settings(cfg: RunConfig, model, processor) -> dict:
     """Everything that changes an activation. A resumed run must match it exactly."""
+    import importlib.metadata
+
     import torch
 
+    m = model_module(cfg.model_key)
     version = importlib.metadata.version
     settings = {
-        "model_id": qwen.MODEL_ID,
+        "model_id": m.MODEL_ID,
         "model_key": cfg.model_key,
         "model_revision": getattr(model.config, "_commit_hash", None),
         "python": platform.python_version(),
         "torch": torch.__version__,
         "transformers": version("transformers"),
-        "qwen_vl_utils": version("qwen-vl-utils"),
         "accelerate": version("accelerate"),
         "dtype": str(next(model.parameters()).dtype),
         "attn_implementation": model.config._attn_implementation,
         "image_processor": type(processor.image_processor).__name__,
         "processor_use_fast": True,
-        "max_pixels": qwen.MAX_PIXELS,
-        "image_processor_max_pixels": getattr(processor.image_processor, "max_pixels", None),
-        "prompt_suffix": qwen.ANSWER_SUFFIX,
+        **m.processor_settings(processor),
+        "prompt_suffix": m.ANSWER_SUFFIX,
         "do_sample": False,
-        "max_new_tokens": qwen.MAX_NEW_TOKENS,
-        "seed": qwen.SEED,
+        "max_new_tokens": m.MAX_NEW_TOKENS,
+        "seed": m.SEED,
         "gpu_name": torch.cuda.get_device_name(0),
         "layers_config": cfg.layers_setting,
         "layers": list(cfg.layers),
@@ -277,10 +294,12 @@ def run(cfg: RunConfig, paths: Paths, limit: int | None, shard_size: int) -> Non
     if not todo:
         return
 
-    model, processor = qwen.load()
+    m = model_module(cfg.model_key)
+    model, processor = m.load()
     layers = decoder_layers(model, cfg.n_layers)
     if model.config._attn_implementation != "sdpa":
         raise SystemExit(f"model loaded with {model.config._attn_implementation} attention, not sdpa")
+    # LLaVA's config calls it image_token_index; image_token_id is its alias
     image_token_id = model.config.image_token_id
     if image_token_id != processor.image_token_id:
         raise SystemExit(f"model and processor disagree on the image token id: "
@@ -298,16 +317,16 @@ def run(cfg: RunConfig, paths: Paths, limit: int | None, shard_size: int) -> Non
         print(f"wrote shard of {len(buffer)} items", flush=True)
         buffer.clear()
 
-    with PrefillCapture(layers, cfg.layers, cfg.hidden_size) as capture:
+    with PrefillCapture(layers, cfg.layers, cfg.hidden_size, m.DECODER_OUTPUT) as capture:
         try:
             for n, it in enumerate(todo, 1):
                 t0 = time.time()
                 image = Image.open(it["image"]).convert("RGB")
-                inputs = qwen.build_inputs(model, processor, image, it["question"] + qwen.ANSWER_SUFFIX)
+                inputs = m.build_inputs(model, processor, image, it["question"] + m.ANSWER_SUFFIX)
                 masks = build_pool_masks(inputs["input_ids"], inputs["attention_mask"],
                                          image_token_id, special_ids)
                 capture.arm(masks)
-                prediction = qwen.generate_from_inputs(model, processor, inputs)
+                prediction = m.generate_from_inputs(model, processor, inputs)
                 acts = capture.collect().numpy()
 
                 row = {"item_id": it["item_id"], "model": cfg.model_key,
@@ -398,8 +417,9 @@ def validate(cfg: RunConfig, paths: Paths, cache: pathlib.Path, limit: int | Non
     summary = summarize(list(rows.values()), cfg.vision_token_range)
     accuracy = summary["relaxed_accuracy"]
     overall = accuracy.get("answerable", accuracy["overall"])
-    if overall is not None and overall < MIN_ACCURACY:
-        problems.append(f"relaxed accuracy {overall:.3f} is below {MIN_ACCURACY}: check the "
+    floor = model_module(cfg.model_key).MIN_ACCURACY
+    if overall is not None and overall < floor:
+        problems.append(f"relaxed accuracy {overall:.3f} is below {floor}: check the "
                         "prompt, decoding and scoring before labelling any of these errors")
 
     report = {"passed": not problems, "problems": problems, "cache": str(cache),
@@ -424,7 +444,7 @@ def validate(cfg: RunConfig, paths: Paths, cache: pathlib.Path, limit: int | Non
 # ---------------------------------------------------------------------------
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="ChartQA answers and prefill activations for Qwen2.5-VL-7B")
+    ap = argparse.ArgumentParser(description="VLM answers and prefill activations (Qwen2.5-VL-7B or LLaVA-NeXT)")
     ap.add_argument("step", choices=("run", "assemble", "validate"))
     ap.add_argument("--tag", default="test",
                     help="names every output; use something else for a smoke run")

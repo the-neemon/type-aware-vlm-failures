@@ -1,0 +1,45 @@
+# LLaVA-NeXT copy of configs/inference_val_human.yaml: identical except model_id and model_key,
+# which src/extract/test_cache_chartqa.py checks. Edit the Qwen original first.
+#
+# ChartQA VAL (human) run. IDENTICAL to configs/inference.yaml in every setting
+# that affects answers or activations (model, prompt, decoding, batch size);
+# only the dataset block differs. That is deliberate: items from this run are
+# pooled with the test run for probe training, which is only valid if both were
+# produced the same way. src/extract/cache_chartqa.py checks the model/decoding
+# settings against src/extract/qwen.py and refuses to run if they drift.
+#
+#   python -m src.extract.cache_chartqa run --tag val_human \
+#       --inference-config configs/inference_val_human.yaml
+#
+# Inference settings for the ChartQA runs (TASKS P1.2, inf.md Section 4).
+#
+# Every downstream label refers to one specific answer string, so the answer
+# must be reproducible. These values are the record of what was run. The code
+# that queries the model reads them from src/extract/qwen.py, which is shared
+# with E4's repairs (cross.md 3.3). src/extract/cache_chartqa.py refuses to
+# start if this file and that module disagree, so the two cannot drift apart.
+
+model_id: llava-hf/llava-v1.6-mistral-7b-hf
+model_key: llava_next_mistral_7b     # hashed into every item_id; never the HF id
+
+# inf.md 4.1. The standard ChartQA prompt for this model family, not a tuned
+# one. Without it Qwen answers in prose, and prose scores as wrong.
+prompt_suffix: "\nAnswer the question using a single word or phrase."
+
+decoding:
+  do_sample: false           # greedy: no temperature, top-p, top-k or beams
+  max_new_tokens: 32
+  seed: 42                   # project-wide, TASKS 4.5
+batch_size: 1                # padding would contaminate the mean pools (inf.md 5.3)
+
+# The prediction is whitespace-stripped and nothing else before scoring with
+# src.eval.relaxed_accuracy.is_correct. Any other cleaning changes the error set.
+
+dataset:
+  root: ~/data/ChartQA
+  # ChartQA VAL, human-written questions only. Human questions carry ~4x the
+  # error rate of augmented ones (20.2% vs 5.2% on test), so this is the most
+  # errors per GPU-hour for the failure-type probes. ChartQA's own splits are
+  # figure-disjoint, so these figures never overlap the test run's.
+  splits: [val_human]                    # 960 questions over 480 figures
+  expected_items: 960

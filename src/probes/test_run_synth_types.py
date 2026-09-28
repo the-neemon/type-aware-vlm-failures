@@ -86,3 +86,17 @@ def test_no_signal_stays_near_chance(tmp_path):
 @pytest.mark.parametrize("fid", ["absent_000001", "look_000123"])
 def test_fold_is_stable(fid):
     assert rst.fold_of(fid) == rst.fold_of(fid) and 0 <= rst.fold_of(fid) < rst.N_FOLDS
+
+
+def test_pilot_layers_come_from_the_caches(tmp_path):
+    def cache(name, n):
+        path = tmp_path / f"{name}.npz"
+        np.savez(path, item_ids=np.array(["a"]),
+                 **{f"L{L}_query_last": np.zeros((1, 2), np.float16) for L in range(n)})
+        return str(path)
+
+    same = [("p1", cache("a", 32), "x", "y"), ("p2", cache("b", 32), "x", "y")]
+    assert rst.pilot_layers(same) == list(range(32))
+    mixed = [("p1", cache("c", 32), "x", "y"), ("p2", cache("d", 28), "x", "y")]
+    with pytest.raises(SystemExit, match="different layers"):
+        rst.pilot_layers(mixed)

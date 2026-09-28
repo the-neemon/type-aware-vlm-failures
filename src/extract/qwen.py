@@ -23,6 +23,26 @@ MAX_NEW_TOKENS = 32         # configs/inference.yaml
 REASK_TEMPERATURE = 0.7     # I_reask only; everything else is greedy
 ANSWER_SUFFIX = "\nAnswer the question using a single word or phrase."   # inf.md 4.1
 
+# What src/extract/cache_chartqa.py needs to know about this model family.
+DECODER_OUTPUT = "tuple"    # Qwen2_5_VLDecoderLayer returns (hidden_states,) on 4.57.6
+# Below this relaxed accuracy the prompt or the pipeline is broken (inf.md 8.3):
+# the published ChartQA number for Qwen2.5-VL-7B is about 87%.
+MIN_ACCURACY = 0.60
+
+
+def config_checks(entry: dict) -> list[tuple[str, object, object]]:
+    """(name, config value, code value) for this model's configs/activations.yaml entry."""
+    return [("activations max_pixels", entry["max_pixels"], MAX_PIXELS)]
+
+
+def processor_settings(processor) -> dict:
+    """Image-preprocessing settings for the run record; they change activations."""
+    import importlib.metadata
+
+    return {"qwen_vl_utils": importlib.metadata.version("qwen-vl-utils"),
+            "max_pixels": MAX_PIXELS,
+            "image_processor_max_pixels": getattr(processor.image_processor, "max_pixels", None)}
+
 
 def load(model_id: str = MODEL_ID):
     """Returns (model, processor) on the frozen config: fp16, SDPA, fast processor.

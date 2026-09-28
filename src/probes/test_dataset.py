@@ -547,3 +547,35 @@ def test_the_agreed_label_set_is_read_and_only_two_labels_train_type_probes():
         kept = [i for s in ("train", "val", "test") for i in ds.item_ids[s]]
         assert {labels[i] for i in kept} == {"structural", "fabrication"}
         assert ds.dropped_ambiguous == sum(labels[r["item_id"]] not in five[:2] for r in errors)
+
+
+# ---------------------------------------------------------------------------
+# Layer count from the cache (Qwen 28, LLaVA-NeXT 32)
+# ---------------------------------------------------------------------------
+
+def _cache_with_layers(path, n_layers, positions=("vision_mean", "query_last")):
+    arrays = {f"L{L}_{p}": np.zeros((2, 4), np.float16) for L in range(n_layers) for p in positions}
+    np.savez(path, item_ids=np.array(["a", "b"]), figure_ids=np.array(["f", "f"]), **arrays)
+    return path
+
+
+def test_cached_layers_reads_every_layer_including_llavas_deepest(tmp_path):
+    from src.probes.dataset import cached_layers
+    path = _cache_with_layers(tmp_path / "llava.npz", 32)
+    assert cached_layers(path) == list(range(32))
+    assert cached_layers(_cache_with_layers(tmp_path / "qwen.npz", 28)) == list(range(28))
+
+
+def test_cached_layers_without_the_position_raises(tmp_path):
+    import pytest
+    from src.probes.dataset import cached_layers
+    path = _cache_with_layers(tmp_path / "c.npz", 3, positions=("vision_mean",))
+    with pytest.raises(ValueError, match="query_last"):
+        cached_layers(path)
+
+
+def test_the_probe_scripts_no_longer_hard_code_28_layers():
+    root = pathlib.Path(__file__).parent
+    for name in ("run_sweep.py", "run_synth.py", "run_synth_types.py"):
+        text = (root / name).read_text()
+        assert "N_LAYERS" not in text and "range(28)" not in text, name

@@ -32,7 +32,7 @@ import pathlib
 import numpy as np
 
 from src.probes.dataset import (
-    POSITIONS, ProbeConfig, TYPE_TASKS, build_dataset, validate_cache,
+    POSITIONS, ProbeConfig, TYPE_TASKS, build_dataset, cached_layers, validate_cache,
 )
 from src.probes.sweep import (
     cross_transfer, evaluate_at, select_layer, sweep_layers,
@@ -144,7 +144,10 @@ def main() -> int:
     )
 
     if not args.no_validate:
-        rep = validate_cache(args.activations)
+        # expected shape from the cache itself: Qwen is 28 x 3584, LLaVA-NeXT 32 x 4096
+        rep = validate_cache(args.activations,
+                             expect_layers=len(cached_layers(args.activations)),
+                             expect_hidden=None)
         print(f"cache OK: {rep['n_items']} items, "
               f"positions {sorted(k for k, v in rep['layers_by_position'].items() if v)}, "
               f"{len(rep['layers_by_position'][positions[0]])} layers")
