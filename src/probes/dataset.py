@@ -48,6 +48,10 @@ TYPE_TASKS = ("structural", "fabrication")
 # Labels that exist in the rubric. "ambiguous" is a real answer, not a failure
 # to decide, and it is dropped from the type probes rather than coerced.
 STRUCTURAL, FABRICATION, AMBIGUOUS = "structural", "fabrication", "ambiguous"
+# The label set agreed on 27 Sep. Only STRUCTURAL and FABRICATION are type-probe
+# classes; the other three are excluded from the type probes and counted.
+COMPUTATION, NOT_AN_ERROR = "computation", "not_an_error"
+ALL_LABELS = (STRUCTURAL, FABRICATION, COMPUTATION, NOT_AN_ERROR, AMBIGUOUS)
 
 
 # ---------------------------------------------------------------------------
@@ -385,8 +389,7 @@ def resolve_labels(
                 except json.JSONDecodeError:
                     bad_lines += 1
                     continue
-                if not rec.get("item_id") or rec.get("label") not in (
-                        STRUCTURAL, FABRICATION, AMBIGUOUS):
+                if not rec.get("item_id") or rec.get("label") not in ALL_LABELS:
                     bad_lines += 1
                     continue
                 ratings[path.stem][rec["item_id"]] = rec
@@ -569,8 +572,8 @@ def build_dataset(
         lab = labels.get(iid)
         if lab is None:
             continue                       # not yet labelled
-        if lab == AMBIGUOUS:
-            dropped += 1
+        if lab not in (STRUCTURAL, FABRICATION):
+            dropped += 1                   # ambiguous, computation, not_an_error
             continue
         keep.append(iid)
 

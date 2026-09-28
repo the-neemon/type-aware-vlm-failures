@@ -527,3 +527,23 @@ if __name__ == "__main__":
         fn()
         print(f"  ok  {fn.__name__}")
     print(f"\n{len(fns)} tests passed")
+
+
+def test_the_agreed_label_set_is_read_and_only_two_labels_train_type_probes():
+    """computation and not_an_error (27 Sep label set) are excluded, never negatives."""
+    with tempfile.TemporaryDirectory() as t:
+        tmp = pathlib.Path(t)
+        rows, ids, figs, acts = _world()
+        preds, npz = _write_world(tmp, rows, ids, figs, acts)
+        five = ("structural", "fabrication", "computation", "not_an_error", "ambiguous")
+        f = tmp / "labels.claude.jsonl"
+        errors = [r for r in rows if not r["correct"]]
+        f.write_text("".join(json.dumps({"item_id": r["item_id"], "label": five[i % 5]}) + "\n"
+                             for i, r in enumerate(errors)))
+        labels, stats = resolve_labels(f)
+        assert set(labels.values()) == set(five) and stats["n_bad_lines"] == 0
+
+        ds = build_dataset("structural", npz, preds, f)
+        kept = [i for s in ("train", "val", "test") for i in ds.item_ids[s]]
+        assert {labels[i] for i in kept} == {"structural", "fabrication"}
+        assert ds.dropped_ambiguous == sum(labels[r["item_id"]] not in five[:2] for r in errors)
