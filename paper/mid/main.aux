@@ -1,0 +1,92 @@
+\relax 
+\bibstyle{acl_natbib}
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{kogilathota2026halp}
+\citation{zhang2026vibprobe}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Refined problem statement.}{1}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Progress summary.}{1}{section*.2}\protected@file@percent }
+\citation{liu2026dualpathway}
+\citation{masry2022chartqa}
+\citation{rani2025radar}
+\citation{iyengar2026dragon}
+\citation{ashurytahan2026errormap}
+\citation{li2026visualselfrefine}
+\citation{sahoo2026linearprobes}
+\citation{yuan2026hiddenerror}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Background and Related Work}{2}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Pre-generation failure detection}{2}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Evidence that failure types differ mechanistically}{2}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Chart and diagram reasoning}{2}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Error taxonomies and visual self-correction}{2}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Probe validity}{2}{subsection.2.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6}Positioning}{2}{subsection.2.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Hypothesis}{2}{section.3}\protected@file@percent }
+\citation{bai2025qwen25vl}
+\citation{liu2024llavanext}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Experimental Setup}{3}{section.4}\protected@file@percent }
+\newlabel{sec:setup}{{4}{3}{Experimental Setup}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Models and inference}{3}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Activation caching}{3}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Probes}{3}{subsection.4.3}\protected@file@percent }
+\newlabel{sec:probes}{{4.3}{3}{Probes}{subsection.4.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Relaxed accuracy (\%) on ChartQA test.}}{3}{table.caption.3}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{tab:acc}{{1}{3}{Relaxed accuracy (\%) on ChartQA test}{table.caption.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Naturalistic Arm: ChartQA}{3}{section.5}\protected@file@percent }
+\newlabel{sec:chartqa}{{5}{3}{Naturalistic Arm: ChartQA}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Accuracy}{3}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Labelling Qwen's errors}{3}{subsection.5.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Labels for Qwen's 317 ChartQA test errors.}}{4}{table.caption.4}\protected@file@percent }
+\newlabel{tab:labels}{{2}{4}{Labels for Qwen's 317 ChartQA test errors}{table.caption.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{What the error types look like.}{4}{section*.5}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Test AUROC [95\% CI] of the binary probe (wrong vs.\ right) and of the Qwen structural probe on ChartQA, against a surface-only baseline (question source, question length, number of image tokens, numeric gold). All selected query\_last; Qwen layer 21 of 28, LLaVA layer 24 of 32.}}{4}{table.caption.6}\protected@file@percent }
+\newlabel{tab:e1}{{3}{4}{Test AUROC [95\% CI] of the binary probe (wrong vs.\ right) and of the Qwen structural probe on ChartQA, against a surface-only baseline (question source, question length, number of image tokens, numeric gold). All selected query\_last; Qwen layer 21 of 28, LLaVA layer 24 of 32}{table.caption.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Predicting whether the answer is wrong (E1)}{4}{subsection.5.3}\protected@file@percent }
+\newlabel{sec:e1}{{5.3}{4}{Predicting whether the answer is wrong (E1)}{subsection.5.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Binary probe, validation AUROC by relative depth (best $\lambda $ per layer). Solid: last prompt token; dashed: mean over image tokens.}}{5}{figure.caption.7}\protected@file@percent }
+\newlabel{fig:binary}{{1}{5}{Binary probe, validation AUROC by relative depth (best $\lambda $ per layer). Solid: last prompt token; dashed: mean over image tokens}{figure.caption.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Synthetic Arm}{5}{section.6}\protected@file@percent }
+\newlabel{sec:synth}{{6}{5}{Synthetic Arm}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Design}{5}{subsection.6.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}How the models answered}{5}{subsection.6.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Synthetic outcomes (pilots 1 and 2). Value rows pool both pilots (600 missing-name questions); compare and neighbor come from pilot 2 (300 each).}}{6}{table.caption.8}\protected@file@percent }
+\newlabel{tab:synth}{{4}{6}{Synthetic outcomes (pilots 1 and 2). Value rows pool both pilots (600 missing-name questions); compare and neighbor come from pilot 2 (300 each)}{table.caption.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Test AUROC of probes separating a missing from a shown name under identical wording (pilot 2; 62 charts per class in test). The image-token probe is a built-in control: image tokens precede the question, so they cannot see it.}}{6}{table.caption.9}\protected@file@percent }
+\newlabel{tab:absent}{{5}{6}{Test AUROC of probes separating a missing from a shown name under identical wording (pilot 2; 62 charts per class in test). The image-token probe is a built-in control: image tokens precede the question, so they cannot see it}{table.caption.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Do the models know the bar is missing?}{6}{subsection.6.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Type probes and cross-transfer (E3)}{6}{subsection.6.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Discussion}{6}{section.7}\protected@file@percent }
+\newlabel{sec:discussion}{{7}{6}{Discussion}{section.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{Is the hypothesis supported?}{6}{section*.12}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Cross-transfer matrix on synthetic value questions (5-fold CV by chart, out-of-fold AUROC). Rows: the probe and what it was trained on; columns: the contrast it is scored on. Bold: each probe on its own task. Metadata baseline: the same procedure on chart settings only (pilot, axis range, tick density, bar count, lookalike present, phrasing). 95\% CIs for the bold cells: Qwen [0.82, 0.94], [1.00, 1.00], [0.97, 0.99]; LLaVA [0.73, 0.82], [0.98, 0.99], [0.98, 0.99]; for the structural probe on \textsc  {f} vs \textsc  {c}, Qwen [0.55, 0.65], LLaVA [0.85, 0.90].}}{7}{table.caption.10}\protected@file@percent }
+\newlabel{tab:matrix}{{6}{7}{Cross-transfer matrix on synthetic value questions (5-fold CV by chart, out-of-fold AUROC). Rows: the probe and what it was trained on; columns: the contrast it is scored on. Bold: each probe on its own task. Metadata baseline: the same procedure on chart settings only (pilot, axis range, tick density, bar count, lookalike present, phrasing). 95\% CIs for the bold cells: Qwen [0.82, 0.94], [1.00, 1.00], [0.97, 0.99]; LLaVA [0.73, 0.82], [0.98, 0.99], [0.98, 0.99]; for the structural probe on \cls {f} vs \cls {c}, Qwen [0.55, 0.65], LLaVA [0.85, 0.90]}{table.caption.10}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Type probes on synthetic value questions: out-of-fold AUROC on their own task by relative depth ($\lambda $ chosen per fold by inner CV).}}{7}{figure.caption.11}\protected@file@percent }
+\newlabel{fig:types}{{2}{7}{Type probes on synthetic value questions: out-of-fold AUROC on their own task by relative depth ($\lambda $ chosen per fold by inner CV)}{figure.caption.11}{}}
+\@writefile{toc}{\contentsline {paragraph}{What the fabrication signal is.}{7}{section*.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{How the models differ.}{7}{section*.14}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Validity.}{7}{section*.15}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Progress Against Plan and Timeline}{7}{section.8}\protected@file@percent }
+\newlabel{sec:plan}{{8}{7}{Progress Against Plan and Timeline}{section.8}{}}
+\@writefile{toc}{\contentsline {paragraph}{Done.}{7}{section*.16}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Changed.}{7}{section*.17}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Go/no-go (30 Sep).}{7}{section*.18}\protected@file@percent }
+\bibdata{references}
+\bibcite{ashurytahan2026errormap}{{1}{2026}{{Ashury-Tahan et~al.}}{{}}}
+\bibcite{bai2025qwen25vl}{{2}{2025}{{Bai et~al.}}{{}}}
+\bibcite{iyengar2026dragon}{{3}{2026}{{Iyengar et~al.}}{{Iyengar, Kumar, Najpande, Suri, Manocha, Mathur, and Gupta}}}
+\bibcite{kogilathota2026halp}{{4}{2026}{{Kogilathota et~al.}}{{Kogilathota, E~G, Sun, and Zhou}}}
+\bibcite{li2026visualselfrefine}{{5}{2026}{{Li et~al.}}{{Li, Dong, Zang, Cao, Wang, and Lin}}}
+\bibcite{liu2024llavanext}{{6}{2024}{{Liu et~al.}}{{Liu, Li, Li, Li, Zhang, Shen, and Lee}}}
+\bibcite{liu2026dualpathway}{{7}{2026}{{Liu et~al.}}{{Liu, Zhong, Wang, Yang, Kang, Dong, Zhan, Fang, and Liu}}}
+\bibcite{masry2022chartqa}{{8}{2022}{{Masry et~al.}}{{Masry, Long, Tan, Joty, and Hoque}}}
+\bibcite{rani2025radar}{{9}{2025}{{Rani et~al.}}{{Rani, Garimella, Saxena, Srinivasan, and Liang}}}
+\bibcite{sahoo2026linearprobes}{{10}{2026}{{Sahoo et~al.}}{{Sahoo, Jain, Chadha, and Chaudhary}}}
+\bibcite{yuan2026hiddenerror}{{11}{2026}{{Yuan et~al.}}{{Yuan, Su, Zhang, Nian, and Zhao}}}
+\bibcite{zhang2026vibprobe}{{12}{2026}{{Zhang et~al.}}{{Zhang, Wu, Wang, Wang, Lv, Huang, and Zheng}}}
+\@writefile{toc}{\contentsline {paragraph}{Remaining.}{8}{section*.19}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}Limitations}{8}{section.9}\protected@file@percent }
+\newlabel{sec:limits}{{9}{8}{Limitations}{section.9}{}}
+\gdef \@abspage@last{8}
