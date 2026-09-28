@@ -63,17 +63,43 @@ def processor_settings(processor) -> dict:
             "vision_feature_select_strategy": processor.vision_feature_select_strategy}
 
 
+# On ONE 11 GiB 2080 Ti the ~15 GB of fp16 weights cannot all be resident. This
+# much goes on the card; the rest of the card holds activations and the KV cache
+# for a ~2,300-token prompt.
+SINGLE_GPU_WEIGHTS_GIB = 8
+
+
+def placement(n_gpus: int) -> dict:
+    """from_pretrained kwargs placing the weights on the GPUs this job was given.
+
+    Two or more GPUs: sharded across them, as for Qwen. One GPU: accelerate keeps
+    the layers that do not fit in CPU RAM and copies each onto the GPU just
+    before it runs. The computation itself stays on the GPU in fp16 with the same
+    kernels, so the activations are the same; only the speed changes, since the
+    offloaded weights cross PCIe on every forward pass. Not quantisation, which
+    would change the activations and is ruled out.
+    """
+    if n_gpus < 1:
+        raise SystemExit("no CUDA device; refusing to fall back to CPU")
+    if n_gpus >= 2:
+        return {"device_map": "auto"}
+    return {"device_map": "auto",
+            "max_memory": {0: f"{SINGLE_GPU_WEIGHTS_GIB}GiB", "cpu": "64GiB"}}
+
+
 def load(model_id: str = MODEL_ID):
     """Returns (model, processor) on the frozen config: fp16, SDPA, fast processor.
 
     Same reasoning as qwen.load: the card is the RTX 2080 Ti, where bf16 is
-    emulated and FlashAttention-2 does not run.
+    emulated and FlashAttention-2 does not run. Runs on one GPU too, more slowly
+    (`placement`); the device map is recorded in the run record either way.
     """
     import torch
     from transformers import AutoProcessor, LlavaNextForConditionalGeneration
 
     if not torch.cuda.is_available():
         raise SystemExit("no CUDA device; refusing to fall back to CPU")
+    where = placement(torch.cuda.device_count())
     processor = AutoProcessor.from_pretrained(model_id, use_fast=True)
     # Without these the processor emits a single <image> token and the model
     # fails deep inside generate() with a feature-count mismatch.
@@ -81,8 +107,12 @@ def load(model_id: str = MODEL_ID):
         raise SystemExit("LLaVA-NeXT processor lacks patch_size or "
                          "vision_feature_select_strategy; the processor files are incomplete")
     model = LlavaNextForConditionalGeneration.from_pretrained(
-        model_id, dtype=torch.float16, attn_implementation="sdpa", device_map="auto")
+        model_id, dtype=torch.float16, attn_implementation="sdpa", **where)
     got = next(model.parameters()).dtype
     if got != torch.float16:
         raise SystemExit(f"asked for float16, model loaded as {got}")
+    if "max_memory" in where:
+        on_cpu = sum(str(d) == "cpu" for d in model.hf_device_map.values())
+        print(f"one GPU: {on_cpu} of {len(model.hf_device_map)} modules held in CPU RAM and "
+              "streamed to the GPU per forward pass; slower, same activations", flush=True)
     return model, processor

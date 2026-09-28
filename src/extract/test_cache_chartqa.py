@@ -447,3 +447,14 @@ def test_llava_frozen_settings_record_its_own_preprocessing(fake_env):
     assert got["layers"] == list(range(32)) and got["hidden_size"] == 4096
     assert "max_pixels" not in got and "qwen_vl_utils" not in got
     assert got["prompt_suffix"] == qwen.ANSWER_SUFFIX
+
+
+def test_llava_placement_by_gpu_count():
+    # two GPUs: sharded across both, exactly as Qwen and as before
+    assert llava.placement(2) == {"device_map": "auto"}
+    # one GPU: part of the weights held in CPU RAM, computation still on the GPU
+    one = llava.placement(1)
+    assert one["device_map"] == "auto" and set(one["max_memory"]) == {0, "cpu"}
+    assert int(one["max_memory"][0].removesuffix("GiB")) < 11      # a 2080 Ti holds 11 GiB
+    with pytest.raises(SystemExit, match="no CUDA"):
+        llava.placement(0)

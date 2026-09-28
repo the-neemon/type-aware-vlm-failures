@@ -28,6 +28,14 @@
 # figure against 580), so a 2,500-item run may need more than one 12 h slot.
 # Resubmit, or pass a longer limit on the command line: sbatch --time=24:00:00 ...
 #
+# One GPU (a QOS that caps GPUs per user): LLaVA-NeXT runs on one 2080 Ti by
+# holding the weights that do not fit in CPU RAM (src/extract/llava.py
+# `placement`); same activations, slower. Override the request below:
+#
+#   TAG=test INFERENCE_CONFIG=configs/llava/inference.yaml sbatch --gres=gpu:1 scripts/cache_chartqa.sbatch
+#
+# Qwen has no single-GPU path; it needs both cards.
+#
 # Resumable: after a timeout or eviction, resubmit the same command. Items whose
 # activations are already in a shard are skipped, on whichever node the job
 # lands. Resubmitting the smoke run once it has finished is also a cheap check
