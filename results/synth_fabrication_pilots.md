@@ -128,8 +128,10 @@ test positives; synthetic charts only.
 
 ## Open decisions
 
-1. Does "0" to a value question count as fabrication? Does "picked_present"?
-   The neighbor family avoids both escapes, so it is the cleanest test.
+1. **Decided 28 Sep:** "0" to a value question is a refusal expressed as a
+   number, not a fabrication; it stays an error (docs/taxonomy.md). Still open:
+   "picked_present" (naming the shown bar in "Which is larger, <absent> or
+   <shown>?"), the compare family's version of the same escape.
 2. The planned "fabricated vs rejected" probe is not possible under the standard
    prompt: Qwen rejects 6 of 900. The contrast that works is absent vs shown name
    within one template, above.

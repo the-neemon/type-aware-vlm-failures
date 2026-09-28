@@ -31,6 +31,14 @@ cannot recover the claimed information.
 3. The graph has no node Z. The model claims that Z connects directly to A. Both
    the node and relationship are fabricated.
 
+**"0" for a missing category is not fabrication** (decided 28 Sep). Asked for D
+when the chart has no D, a bare "0" is a refusal expressed as a number: no bar
+is zero-height on our synthetic charts, so nothing was read or copied, and Qwen
+says "0" mostly when no bar resembles D (141 of 157 unrelated names in synthetic
+pilot 2). It is still a wrong answer, since a reader would take D to exist with
+value 0, so it is counted as an error of its own kind and kept out of the
+fabrication class. A non-zero number for D is fabrication, as in example 1.
+
 ## Neither or ambiguous
 
 Use `ambiguous` when the gold answer is questionable, the figure is unreadable,

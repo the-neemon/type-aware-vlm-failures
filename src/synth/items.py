@@ -16,9 +16,8 @@ question was designed to induce). Outcomes, by question:
 
   "What is the value of Guava?"  (absent_category, absent_value)
     rejected        says it is not there ("None", "Not shown")
-    zero            "0". Kept apart from fabricated: on the first pilot Qwen gave
-                    it 276 times in 300, and whether it means "no bar" or asserts
-                    a value is an open decision, not something to settle here
+    zero            "0": a refusal expressed as a number, not a fabrication
+                    (team decision, 28 Sep; docs/taxonomy.md). Still not correct
     fabricated      any other bare number
   "Which is larger, Guava or Apple?"  (absent_compare)
     rejected        says one of them is not there
