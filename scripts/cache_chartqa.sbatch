@@ -47,7 +47,7 @@
 #SBATCH --job-name=vlmfail-cache
 #SBATCH --partition=u22
 #SBATCH --constraint=2080ti          # frozen card (decision 9)
-#SBATCH --exclude=gnode068,gnode077  # mixed-GPU node; dead-driver node
+#SBATCH --exclude=gnode066,gnode068,gnode077  # dead-GPU node; mixed-GPU node; dead-driver node
 #SBATCH --gres=gpu:2                 # 7B fp16 is ~16.6 GB; a 2080 Ti holds 11 GB
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G                    # final assembly holds the ~1.9 GiB cache twice
