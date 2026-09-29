@@ -48,10 +48,10 @@ from multiprocessing import Pool
 import numpy as np
 
 from src.common.linear import auroc, cluster_bootstrap_ci, fit_logistic, predict_scores
-from src.probes.dataset import POSITIONS, ProbeConfig, build_dataset, load_predictions
+from src.probes.dataset import (POSITIONS, ProbeConfig, build_dataset, cached_layers,
+                                load_predictions)
 
 DEFAULT_L2 = (1.0, 10.0, 100.0, 1000.0, 10000.0)
-N_LAYERS = 28
 
 
 TYPE_TARGETS = ("structural", "fabrication")
@@ -132,11 +132,14 @@ def main():
     ap.add_argument("--rest", choices=("errors_only", "include_correct"),
                     default="errors_only")
     ap.add_argument("--positions", nargs="*", default=list(POSITIONS))
-    ap.add_argument("--layers", nargs="*", type=int, default=list(range(N_LAYERS)))
+    ap.add_argument("--layers", nargs="*", type=int, default=None,
+                    help="default: every layer in the cache, read from its keys (Qwen 28, LLaVA-NeXT 32)")
     ap.add_argument("--l2", nargs="*", type=float, default=list(DEFAULT_L2))
     ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     ap.add_argument("--out", type=pathlib.Path, required=True)
     args = ap.parse_args()
+    if args.layers is None:
+        args.layers = cached_layers(args.activations, args.positions[0])
     if args.target in TYPE_TARGETS and not args.labels:
         ap.error(f"--target {args.target} needs --labels")
     args.out.mkdir(parents=True, exist_ok=True)

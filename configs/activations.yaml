@@ -133,6 +133,11 @@ models:
     hidden_size: 4096
     num_hidden_layers: 32
     vision_tokens: 2928     # fixed-grid anyres, largest pinpoint
+    # PROVISIONAL (28 Sep): the real llava-hf processor, offline, gives 2242
+    # tokens at ChartQA's common 800x557 and 1320-2340 across six test sizes;
+    # 2928 is the anyres ceiling above. Only used to warn, never to reject.
+    # Replace with the full test run's min and max, as was done for Qwen.
+    measured_vision_tokens_range: [1320, 2928]
 
 # --------------------------------------------------------------------------
 # Storage

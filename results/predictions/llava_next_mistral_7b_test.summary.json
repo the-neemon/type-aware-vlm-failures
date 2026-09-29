@@ -1,0 +1,26 @@
+{
+  "passed": true,
+  "problems": [],
+  "cache": "/home2/shrish.kadam/activations/llava_next_mistral_7b/test.npz",
+  "predictions": "/home2/shrish.kadam/anlp/project/type-aware-vlm-failures/results/predictions/llava_next_mistral_7b_test.jsonl",
+  "relaxed_accuracy": {
+    "overall": 0.5288,
+    "human": 0.4464,
+    "augmented": 0.6112
+  },
+  "n_correct": 1322,
+  "n_incorrect": 1178,
+  "error_rate": 0.4712,
+  "vision_tokens": {
+    "min": 936,
+    "max": 2928,
+    "mean": 2212.2,
+    "median": 2242.0,
+    "outside_measured_range": 46,
+    "measured_range": [
+      1320,
+      2928
+    ]
+  },
+  "validated_at": "2026-09-28T16:37:58.296432+00:00"
+}

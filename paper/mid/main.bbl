@@ -1,0 +1,95 @@
+\begin{thebibliography}{12}
+\providecommand{\natexlab}[1]{#1}
+
+\bibitem[{Ashury-Tahan et~al.(2026)}]{ashurytahan2026errormap}
+Shir Ashury-Tahan et~al. 2026.
+\newblock {ErrorMap} and {ErrorAtlas}: Charting the failure landscape of large
+  language models.
+\newblock \emph{arXiv preprint arXiv:2601.15812}.
+
+\bibitem[{Bai et~al.(2025)}]{bai2025qwen25vl}
+Shuai Bai et~al. 2025.
+\newblock {Qwen2.5-VL} technical report.
+\newblock \emph{arXiv preprint arXiv:2502.13923}.
+
+\bibitem[{Iyengar et~al.(2026)Iyengar, Kumar, Najpande, Suri, Manocha, Mathur,
+  and Gupta}]{iyengar2026dragon}
+Anirudh Iyengar Kaniyar~Narayana Iyengar, Tampu~Ravi Kumar, Gaurav Najpande,
+  Manan Suri, Dinesh Manocha, Puneet Mathur, and Vivek Gupta. 2026.
+\newblock {DRAGON}: A benchmark for evidence-grounded visual reasoning over
+  diagrams.
+\newblock \emph{arXiv preprint arXiv:2604.25231}.
+
+\bibitem[{Kogilathota et~al.(2026)Kogilathota, E~G, Sun, and
+  Zhou}]{kogilathota2026halp}
+Sai~Akhil Kogilathota, Sripadha~Vallabha E~G, Luzhe Sun, and Jiawei Zhou. 2026.
+\newblock {HALP}: Detecting hallucinations in vision-language models without
+  generating a single token.
+\newblock In \emph{Proceedings of the 19th Conference of the European Chapter
+  of the Association for Computational Linguistics (Volume 1: Long Papers)},
+  pages 6067--6085.
+
+\bibitem[{Li et~al.(2026)Li, Dong, Zang, Cao, Wang, and
+  Lin}]{li2026visualselfrefine}
+Jinsong Li, Xiaoyi Dong, Yuhang Zang, Yuhang Cao, Jiaqi Wang, and Dahua Lin.
+  2026.
+\newblock Visual self-refine: A pixel-guided paradigm for accurate chart
+  parsing.
+\newblock In \emph{International Conference on Learning Representations
+  (ICLR)}.
+
+\bibitem[{Liu et~al.(2024)Liu, Li, Li, Li, Zhang, Shen, and
+  Lee}]{liu2024llavanext}
+Haotian Liu, Chunyuan Li, Yuheng Li, Bo~Li, Yuanhan Zhang, Sheng Shen, and
+  Yong~Jae Lee. 2024.
+\newblock \href {https://llava-vl.github.io/blog/2024-01-30-llava-next/}
+  {{LLaVA-NeXT}: Improved reasoning, {OCR}, and world knowledge}.
+
+\bibitem[{Liu et~al.(2026)Liu, Zhong, Wang, Yang, Kang, Dong, Zhan, Fang, and
+  Liu}]{liu2026dualpathway}
+Jiaxin Liu, Ding Zhong, Yue Wang, Zhidong Yang, Zhaolu Kang, Guangyuan Dong,
+  Qishi Zhan, Pengcheng Fang, and Aofan Liu. 2026.
+\newblock Dual-pathway circuits of object hallucination in vision-language
+  models.
+\newblock \emph{arXiv preprint arXiv:2605.13156}.
+
+\bibitem[{Masry et~al.(2022)Masry, Long, Tan, Joty, and
+  Hoque}]{masry2022chartqa}
+Ahmed Masry, Do~Xuan Long, Jia~Qing Tan, Shafiq Joty, and Enamul Hoque. 2022.
+\newblock {ChartQA}: A benchmark for question answering about charts with
+  visual and logical reasoning.
+\newblock In \emph{Findings of the Association for Computational Linguistics:
+  ACL 2022}.
+
+\bibitem[{Rani et~al.(2025)Rani, Garimella, Saxena, Srinivasan, and
+  Liang}]{rani2025radar}
+Anku Rani, Aparna Garimella, Apoorv Saxena, Balaji~Vasan Srinivasan, and
+  Paul~Pu Liang. 2025.
+\newblock {RADAR}: A reasoning-guided attribution framework for explainable
+  visual data analysis.
+\newblock \emph{arXiv preprint arXiv:2508.16850}.
+
+\bibitem[{Sahoo et~al.(2026)Sahoo, Jain, Chadha, and
+  Chaudhary}]{sahoo2026linearprobes}
+Subramanyam Sahoo, Vinija Jain, Aman Chadha, and Divya Chaudhary. 2026.
+\newblock Linear probes detect task format, not reasoning mode in language
+  model hidden states.
+\newblock \emph{arXiv preprint arXiv:2606.02907}.
+
+\bibitem[{Yuan et~al.(2026)Yuan, Su, Zhang, Nian, and
+  Zhao}]{yuan2026hiddenerror}
+Aojie Yuan, Zhiyuan~Julian Su, Haiyue Zhang, Yi~Nian, and Yue Zhao. 2026.
+\newblock Hidden error awareness in chain-of-thought reasoning: The signal is
+  diagnostic, not causal.
+\newblock \emph{arXiv preprint arXiv:2605.09502}.
+
+\bibitem[{Zhang et~al.(2026)Zhang, Wu, Wang, Wang, Lv, Huang, and
+  Zheng}]{zhang2026vibprobe}
+Feiran Zhang, Yixin Wu, Zhenghua Wang, Xiaohua Wang, Changze Lv, Xuanjing
+  Huang, and Xiaoqing Zheng. 2026.
+\newblock {VIB}-probe: Detecting and mitigating hallucinations in
+  vision-language models via variational information bottleneck.
+\newblock In \emph{Proceedings of the 64th Annual Meeting of the Association
+  for Computational Linguistics (Volume 1: Long Papers)}, pages 23509--23521.
+
+\end{thebibliography}

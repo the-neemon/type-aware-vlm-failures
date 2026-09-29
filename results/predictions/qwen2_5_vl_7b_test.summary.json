@@ -1,0 +1,26 @@
+{
+  "passed": true,
+  "problems": [],
+  "cache": "/home2/shrish.kadam/activations/qwen2_5_vl_7b/test.npz",
+  "predictions": "/home2/shrish.kadam/anlp/project/type-aware-vlm-failures/results/predictions/qwen2_5_vl_7b_test.jsonl",
+  "relaxed_accuracy": {
+    "overall": 0.8732,
+    "human": 0.7984,
+    "augmented": 0.948
+  },
+  "n_correct": 2183,
+  "n_incorrect": 317,
+  "error_rate": 0.1268,
+  "vision_tokens": {
+    "min": 77,
+    "max": 1272,
+    "mean": 584.1,
+    "median": 580.0,
+    "outside_measured_range": 363,
+    "measured_range": [
+      180,
+      630
+    ]
+  },
+  "validated_at": "2026-09-26T06:39:11.560545+00:00"
+}

@@ -1,0 +1,33 @@
+{
+  "passed": true,
+  "problems": [],
+  "cache": "/home2/shrish.kadam/activations/llava_next_mistral_7b/synth_pilot.npz",
+  "predictions": "/home2/shrish.kadam/anlp/project/type-aware-vlm-failures/results/predictions/llava_next_mistral_7b_synth_pilot.jsonl",
+  "relaxed_accuracy": {
+    "overall": 0.1417,
+    "answerable": 0.2833,
+    "absent_category": 0.0,
+    "read_value": 0.2833
+  },
+  "absent_outcomes": {
+    "absent_category": {
+      "fabricated": 151,
+      "zero": 149
+    }
+  },
+  "n_correct": 85,
+  "n_incorrect": 515,
+  "error_rate": 0.8583,
+  "vision_tokens": {
+    "min": 2340,
+    "max": 2340,
+    "mean": 2340,
+    "median": 2340.0,
+    "outside_measured_range": 0,
+    "measured_range": [
+      1320,
+      2928
+    ]
+  },
+  "validated_at": "2026-09-28T20:23:16.667208+00:00"
+}

@@ -55,13 +55,12 @@ from multiprocessing import Pool
 import numpy as np
 
 from src.common.linear import auroc, cluster_bootstrap_ci, fit_logistic, predict_scores
-from src.probes.dataset import load_activations, load_predictions
+from src.probes.dataset import cached_layers, load_activations, load_predictions
 from src.probes.run_synth import rescore
 
 POSITION = "query_last"
 N_FOLDS = 5
 DEFAULT_L2 = (1.0, 10.0, 100.0, 1000.0, 10000.0)
-N_LAYERS = 28
 PROBES = {"structural": ("S", "C"), "fabrication": ("F", "C"), "fab_vs_zero": ("F", "Z")}
 TARGETS = {"S_vs_C": ("S", "C"), "F_vs_C": ("F", "C"), "Z_vs_C": ("Z", "C"),
            "F_vs_Z": ("F", "Z")}
@@ -192,15 +191,26 @@ def matrix(scores, cls, figs):
     return out
 
 
+def pilot_layers(pilots) -> list[int]:
+    """The layers every pilot's cache holds. Caches from different models disagree."""
+    found = {npz: cached_layers(npz) for _, npz, _, _ in pilots}
+    if len({tuple(v) for v in found.values()}) != 1:
+        raise SystemExit(f"the pilots' caches hold different layers: {found}")
+    return next(iter(found.values()))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--pilot", nargs=4, action="append", required=True,
                     metavar=("NAME", "NPZ", "PREDICTIONS", "MANIFEST"))
-    ap.add_argument("--layers", nargs="*", type=int, default=list(range(N_LAYERS)))
+    ap.add_argument("--layers", nargs="*", type=int, default=None,
+                    help="default: every layer in the cache, read from its keys (Qwen 28, LLaVA-NeXT 32)")
     ap.add_argument("--l2", nargs="*", type=float, default=list(DEFAULT_L2))
     ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     ap.add_argument("--out", required=True, type=pathlib.Path)
     args = ap.parse_args()
+    if args.layers is None:
+        args.layers = pilot_layers(args.pilot)
 
     items = load_items(args.pilot)
     cls = np.array([it["cls"] for it in items])

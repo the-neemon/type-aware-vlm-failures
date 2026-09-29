@@ -46,11 +46,10 @@ import numpy as np
 
 from src.common.linear import auroc, cluster_bootstrap_ci, fit_logistic, predict_scores
 from src.probes.dataset import (POSITIONS, assert_no_figure_leak, assign_figure_splits,
-                                load_activations, load_predictions)
+                                cached_layers, load_activations, load_predictions)
 from src.synth import items as synth_items
 
 DEFAULT_L2 = (1.0, 10.0, 100.0, 1000.0, 10000.0)
-N_LAYERS = 28
 VISION = ("vision_mean", "vision_max")
 MIN_PER_CLASS = 5          # in each of val and test, or the contrast is skipped
 
@@ -187,11 +186,14 @@ def main():
     ap.add_argument("--predictions", required=True, type=pathlib.Path)
     ap.add_argument("--manifest", required=True, type=pathlib.Path)
     ap.add_argument("--positions", nargs="*", default=list(POSITIONS))
-    ap.add_argument("--layers", nargs="*", type=int, default=list(range(N_LAYERS)))
+    ap.add_argument("--layers", nargs="*", type=int, default=None,
+                    help="default: every layer in the cache, read from its keys (Qwen 28, LLaVA-NeXT 32)")
     ap.add_argument("--l2", nargs="*", type=float, default=list(DEFAULT_L2))
     ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     ap.add_argument("--out", required=True, type=pathlib.Path)
     args = ap.parse_args()
+    if args.layers is None:
+        args.layers = cached_layers(args.activations, args.positions[0])
 
     preds = rescore(load_predictions(args.predictions), args.manifest)
     _, item_ids, figure_ids = load_activations(args.activations, args.positions[0],

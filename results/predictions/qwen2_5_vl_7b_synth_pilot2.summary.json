@@ -1,0 +1,46 @@
+{
+  "passed": true,
+  "problems": [],
+  "cache": "/home2/shrish.kadam/activations/qwen2_5_vl_7b/synth_pilot2.npz",
+  "predictions": "/home2/shrish.kadam/anlp/project/type-aware-vlm-failures/results/predictions/qwen2_5_vl_7b_synth_pilot2.jsonl",
+  "relaxed_accuracy": {
+    "overall": 0.4822,
+    "answerable": 0.9578,
+    "absent_compare": 0.0,
+    "absent_neighbor": 0.0,
+    "absent_value": 0.02,
+    "compare_present": 1.0,
+    "neighbor_present": 0.98,
+    "read_value": 0.8933
+  },
+  "absent_outcomes": {
+    "absent_compare": {
+      "fabricated": 30,
+      "picked_present": 263,
+      "unclear": 7
+    },
+    "absent_neighbor": {
+      "fabricated": 300
+    },
+    "absent_value": {
+      "fabricated": 76,
+      "rejected": 6,
+      "zero": 218
+    }
+  },
+  "n_correct": 868,
+  "n_incorrect": 932,
+  "error_rate": 0.5178,
+  "vision_tokens": {
+    "min": 884,
+    "max": 884,
+    "mean": 884,
+    "median": 884.0,
+    "outside_measured_range": 1800,
+    "measured_range": [
+      180,
+      630
+    ]
+  },
+  "validated_at": "2026-09-27T12:16:46.319714+00:00"
+}
