@@ -15,7 +15,7 @@ def make_items(n):
     items = []
     for i in range(n):
         fig, q = f"fig_{i // 2}.png", f"question {i}"
-        items.append({"item_id": item_id(MODEL, fig, q), "figure_id": fig, "question": q})
+        items.append({"item_id": item_id(MODEL, fig, q, "human"), "figure_id": fig, "question": q})
     return items
 
 
@@ -33,7 +33,8 @@ def write(shard_dir, items, acts):
 def rows_for(items):
     return {it["item_id"]: {"item_id": it["item_id"], "model": MODEL, "figure_id": it["figure_id"],
                             "question": it["question"], "gold": "1", "prediction": "1",
-                            "correct": True, "split": "test", "source": "human"}
+                            "correct": True, "split": "test", "source": "human",
+                            "occurrence": 0, "n_vision_tokens": 580}
             for it in items}
 
 

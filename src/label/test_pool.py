@@ -198,5 +198,8 @@ def test_item_id_is_the_inf_md_scheme():
     # pinned: inference mints ids with this function, so any change to it
     # orphans every label and activation already written
     import hashlib
-    raw = "qwen2_5_vl_7b\x1ffig.png\x1fWhat is A?".encode()
+    raw = "qwen2_5_vl_7b\x1ffig.png\x1fWhat is A?\x1f0".encode()
     assert _iid("qwen2_5_vl_7b", "fig.png", "What is A?") == hashlib.sha1(raw).hexdigest()[:12]
+    raw = "qwen2_5_vl_7b\x1fhuman\x1ffig.png\x1fWhat is A?\x1f1".encode()
+    assert (_iid("qwen2_5_vl_7b", "fig.png", "What is A?", source="human", occurrence=1)
+            == hashlib.sha1(raw).hexdigest()[:12])
