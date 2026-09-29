@@ -42,10 +42,12 @@ run; **labelling** = people's time. Results so far: `paper/mid/main.pdf`,
 
 ## Cheap experiments that would strengthen the paper (CPU, existing caches)
 
-- [ ] **Synthetic -> ChartQA transfer.** Train the misread and missing-bar
+- [x] **Synthetic -> ChartQA transfer.** Train the misread and missing-bar
       probes on synthetic charts, apply them to real ChartQA items. Does the
       synthetic misread probe flag Naman's 71 structural errors? The strongest
       test that the synthetic findings mean anything for real charts.
+      Code done (`python -m src.probes.run_transfer transfer`); results pending
+      a run on the cluster once maintenance ends.
 - [ ] **Computation as a third class.** Largest class of real errors (93 of
       Qwen's 317). Can a probe tell computation errors from misreads?
 - [ ] **Use val_human** (960 Qwen questions, 193 errors, no chart shared with
