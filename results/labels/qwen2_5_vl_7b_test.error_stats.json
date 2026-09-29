@@ -1,0 +1,165 @@
+{
+  "items": 2500,
+  "errors": 317,
+  "by_source": {
+    "augmented": {
+      "items": 1250,
+      "errors": 65,
+      "error_rate": 0.052,
+      "labels": {
+        "not_an_error": 24,
+        "structural": 19,
+        "ambiguous": 16,
+        "computation": 6
+      },
+      "real_errors": 25,
+      "gold_wrong": 18
+    },
+    "human": {
+      "items": 1250,
+      "errors": 252,
+      "error_rate": 0.2016,
+      "labels": {
+        "not_an_error": 88,
+        "computation": 87,
+        "structural": 52,
+        "ambiguous": 24,
+        "fabrication": 1
+      },
+      "real_errors": 140,
+      "gold_wrong": 16
+    }
+  },
+  "reasons": {
+    "not_an_error": {
+      "format_equivalent": 51,
+      "valid_reading": 38,
+      "gold_error": 23
+    },
+    "structural": {
+      "null": 71
+    },
+    "computation": {
+      "null": 93
+    },
+    "ambiguous": {
+      "question_ambiguous": 14,
+      "other": 12,
+      "gold_error": 11,
+      "unreadable": 3
+    },
+    "fabrication": {
+      "null": 1
+    }
+  },
+  "gold_wrong": 34,
+  "rescaled": {
+    "count": 16,
+    "labels": {
+      "not_an_error/format_equivalent": 16
+    },
+    "items": [
+      {
+        "item_id": "ea37afbcc045",
+        "gold": "0.03",
+        "prediction": "3",
+        "source": "human"
+      },
+      {
+        "item_id": "03367d65f8d6",
+        "gold": "95",
+        "prediction": "0.95",
+        "source": "human"
+      },
+      {
+        "item_id": "10c0c0d19416",
+        "gold": "0.6",
+        "prediction": "60",
+        "source": "human"
+      },
+      {
+        "item_id": "1321029e693f",
+        "gold": "0.07",
+        "prediction": "7",
+        "source": "human"
+      },
+      {
+        "item_id": "3847a2433cfa",
+        "gold": "5.32",
+        "prediction": "0.0532",
+        "source": "human"
+      },
+      {
+        "item_id": "39012847cd8d",
+        "gold": "41.935",
+        "prediction": "0.41935",
+        "source": "human"
+      },
+      {
+        "item_id": "474152e39d18",
+        "gold": "96.4",
+        "prediction": "0.964",
+        "source": "human"
+      },
+      {
+        "item_id": "52b370f60874",
+        "gold": "3.0238",
+        "prediction": "302.38",
+        "source": "human"
+      },
+      {
+        "item_id": "5463485c506f",
+        "gold": "40.7",
+        "prediction": "0.407",
+        "source": "human"
+      },
+      {
+        "item_id": "7ae086f24834",
+        "gold": "47.6",
+        "prediction": "0.48",
+        "source": "human"
+      },
+      {
+        "item_id": "a559b5968b19",
+        "gold": "9.1",
+        "prediction": "0.091",
+        "source": "human"
+      },
+      {
+        "item_id": "b85d0799f41e",
+        "gold": "51.33",
+        "prediction": "0.5133",
+        "source": "human"
+      },
+      {
+        "item_id": "c4c3b328da55",
+        "gold": "22.675",
+        "prediction": "0.22675",
+        "source": "human"
+      },
+      {
+        "item_id": "c87277114702",
+        "gold": "43",
+        "prediction": "0.43",
+        "source": "human"
+      },
+      {
+        "item_id": "e43daa8f004c",
+        "gold": "67",
+        "prediction": "0.67",
+        "source": "human"
+      },
+      {
+        "item_id": "fce0b34ecdff",
+        "gold": "6.85",
+        "prediction": "0.0685",
+        "source": "human"
+      }
+    ]
+  },
+  "accuracy": {
+    "relaxed": 0.8732,
+    "rescaled_counted_correct": 0.8796,
+    "not_an_error_counted_correct": 0.918
+  }
+}
