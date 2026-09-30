@@ -65,7 +65,7 @@ is and where the model's answer comes from, with the actual values.
 
 | reason | when | examples |
 | --- | --- | --- |
-| `question_ambiguous` | The question has no single correct answer from this chart (names no group or year where the chart splits them, garbled, offers only wrong options), and the model's answer does not match a valid reading either. | "Male smokers in England in 2019" with only age groups shown; "does the line increase or decrease" for a flat line; a three-way ratio asked for as one number. |
+| `question_ambiguous` | The question has no single correct answer from this chart (names no group or year where the chart splits them, garbled, offers only wrong options), and the model's answer does not match a valid reading either. If it does match one, it is `valid_reading` (final ruling 6). | "Does the line increase or decrease" for a flat line; a three-way ratio asked for as one number; "male smokers in England in 2019" with only age groups shown, when the answer fits no age group. |
 | `gold_error` | The gold is wrong **and** the model is wrong too. | Gold ratio 1.058 matches no pair of bars (50/48 = 1.042); model 0.25 matches none either. |
 | `unreadable` | The needed value cannot be read at the chart's resolution. | An unlabelled point on a flat line on a -100% to 700% axis; two near-identical teal shades when counting colours. |
 | `other` | Anything else outside the taxonomy: misread vs arithmetic slip cannot be told apart; the answer needs outside knowledge or data the chart lacks (relative incidence from absolute counts); the answer is incomplete, e.g. one of two correct years. | Model 0.01 for gold 0 traces to no printed value; "which country was a party to the Treaty of Versailles". |
