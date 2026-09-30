@@ -111,6 +111,13 @@ Every input is printed or clearly readable, and the operation is wrong.
 A computed answer that matches no combination of printed values is still
 `computation`, not `fabrication`: the model attempted the operation.
 
+**Trace the model's number before choosing between `structural` and
+`computation`.** Try the asked operation on the neighbouring marks, the other
+series and the adjacent years. If the answer is the right operation on the wrong
+marks, it is `structural`. Example: the shortest grey (16.92) and light-blue
+(14.58) bars average 15.75; the model's 14.72 is (14.67 + 14.77) / 2, two blue
+bars, so the grey series was misidentified.
+
 ## Boundaries
 
 | Case | Label |
@@ -123,14 +130,27 @@ A computed answer that matches no combination of printed values is still
 | "Which is largest" among **printed** values, wrong | `computation` |
 | Misread input then used in arithmetic (the misread explains the answer) | `structural` |
 | Right inputs, wrong arithmetic | `computation` |
-| Lookup answer that matches nothing on the chart | `fabrication` |
+| Lookup answer that matches nothing, where the needed values are **printed** | `fabrication` |
+| Wrong estimate of an **unlabelled** mark, however far off | `structural` |
 | Computed answer that matches no combination | `computation` |
+| Right operation applied to the wrong marks or series | `structural` |
+| Partly right: one of two correct items, or the correct item plus a wrong extra | `ambiguous` / `other` |
 | Cannot tell a misread from an arithmetic slip | `ambiguous` / `other` |
+| All inputs clearly printed and the arithmetic result is off | `computation` |
+
+The rows on printed vs unlabelled marks, wrong marks, partly right answers and
+clearly printed arithmetic were made explicit on 30 Sep, after a 50-item blind
+calibration against the Qwen labels (47/50 agreement, kappa 0.917). Each states
+a rule those labels already applied; the three disagreements are in
+`results/labels/calibration/README.md`.
 
 ## `fabrication`: content the figure does not support
 
 The model states a value, label or category for a lookup question that appears
-nowhere in the figure and follows from no reading of it. Example: slices are 35,
+nowhere in the figure and follows from no reading of it. Only when the values
+the question needs are printed: a bad estimate of an unlabelled bar or segment
+is `structural` even when far off (an unlabelled segment of about 76, the model
+says 37.5). Example: slices are 35,
 40, 13 and 11, "important" is 35 + 40 = 75, and the model says 55, which is no
 slice and no sum of slices. Rare on ChartQA (1 of Qwen's 317), because ChartQA
 questions are about what the chart shows.
