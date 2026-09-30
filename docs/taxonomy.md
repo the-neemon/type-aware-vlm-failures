@@ -133,7 +133,7 @@ bars, so the grey series was misidentified.
 | Right inputs, wrong arithmetic | `computation` |
 | Lookup answer that matches nothing, where the needed values are **printed** | `fabrication` |
 | Wrong estimate of an **unlabelled** mark, however far off | `structural` |
-| Lookup answer that is a **garbled printed value**: digits dropped, added, changed or reordered, or the decimal shifted, of the asked mark or a neighbouring one (486 for 4 863; 2.5 for 25.9; 45 307 for 45 707; 32 459.6 for 35 294.6) | `structural` |
+| Lookup answer that is a **garbled printed value**: digits dropped, added, changed or reordered, or the decimal shifted, of any printed value on the chart (486 for 4 863; 2.5 for 25.9; 45 307 for 45 707; 32 459.6 for 35 294.6; final ruling 1) | `structural` |
 | Computation question answered with a printed value, exact or garbled, instead of the operation (the 2016 level for the 2015-2016 increase; 147, a garbled 1 417, for 1 417 - 827) | `computation` |
 | Lookup answer within about 5% of a **neighbouring** mark's printed value (adjacent bar or year, other series in the same group) | `structural` |
 | Lookup answer related in neither way to any printed value | `fabrication` |
@@ -143,6 +143,38 @@ bars, so the grey series was misidentified.
 | Partly right: one of two correct items, or the correct item plus a wrong extra | `ambiguous` / `other` |
 | Cannot tell a misread from an arithmetic slip | `ambiguous` / `other` |
 | All inputs clearly printed and the arithmetic result is off | `computation` |
+
+### Final rulings (1 Oct, after labelling LLaVA; apply everywhere)
+
+These settle the questions the LLaVA labellers raised repeatedly. Each follows
+a Qwen precedent or the rules above.
+
+1. **Traceable to one printed value anywhere → `structural`.** A lookup answer
+   that is exactly some printed value on the chart, or that value garbled by
+   the edits listed above (digits dropped, added, changed or reordered; decimal
+   shifted), is a wrong-mark read, however far the mark is from the asked one.
+   The "within about 5%" allowance applies to neighbouring marks only.
+   `fabrication` is left for answers that trace to no single printed value.
+2. **Rounding** (`format_equivalent`): the answer equals the correct value
+   rounded to the answer's own precision (after a 100x or 0.01x rescale, if
+   that is the form), and is within 10% of it. 0.2 for 0.19 and 0.05 for 0.054
+   qualify; 5 for 7.4 does not.
+3. **Colour words**: a colour name is `format_equivalent` when it names the hue
+   family of the asked mark and no other series on the chart fits that name
+   better ("Blue" for the only blue family; "Dark blue" for navy). When the
+   chart has a separate series that the name fits better (a plain blue series
+   beside the asked navy one), it is a wrong series, `structural`.
+4. **Partly right, including numeric pairs**: an answer with several parts of
+   which some are right and some wrong is `ambiguous` / `other` (one of two
+   modes; [2009, 2010] for [2003, 2009] is `not_an_error` only if both are
+   defensible, as Qwen's was).
+5. **A wrong gold answer is a property of the question.** If the gold is
+   judged wrong for one model, the same judgement holds for every model on that
+   question: the other model's label is then `not_an_error` / `gold_error` if its
+   answer is right, otherwise `ambiguous` / `gold_error`.
+6. **A question that fixes no year, group or series**: a value that answers it
+   for one of the options shown is `not_an_error` / `valid_reading` (any year,
+   not only the latest), as in the Qwen labels.
 
 The rows on printed vs unlabelled marks, wrong marks, partly right answers and
 clearly printed arithmetic were made explicit on 30 Sep, after a 50-item blind
