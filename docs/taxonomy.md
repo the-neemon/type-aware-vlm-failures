@@ -155,6 +155,11 @@ a Qwen precedent or the rules above.
    shifted), is a wrong-mark read, however far the mark is from the asked one.
    The "within about 5%" allowance applies to neighbouring marks only.
    `fabrication` is left for answers that trace to no single printed value.
+   **Short answers** (one or two digits): a single edit links almost any small
+   number to some printed value, so for these a garble counts only when it is
+   of the asked mark or a neighbouring one; an exact match to a printed value
+   anywhere still counts. "1" for a lowest value of 7 among 20, 61, 12, 7 is
+   `fabrication`; "1" for a bar printed 12 that is the asked bar is `structural`.
 2. **Rounding** (`format_equivalent`): the answer equals the correct value
    rounded to the answer's own precision (after a 100x or 0.01x rescale, if
    that is the form), and is within 10% of it. 0.2 for 0.19 and 0.05 for 0.054
