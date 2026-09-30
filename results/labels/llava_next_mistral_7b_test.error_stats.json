@@ -1,0 +1,132 @@
+{
+  "items": 2500,
+  "errors": 1178,
+  "by_source": {
+    "augmented": {
+      "items": 1250,
+      "errors": 486,
+      "error_rate": 0.3888,
+      "labels": {
+        "structural": 391,
+        "ambiguous": 30,
+        "not_an_error": 28,
+        "computation": 26,
+        "fabrication": 11
+      },
+      "real_errors": 428,
+      "gold_wrong": 22
+    },
+    "human": {
+      "items": 1250,
+      "errors": 692,
+      "error_rate": 0.5536,
+      "labels": {
+        "computation": 409,
+        "structural": 192,
+        "ambiguous": 44,
+        "not_an_error": 41,
+        "fabrication": 6
+      },
+      "real_errors": 607,
+      "gold_wrong": 22
+    }
+  },
+  "reasons": {
+    "structural": {
+      "null": 583
+    },
+    "computation": {
+      "null": 435
+    },
+    "ambiguous": {
+      "gold_error": 34,
+      "question_ambiguous": 24,
+      "other": 15,
+      "unreadable": 1
+    },
+    "not_an_error": {
+      "format_equivalent": 39,
+      "valid_reading": 20,
+      "gold_error": 10
+    },
+    "fabrication": {
+      "null": 17
+    }
+  },
+  "gold_wrong": 44,
+  "rescaled": {
+    "count": 10,
+    "labels": {
+      "structural/None": 7,
+      "not_an_error/format_equivalent": 2,
+      "computation/None": 1
+    },
+    "items": [
+      {
+        "item_id": "a809a2abfb38",
+        "gold": "10085207",
+        "prediction": "105270",
+        "source": "augmented"
+      },
+      {
+        "item_id": "3e87778d164e",
+        "gold": "2287881",
+        "prediction": "22881",
+        "source": "augmented"
+      },
+      {
+        "item_id": "7d583117c46b",
+        "gold": "4709852",
+        "prediction": "47982",
+        "source": "augmented"
+      },
+      {
+        "item_id": "0904b13a3603",
+        "gold": "82936017",
+        "prediction": "827017",
+        "source": "augmented"
+      },
+      {
+        "item_id": "9eeaa18d406f",
+        "gold": "8.87",
+        "prediction": "0.087",
+        "source": "human"
+      },
+      {
+        "item_id": "5d04256cced3",
+        "gold": "16",
+        "prediction": "0.16",
+        "source": "human"
+      },
+      {
+        "item_id": "119e87098a2c",
+        "gold": "8",
+        "prediction": "0.08",
+        "source": "human"
+      },
+      {
+        "item_id": "9c19353d1aef",
+        "gold": "3.0238",
+        "prediction": "302.83",
+        "source": "human"
+      },
+      {
+        "item_id": "5b99821a6ac4",
+        "gold": "187863.67",
+        "prediction": "1964",
+        "source": "human"
+      },
+      {
+        "item_id": "603ec200691e",
+        "gold": "4431.94",
+        "prediction": "434994",
+        "source": "augmented"
+      }
+    ]
+  },
+  "accuracy": {
+    "relaxed": 0.5288,
+    "rescaled_counted_correct": 0.5328,
+    "not_an_error_counted_correct": 0.5564
+  }
+}
