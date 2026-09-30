@@ -123,63 +123,72 @@ Relaxed accuracy (\%), numeric within 5\% of gold.\\
 Qwen is wrong on \textbf{317} questions, LLaVA on \textbf{1,178}.
 \end{frame}
 
-\begin{frame}{What Qwen's 317 errors actually are}
+\begin{frame}{What the errors actually are}
 \begin{columns}[T]
 \column{0.46\textwidth}
-\begin{tabular}{lr}
+\begin{tabular}{lrrrr}
 \toprule
-Label & $n$ \\
+ & \multicolumn{2}{c}{Qwen} & \multicolumn{2}{c}{LLaVA} \\
+Label & $n$ & \% & $n$ & \% \\
 \midrule
-\cls{not\_an\_error} & 112 \\
-\cls{computation} & 93 \\
-\cls{structural} & 71 \\
-\cls{ambiguous} & 40 \\
-\cls{fabrication} & \hl{1} \\
+\cls{structural} & 71 & 22 & 583 & 49 \\
+\cls{computation} & 93 & 29 & 435 & 37 \\
+\cls{not\_an\_error} & 112 & 35 & 69 & 6 \\
+\cls{ambiguous} & 40 & 13 & 74 & 6 \\
+\cls{fabrication} & \hl{1} & 0.3 & \hl{17} & 1.4 \\
+\midrule
+errors & 317 & & 1,178 & \\
 \bottomrule
 \end{tabular}
 \vspace{0.5em}
 
-\footnotesize Labelled by an LLM annotator (Claude Opus 5.5) that saw only
-image, question, gold and answer, following a written rubric. Human
-agreement check not yet run.
+\footnotesize Same LLM annotator (Claude Opus 5.5) for both models: saw only
+image, question, gold and answer. Blind re-label of 50 Qwen errors:
+$\kappa=0.917$. Human agreement check not yet run.
 \column{0.52\textwidth}
+\small
 \begin{itemize}
-\item \hl{Fabrication is essentially absent} from ChartQA: questions are
-written about content the chart contains
-\item \hl{35\% are not errors}: equivalent format, wrong gold, or a valid
-reading of the question
-\item \cls{computation} (inputs read right, arithmetic wrong) is the
-\hl{largest real class}; the proposal's two-class taxonomy had no slot for it
+\item \hl{Fabrication is essentially absent} for both models (1 and 17), even
+though LLaVA errs 4$\times$ as often: questions are written about content the
+chart contains
+\item \hl{35\% of Qwen's ``errors'' are not errors}, but only 6\% of LLaVA's: a
+strong model's leftover errors are mostly scoring artefacts
+\item LLaVA's largest class is \cls{structural}: garbled printed values
+(486 for 4,863), adjacent bars, gridline snapping
+\item \cls{computation} is large for both; the proposal's two-class taxonomy
+had no slot for it
 \end{itemize}
 $\Rightarrow$ ChartQA cannot supply fabrication examples. This is why the
 synthetic arm exists.
 \end{columns}
 \end{frame}
 
-\begin{frame}{Label noise in ChartQA itself}
-\begin{columns}[T]
-\column{0.5\textwidth}
-\begin{tabular}{lcc}
+\begin{frame}{Label noise, and where each model's errors come from}
+\centering
+\small
+\begin{tabular}{lcc|cc}
 \toprule
-& Human & Augmented \\
+ & \multicolumn{2}{c|}{Qwen} & \multicolumn{2}{c}{LLaVA} \\
+ & Human & Augm. & Human & Augm. \\
 \midrule
-Questions & 1250 & 1250 \\
-Scored wrong & 252 & 65 \\
-Real errors & 140 & 25 \\
-Gold answer wrong & 16 & \hl{18} \\
+Questions & 1,250 & 1,250 & 1,250 & 1,250 \\
+Scored wrong & 252 & 65 & 692 & 486 \\
+Real errors & 140 & 25 & 607 & 428 \\
+\quad \cls{structural} & 52 & 19 & 192 & \hl{391} \\
+\quad \cls{computation} & 87 & 6 & \hl{409} & 26 \\
+Gold answer wrong & 16 & \hl{18} & 22 & 22 \\
 \bottomrule
 \end{tabular}
-\column{0.48\textwidth}
+\vspace{0.6em}
+\raggedright
 \begin{itemize}
-\item 34 of 317 gold answers are wrong; on augmented questions that is
-28\% of the ``errors''
-\item 16 answers are the right number on the other scale (0.43 for a gold of
-43): the metric scores them wrong
-\item Counting those as correct: 87.3\% $\to$ 88.0\%; counting all
-\cls{not\_an\_error}: 91.8\%
+\item Gold answers wrong: 34 (Qwen) and 44 (LLaVA); on Qwen's augmented
+questions that is 28\% of the ``errors''
+\item Counting \cls{not\_an\_error} as correct: Qwen 87.3\% $\to$ 91.8\%,
+LLaVA 52.9\% $\to$ 55.6\%
+\item LLaVA's error type follows the question source: arithmetic on
+human-written questions, misreads on augmented ones
 \end{itemize}
-\end{columns}
-\vspace{0.8em}
 Every probe trained on relaxed-accuracy labels inherits this noise.
 \end{frame}
 
@@ -368,7 +377,8 @@ gridline) predicts its misreads at 0.852, above the probe
 \item On synthetic data, ``fabrication'' and ``missing category'' coincide
 \item Qwen has only 46 synthetic misreads; the ChartQA structural probe has 13
 test positives and no surface baseline yet
-\item Labels are from one LLM annotator, human $\kappa$ check pending
+\item Labels are from one LLM annotator (blind self-agreement $\kappa=0.917$),
+human $\kappa$ check pending
 \end{itemize}
 \end{frame}
 
@@ -376,25 +386,24 @@ test positives and no surface baseline yet
 \begin{columns}[T]
 \column{0.48\textwidth}
 \textbf{Done}
-\begin{itemize}\small
-\item Inference and full-depth caches: both models, ChartQA test, val\_human
-(Qwen), both pilots
-\item 317 Qwen error labels
+\begin{itemize}\footnotesize
+\item Full-depth caches: both models, ChartQA test, both pilots; val\_human
+(Qwen)
+\item Error labels for both models (317 Qwen, 1,178 LLaVA)
 \item E1 both models; E3 both models
 \end{itemize}
-\textbf{Coded, waiting for the cluster}\\
-{\small (maintenance; the activation caches live there)}
-\begin{itemize}\small
-\item Synthetic $\to$ ChartQA transfer: does the synthetic misread probe flag the
-71 real misreads?
-\item \cls{computation} as a third class vs.\ misreads
+\textbf{Coded, waiting for the cluster} {\footnotesize (caches live there)}
+\begin{itemize}\footnotesize
+\item Synthetic $\to$ ChartQA transfer of the misread probe
+\item LLaVA ChartQA type probes: misread, arithmetic, misread vs.\ arithmetic
+(583 / 435 errors)
 \item E4 intervention matrix
 \end{itemize}
 \column{0.5\textwidth}
 \textbf{Timeline}
 \begin{itemize}\small
-\item \textbf{Oct 1--8}: human $\kappa$ on 200 items; LLaVA's 1,178 error
-labels; residualised probes (E2)
+\item \textbf{Oct 1--8}: human $\kappa$ on 200 items (both models);
+residualised probes (E2)
 \item \textbf{Oct 1--15}: E4 repairs (crop, verify prompt, abstain) on
 synthetic items, both models
 \item \textbf{Oct 16--25}: E5 controller; risk--coverage vs.\ binary selective
@@ -413,7 +422,8 @@ fabrication is not identical to absence?
 hypothesis, given it is the largest real error class?
 \item \textbf{Annotation.} Is an LLM annotator acceptable if it passes a
 two-person human agreement check ($\kappa > 0.6$ on 200 items)?
-\item \textbf{Label noise.} Should the 112 \cls{not\_an\_error} items be
+\item \textbf{Label noise.} Should the \cls{not\_an\_error} items (Qwen 112,
+LLaVA 69) be
 re-scored as correct in every experiment, or reported both ways?
 \item \textbf{Scope of E4/E5.} Is running the repairs on synthetic charts only
 (where bar geometry is known) enough, or do we need ChartQA repairs too?

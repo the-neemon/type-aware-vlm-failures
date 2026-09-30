@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.4.30)  29 SEP 2026 03:08
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.4.30)  1 OCT 2026 02:53
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -585,9 +585,6 @@ Package microtype Info: Loading generic protrusion settings for font family
 (microtype)             `zi4' (encoding: T1).
 (microtype)             For optimal results, create family-specific settings.
 (microtype)             See the microtype manual for details.
-
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
  [1{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}{/usr/share/texlive/texmf
 -dist/fonts/enc/dvips/base/8r.enc}{/usr/share/texlive/texmf-dist/fonts/enc/dvip
 s/inconsolata/i4-t1-0.enc}
@@ -595,54 +592,40 @@ s/inconsolata/i4-t1-0.enc}
 
 
 ]
-Underfull \hbox (badness 5302) in paragraph at lines 160--167
+Underfull \hbox (badness 5302) in paragraph at lines 161--168
 \T1/ptm/b/n/10.95 (+20) Type Sep-a-ra-bil-ity Hy-poth-e-sis. \T1/ptm/m/n/10.95 
 (+20) The pre-
  []
 
 [2]
 LaTeX Font Info:    Font shape `T1/zi4/m/n' will be
-(Font)              scaled to size 10.95pt on input line 173.
+(Font)              scaled to size 10.95pt on input line 174.
  [3]
-Underfull \hbox (badness 2359) in paragraph at lines 273--274
-[]\T1/ptm/m/n/9 (+20) 14 ques-tion, 11 wrong
- []
-
-LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 2
-94.
-(/usr/share/texlive/texmf-dist/tex/latex/psnfss/ts1ptm.fd
+LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 3
+17.
+ (/usr/share/texlive/texmf-dist/tex/latex/psnfss/ts1ptm.fd
 File: ts1ptm.fd 2001/06/04 font definitions for TS1/ptm.
-)
-Overfull \hbox (9.43033pt too wide) in paragraph at lines 325--339
- [][] 
- []
-
-[4]
-<figures/binary_by_layer.pdf, id=186, 227.6505pt x 158.99399pt>
+) [4]
+<figures/binary_by_layer.pdf, id=185, 227.6505pt x 158.99399pt>
 File: figures/binary_by_layer.pdf Graphic file (type pdf)
 <use figures/binary_by_layer.pdf>
-Package pdftex.def Info: figures/binary_by_layer.pdf  used on input line 369.
+Package pdftex.def Info: figures/binary_by_layer.pdf  used on input line 393.
 (pdftex.def)             Requested size: 219.08614pt x 153.01822pt.
-
-Overfull \hbox (5.01555pt too wide) in paragraph at lines 424--441
- [][] 
- []
-
-[5 <./figures/binary_by_layer.pdf>]
-<figures/type_probes_by_layer.pdf, id=250, 227.6505pt x 155.38051pt>
+ [5 <./figures/binary_by_layer.pdf>] [6]
+<figures/type_probes_by_layer.pdf, id=256, 227.6505pt x 155.38051pt>
 File: figures/type_probes_by_layer.pdf Graphic file (type pdf)
 <use figures/type_probes_by_layer.pdf>
 Package pdftex.def Info: figures/type_probes_by_layer.pdf  used on input line 5
-56.
+81.
 (pdftex.def)             Requested size: 219.08614pt x 149.54054pt.
 
-Underfull \hbox (badness 1648) in paragraph at lines 565--573
+Underfull \hbox (badness 1648) in paragraph at lines 590--598
  []\T1/ptm/b/n/10.95 (+20) Is the hy-poth-e-sis sup-ported?[] \T1/ptm/m/n/10.95
  (+20) Partly. For
  []
 
-[6] [7 <./figures/type_probes_by_layer.pdf>]
-Underfull \hbox (badness 1521) in paragraph at lines 622--625
+[7 <./figures/type_probes_by_layer.pdf>]
+Underfull \hbox (badness 1521) in paragraph at lines 653--656
 []\T1/ptm/b/n/10.95 (+20) Oct 1--15: \T1/ptm/m/n/10.95 (+20) E4 cross-intervent
 ion ma-trix
  []
@@ -662,22 +645,24 @@ Underfull \hbox (badness 2941) in paragraph at lines 50--55
 \T1/ptm/m/n/10 (+20) Zhaolu Kang, Guangyuan Dong, Qishi Zhan,
  []
 
-) [8] (./main.aux)
+[8]) [9
+
+] (./main.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
  ***********
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: 81677DEF9FC4A6AC343C64FA772DD903;4265.
+(rerunfilecheck)             Checksum: 3EF0651D137CC2402547D75F801584D6;4250.
  ) 
 Here is how much of TeX's memory you used:
- 15706 strings out of 476106
- 246615 string characters out of 5793933
+ 15733 strings out of 476106
+ 246858 string characters out of 5793933
  1948975 words of memory out of 5000000
  37012 multiletter control sequences out of 15000+600000
- 646664 words of font info for 365 fonts, out of 8000000 for 9000
+ 648228 words of font info for 385 fonts, out of 8000000 for 9000
  59 hyphenation exceptions out of 8191
- 90i,10n,93p,1001b,524s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 90i,10n,93p,1001b,600s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texlive/texmf-dist/fonts/type1/public/inconsolata/Inconsolata-zi4
 r.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb>
 </usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/s
@@ -689,10 +674,10 @@ s/type1/public/amsfonts/cm/cmsy8.pfb></usr/share/texlive/texmf-dist/fonts/type1
 /public/amsfonts/symbols/msbm10.pfb></usr/share/texlive/texmf-dist/fonts/type1/
 urw/times/utmb8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmr8
 a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on main.pdf (8 pages, 217713 bytes).
+Output written on main.pdf (9 pages, 220204 bytes).
 PDF statistics:
- 398 PDF objects out of 1000 (max. 8388607)
- 267 compressed objects within 3 object streams
- 66 named destinations out of 1000 (max. 500000)
+ 403 PDF objects out of 1000 (max. 8388607)
+ 271 compressed objects within 3 object streams
+ 67 named destinations out of 1000 (max. 500000)
  74963 words of extra memory for PDF output out of 89155 (max. 10000000)
 

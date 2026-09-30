@@ -35,9 +35,10 @@ ran \qwen and \llava over the 2,500 ChartQA test questions and cached pooled
 activations at every decoder layer from the same forward pass that produced each
 answer. A linear probe on the last prompt token predicts whether the answer
 will be wrong with test AUROC 0.932 for Qwen (0.786 for a surface-feature
-baseline) and 0.798 for LLaVA (0.608). Labelling Qwen's 317 errors showed that
-fabrication is essentially absent from ChartQA (1 of 317), and that 35\% of the
-scored errors are not errors at all. We therefore built a synthetic bar-chart
+baseline) and 0.798 for LLaVA (0.608). Labelling every error of both models
+showed that fabrication is essentially absent from ChartQA (1 of Qwen's 317
+errors, 17 of LLaVA's 1,178), and that 35\% of Qwen's scored errors are not
+errors at all. We therefore built a synthetic bar-chart
 arm that asks about categories absent from the chart. Both models almost never
 refuse such questions (15 refusals in 1,200 for Qwen, 0 for LLaVA), yet both
 represent that the asked category is missing (probe AUROC 0.96 to 1.00, with
@@ -246,7 +247,7 @@ Model & Overall & Human & Augmented \\
 \label{tab:acc}
 \end{table}
 
-\subsection{Labelling Qwen's errors}
+\subsection{Labelling the errors}
 The proposal planned two classes plus \cls{ambiguous}. A pilot of 20 errors
 showed that this forced many items into \cls{ambiguous} for reasons unrelated to
 the model, so the team adopted five labels: \cls{structural} (the answer is
@@ -256,40 +257,62 @@ support), \cls{computation} (inputs read correctly, arithmetic or logic wrong),
 \cls{not\_an\_error} (the answer is actually right: an equivalent format, a
 wrong gold answer, or a valid reading of an ambiguous question) and
 \cls{ambiguous}. Only \cls{structural} and \cls{fabrication} train type probes.
-All 317 errors were labelled by an LLM annotator (Claude) that saw only the
-chart image, question, gold answer and model answer, following the written
-rubric; the planned two-person human agreement check ($\kappa>0.6$ on 200 items)
-has not yet been run.
+All 317 Qwen errors and all 1,178 LLaVA errors were labelled by the same LLM
+annotator (Claude), which saw only the chart image, question, gold answer and
+model answer, never the model's identity, following the written rubric. Two
+checks bound its consistency: before labelling LLaVA it re-labelled 50 random
+Qwen errors blind and agreed on 47 (Cohen's $\kappa=0.917$), and LLaVA batches
+labelled before the rubric was final were re-labelled blind, changing 55 of
+1,178 labels. On the 48 questions where both models gave the identical wrong
+answer, the two models' labels agree on 45. The planned two-person human
+agreement check ($\kappa>0.6$ on 200 items) has not yet been run.
 
 \begin{table}[t]
-\centering\small
-\begin{tabular}{lrp{3.3cm}}
+\centering\small\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrr}
 \toprule
-Label & $n$ & Breakdown \\
+ & \multicolumn{2}{c}{\qwen} & \multicolumn{2}{c}{\llava} \\
+Label & $n$ & \% & $n$ & \% \\
 \midrule
-\cls{not\_an\_error} & 112 & 51 format, 38 valid reading, 23 wrong gold \\
-\cls{computation} & 93 & \\
-\cls{structural} & 71 & \\
-\cls{ambiguous} & 40 & 14 question, 11 wrong gold, 12 other, 3 unreadable \\
-\cls{fabrication} & 1 & \\
+\cls{structural} & 71 & 22 & 583 & 49 \\
+\cls{computation} & 93 & 29 & 435 & 37 \\
+\cls{not\_an\_error} & 112 & 35 & 69 & 6 \\
+\cls{ambiguous} & 40 & 13 & 74 & 6 \\
+\cls{fabrication} & 1 & 0.3 & 17 & 1.4 \\
+\midrule
+errors & 317 & & 1,178 & \\
 \bottomrule
 \end{tabular}
-\caption{Labels for Qwen's 317 ChartQA test errors.}
+\caption{Labels for each model's ChartQA test errors. \cls{not\_an\_error}:
+Qwen 51 equivalent format, 38 valid reading, 23 wrong gold; LLaVA 39, 20, 10.
+\cls{ambiguous}: Qwen 14 ambiguous question, 11 wrong gold (model also wrong),
+12 other, 3 unreadable; LLaVA 24, 34, 15, 1.}
 \label{tab:labels}
 \end{table}
 
-Table~\ref{tab:labels} gives two findings. First, \textbf{fabrication is
-essentially absent} from Qwen's ChartQA errors: one item in 317. ChartQA
-questions are written about content the chart contains, so a capable model
-rarely has occasion to invent content; its errors are misreads and arithmetic.
-The naturalistic arm therefore cannot supply fabrication examples, which is the
-risk the synthetic arm was planned for. Second, \textbf{35\% of the scored
-errors are not errors}: most often the answer is correct in another format
+Table~\ref{tab:labels} gives three findings. First, \textbf{fabrication is
+essentially absent from ChartQA for both models}: 1 of Qwen's 317 errors and 17
+of LLaVA's 1,178, although LLaVA errs almost four times as often. ChartQA
+questions are written about content the chart contains, so a model rarely has
+occasion to invent content; its errors are misreads and arithmetic. Most of
+LLaVA's apparently invented numbers turned out to be garbled printed values
+(486 for a printed 4,863), which are misreads. The naturalistic arm therefore
+cannot supply fabrication examples, which is the risk the synthetic arm was
+planned for. Second, \textbf{35\% of Qwen's scored errors are not errors}
+against 6\% of LLaVA's: most often the answer is correct in another format
 (``1:2'' for 0.5), the gold answer is wrong, or the question admits the model's
-reading. This matters for every probe trained on relaxed-accuracy labels.
+reading. A strong model's residual errors are dominated by scoring artefacts;
+34 of Qwen's and 44 of LLaVA's gold answers are wrong. Counting
+\cls{not\_an\_error} answers as correct raises accuracy from 87.3\% to 91.8\%
+(Qwen) and from 52.9\% to 55.6\% (LLaVA). Third, \textbf{the models fail
+differently}: LLaVA's largest class is \cls{structural} (49\%: garbled printed
+values, adjacent bars, gridline snapping such as 10,000 for a printed 11,767),
+and its error type depends on the question source: 409 of its 692 errors on
+human-written questions are \cls{computation}, while 391 of its 486 errors on
+augmented questions are \cls{structural}.
 
-\paragraph{What the error types look like.} Examples from the labels, with the
-annotator's rationale paraphrased:
+\paragraph{What the error types look like.} Examples from Qwen's labels, with
+the annotator's rationale paraphrased:
 \begin{itemize}\itemsep0pt
 \item \cls{structural} (71, 22\%): a pie chart with seven labelled sectors
 counted as six; the adjacent 2017 bar reported instead of the asked 2018 bar;
@@ -584,7 +607,10 @@ help and abstention is the right repair.
 \paragraph{How the models differ.} Qwen is accurate (87\% on ChartQA, 92\% on
 synthetic reads), rarely invents numbers, and when it does it binds the missing
 name to a lookalike bar. LLaVA is less accurate (53\% and 31\%), reads coarsely
-to gridlines, and invents numbers four times as often. Qwen forms the
+to gridlines, and invents numbers four times as often on synthetic charts. On
+ChartQA, half of LLaVA's errors are misreads and a third arithmetic, while a
+third of Qwen's are not errors at all; neither model fabricates on real charts.
+Qwen forms the
 missing-bar representation within its first few layers; LLaVA forms it in the
 first third. Both concentrate error information in the query-side state of the
 last third of the network rather than in the image tokens.
@@ -601,7 +627,8 @@ Section~\ref{sec:limits}.
 
 \paragraph{Done.} Inference and full-depth caching for both models on ChartQA
 test (2,500), ChartQA validation (960, Qwen) and both synthetic pilots (2,400);
-Qwen error labels (317); E1 for both models with surface baselines; the E3
+error labels for both models (317 Qwen, 1,178 LLaVA); E1 for both models with
+surface baselines; the E3
 matrix for both models on synthetic data; the within-source and
 image-token controls.
 
@@ -619,8 +646,10 @@ pursues E4 and E5 rather than a purely negative write-up.
 \paragraph{Remaining.}
 \begin{itemize}\itemsep0pt
 \item \textbf{Oct 1--8:} human agreement check ($\kappa$ on 200 items, two
-annotators); labels for LLaVA's 1,178 ChartQA errors; residualised probes (E2)
-and a surface baseline for the ChartQA structural probe.
+annotators, sampling both models); type probes on LLaVA's labelled ChartQA
+errors (583 structural, 435 computation; implemented, awaiting the cluster);
+residualised probes (E2) and a surface baseline for the ChartQA structural
+probe.
 \item \textbf{Oct 1--15:} E4 cross-intervention matrix (question-conditioned
 crop, verify prompt, abstain) on synthetic items, whose bar geometry is recorded
 at render time, for both models.
@@ -632,8 +661,8 @@ risk--coverage and AURC against binary selective prediction and the oracle.
 \section{Limitations}
 \label{sec:limits}
 
-The ChartQA labels come from a single LLM annotator and have not yet passed the
-human agreement check. Fabrication is absent from ChartQA, so the type contrast
+The ChartQA labels come from a single LLM annotator; its blind self-agreement is
+high ($\kappa=0.917$), but it has not yet passed the human agreement check. Fabrication is absent from ChartQA, so the type contrast
 rests on synthetic bar charts and on one question template, where fabrication
 coincides with a missing category. Qwen has only 46 synthetic misreads, and the
 two models' type matrices rest on very different class balances. The ChartQA
