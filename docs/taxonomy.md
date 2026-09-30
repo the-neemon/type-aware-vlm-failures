@@ -133,7 +133,8 @@ bars, so the grey series was misidentified.
 | Right inputs, wrong arithmetic | `computation` |
 | Lookup answer that matches nothing, where the needed values are **printed** | `fabrication` |
 | Wrong estimate of an **unlabelled** mark, however far off | `structural` |
-| Lookup answer that is a **garbled printed value**: digits dropped or added, decimal shifted, one digit changed, of the asked mark or a neighbouring one (486 for 4 863; 2.5 for 25.9; 45 307 for 45 707) | `structural` |
+| Lookup answer that is a **garbled printed value**: digits dropped, added, changed or reordered, or the decimal shifted, of the asked mark or a neighbouring one (486 for 4 863; 2.5 for 25.9; 45 307 for 45 707; 32 459.6 for 35 294.6) | `structural` |
+| Computation question answered with a printed value, exact or garbled, instead of the operation (the 2016 level for the 2015-2016 increase; 147, a garbled 1 417, for 1 417 - 827) | `computation` |
 | Lookup answer within about 5% of a **neighbouring** mark's printed value (adjacent bar or year, other series in the same group) | `structural` |
 | Lookup answer related in neither way to any printed value | `fabrication` |
 | Computed answer that matches no combination | `computation` |
