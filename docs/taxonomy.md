@@ -160,6 +160,9 @@ a Qwen precedent or the rules above.
    of the asked mark or a neighbouring one; an exact match to a printed value
    anywhere still counts. "1" for a lowest value of 7 among 20, 61, 12, 7 is
    `fabrication`; "1" for a bar printed 12 that is the asked bar is `structural`.
+   "Printed value" means the chart's data: value labels, category and legend
+   labels, axis ticks. Not the title, source line or copyright notice ("©
+   Statista 2021" does not make "2021" traceable).
 2. **Rounding** (`format_equivalent`): the answer equals the correct value
    rounded to the answer's own precision (after a 100x or 0.01x rescale, if
    that is the form), and is within 10% of it. 0.2 for 0.19 and 0.05 for 0.054
