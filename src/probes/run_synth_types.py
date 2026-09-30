@@ -134,9 +134,12 @@ def _fit_score(X, y, train, score, l2):
     return predict_scores((X[score] - mu) / sd, w)
 
 
-def cross_validate(X, cls, folds, probe, l2_grid):
-    """Per outer fold: inner-CV AUROC per L2, and scores for every item of that fold."""
-    pos, neg = PROBES[probe]
+def cross_validate(X, cls, folds, probe, l2_grid, probes=None):
+    """Per outer fold: inner-CV AUROC per L2, and scores for every item of that fold.
+
+    `probes` maps a probe name to its (positive, negative) classes; default PROBES.
+    """
+    pos, neg = (probes or PROBES)[probe]
     member = np.isin(cls, (pos, neg))
     y = (cls == pos).astype(float)
     out = {}
@@ -180,9 +183,9 @@ def select_and_assemble(results, n_items, folds):
     return scores, chosen
 
 
-def matrix(scores, cls, figs):
+def matrix(scores, cls, figs, targets=None):
     out = {}
-    for t, (pos, neg) in TARGETS.items():
+    for t, (pos, neg) in (targets or TARGETS).items():
         m = np.isin(cls, (pos, neg))
         y, s, g = (cls[m] == pos).astype(float), scores[m], figs[m]
         out[t] = {"auroc": auroc(y, s),
