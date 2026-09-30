@@ -137,7 +137,8 @@ bars, so the grey series was misidentified.
 | Lookup answer within about 5% of a **neighbouring** mark's printed value (adjacent bar or year, other series in the same group) | `structural` |
 | Lookup answer related in neither way to any printed value | `fabrication` |
 | Computed answer that matches no combination | `computation` |
-| Right operation applied to the wrong marks or series | `structural` |
+| Right operation on a series **misidentified by colour or legend** (two blue bars used for "grey") | `structural` |
+| Right operation on the wrong **items** picked by a stated criterion (tallest where shortest was asked; the wrong pair of printed labels) | `computation` |
 | Partly right: one of two correct items, or the correct item plus a wrong extra | `ambiguous` / `other` |
 | Cannot tell a misread from an arithmetic slip | `ambiguous` / `other` |
 | All inputs clearly printed and the arithmetic result is off | `computation` |
