@@ -1,8 +1,143 @@
-# Synthetic Failure Taxonomy
+# Failure Taxonomy
 
-The observed model answer receives one of three labels. The intended question
-type does not determine the label: a model that correctly rejects a missing
-category is correct, even when the item targets fabrication.
+Two rubrics live here. **Part A** labels ChartQA errors by hand (or by an LLM
+annotator), five labels. **Part B** is the synthetic arm, where outcomes are
+scored automatically from the model's answer (`src/synth/items.py`).
+
+In both, the label describes the observed answer, not the intended question type.
+
+---
+
+# Part A: ChartQA errors (five labels)
+
+Written 30 Sep 2026 from the 317 Qwen2.5-VL labels in
+`results/labels/qwen2_5_vl_7b_test.claude.jsonl` (labelled 26 to 28 Sep), which
+followed these rules but whose rubric was never committed. Every rule and example
+below is taken from those labels. Use it unchanged for every model, so labels are
+comparable across models.
+
+## What the annotator sees
+
+The chart image, the question, the gold answer and the model's answer. Nothing
+else: not the model's identity, not the ChartQA data tables, not other labels.
+An item is only in the pool because relaxed accuracy (5% numeric tolerance, exact
+string match otherwise) scored it wrong.
+
+## Record format
+
+One JSON line per item, appended, later lines win:
+
+```json
+{"item_id": "...", "label": "structural", "reason": null,
+ "rationale": "one or two sentences with the numbers read off the chart",
+ "annotator": "...", "timestamp": "ISO 8601"}
+```
+
+`reason` is required for `not_an_error` and `ambiguous`, and `null` for the
+other three. The rationale states what the chart shows, what the correct answer
+is and where the model's answer comes from, with the actual values.
+
+## Deciding, in order
+
+1. **Is the model's answer actually right?** If so: `not_an_error`, whatever
+   relaxed accuracy said.
+2. **Can the correct answer be determined from the chart?** If not, or if the
+   gold is wrong and so is the model: `ambiguous`.
+3. **Where does the model's answer come from?**
+   - from reading the figure wrongly: `structural`;
+   - from correctly read values, handled wrongly: `computation`;
+   - from nowhere in the figure: `fabrication`;
+   - cannot be told apart: `ambiguous` (`other`).
+
+## `not_an_error`: the answer is right
+
+| reason | when | examples |
+| --- | --- | --- |
+| `format_equivalent` | Same answer, different form. | 0.95 for 95 (or the reverse, fraction vs percent); "1:2" for 0.5; "2:1" for 2; "213k" for 213; 151000 for 151 (thousands); "increase" for "increasing"; "Facebook Messenger" for "Facebook Messenger*" (footnote marker); "Australia, Italy" for "[Australia, Italy]"; "Fox 4" for "Fox" (value appended); "Gregs" for "Greggs" (typo); "Grade 10" for "Girls grade 10" when the question already restricts to girls; "2004 to 2005" for "2005" when both name the same step. |
+| `format_equivalent` (colours) | A colour name for the same mark: "black" for a near-black "Dark blue" bar, "Blue" for "light blue", "Dark blue" for "Navy blue", "Red" for a rust "orange" line, "Green" for "Teal Blue". Only when it identifies the same mark. |
+| `valid_reading` | The question admits the model's reading and the model answered it correctly. | A 30% cell is row Compatibility x column Very concerned, model named the row and gold the column; no year given, model used the latest year; "how many more times" read as a ratio (model) vs a difference (gold); the inverse ratio when the question does not fix the order; the total market (model) vs the domestic market (gold) for "companies in the market"; "who received the highest percentage" answered with the person, gold gives the value. |
+| `gold_error` | The chart supports the model and contradicts the gold. | The 2021 bar is printed 5 014, the model's answer; gold 5 857 is the 2019 bar. "Second largest": model names the second bar, gold the first. |
+
+## `ambiguous`: no single answer can be checked
+
+| reason | when | examples |
+| --- | --- | --- |
+| `question_ambiguous` | The question has no single correct answer from this chart (names no group or year where the chart splits them, garbled, offers only wrong options), and the model's answer does not match a valid reading either. | "Male smokers in England in 2019" with only age groups shown; "does the line increase or decrease" for a flat line; a three-way ratio asked for as one number. |
+| `gold_error` | The gold is wrong **and** the model is wrong too. | Gold ratio 1.058 matches no pair of bars (50/48 = 1.042); model 0.25 matches none either. |
+| `unreadable` | The needed value cannot be read at the chart's resolution. | An unlabelled point on a flat line on a -100% to 700% axis; two near-identical teal shades when counting colours. |
+| `other` | Anything else outside the taxonomy: misread vs arithmetic slip cannot be told apart; the answer needs outside knowledge or data the chart lacks (relative incidence from absolute counts); the answer is incomplete, e.g. one of two correct years. | Model 0.01 for gold 0 traces to no printed value; "which country was a party to the Treaty of Versailles". |
+
+If the model is right under one reading and gold under another, that is
+`not_an_error` / `valid_reading`, not `ambiguous`.
+
+## `structural`: the figure was read wrongly
+
+A more accurate look at the same figure would recover the answer.
+
+- **Wrong mark**: the adjacent bar or year (the 2017 bar for 2018); the wrong
+  segment of a stacked bar; the whole bar instead of the asked series (Iran has
+  the longest total bar, Saudi Arabia the largest oil segment); the top of a
+  stacked segment instead of its height; a value matched in the wrong year.
+- **Wrong series by colour or legend**: the grey series for blue, men's values
+  for women's, the navy line above the blue one, the wrong slice by colour.
+- **Imprecise read** of an unlabelled bar, segment or point (9.3 read as 10.3
+  just below the 10% gridline), or a misread digit (45 707 read as 45 307).
+- **Miscount of visible items**: bars, sectors, years, points, including counts
+  against a threshold whose values are printed ("how many bars above 30%": the
+  five printed values 34, 43, 40, 43, 36, model says 4).
+- **Misjudged shape or position**: which line is higher, where a line peaks, the
+  steepest slope, a reversed comparison of two bars of similar length.
+- **Axes confused**: the y-axis title given for "what does the x-axis represent".
+
+## `computation`: correctly read values, handled wrongly
+
+Every input is printed or clearly readable, and the operation is wrong.
+
+- **Arithmetic** on printed values: sums, differences, means, medians, products,
+  a shifted decimal (0.2139 for 2.14).
+- **Wrong operation**: a ratio of levels where the question asks for a ratio of
+  changes; a sum where a difference is asked; the maximum where the median is.
+- **Wrong selection by a stated criterion**: "largest light-blue value" answered
+  with the leftmost; "last four countries" shifted by one row; the wrong pair of
+  printed values.
+- **Incomplete aggregation**: "80 and above" answered with the 80-89 slice only;
+  a difference left unsubtracted.
+- **Wrong comparison or ranking of printed values**: which printed value is
+  largest or second largest; the larger of two printed changes; the wrong
+  direction ("least peaceful" on an axis where higher is less peaceful).
+- **Counts or criteria needing a derived quantity**: "how many bars exceed twice
+  the smallest"; "how many categories represent at least comfortable".
+
+A computed answer that matches no combination of printed values is still
+`computation`, not `fabrication`: the model attempted the operation.
+
+## Boundaries
+
+| Case | Label |
+| --- | --- |
+| Count of visible items or of printed values past a stated threshold, wrong | `structural` |
+| Count that needs a derived quantity first (twice the smallest, at least X) | `computation` |
+| Wrong series picked by colour or legend | `structural` |
+| Wrong item picked by a stated criterion (leftmost instead of largest) | `computation` |
+| "Which is largest" among **unlabelled** bars, wrong | `structural` |
+| "Which is largest" among **printed** values, wrong | `computation` |
+| Misread input then used in arithmetic (the misread explains the answer) | `structural` |
+| Right inputs, wrong arithmetic | `computation` |
+| Lookup answer that matches nothing on the chart | `fabrication` |
+| Computed answer that matches no combination | `computation` |
+| Cannot tell a misread from an arithmetic slip | `ambiguous` / `other` |
+
+## `fabrication`: content the figure does not support
+
+The model states a value, label or category for a lookup question that appears
+nowhere in the figure and follows from no reading of it. Example: slices are 35,
+40, 13 and 11, "important" is 35 + 40 = 75, and the model says 55, which is no
+slice and no sum of slices. Rare on ChartQA (1 of Qwen's 317), because ChartQA
+questions are about what the chart shows.
+
+---
+
+# Part B: synthetic charts (scored automatically)
 
 ## Structural
 
