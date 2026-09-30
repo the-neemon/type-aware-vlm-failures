@@ -40,7 +40,9 @@ is and where the model's answer comes from, with the actual values.
 ## Deciding, in order
 
 1. **Is the model's answer actually right?** If so: `not_an_error`, whatever
-   relaxed accuracy said.
+   relaxed accuracy said. "Right" means within relaxed accuracy's 5% of the
+   correct value read from the chart, not an exact match (49.6 for a printed
+   49.18 is right).
 2. **Can the correct answer be determined from the chart?** If not, or if the
    gold is wrong and so is the model: `ambiguous`.
 3. **Where does the model's answer come from?**
