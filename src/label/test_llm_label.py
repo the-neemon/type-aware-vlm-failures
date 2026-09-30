@@ -48,3 +48,16 @@ def test_a_bad_batch_is_not_written(tmp_path):
     with pytest.raises(SystemExit, match="not appended"):
         llm_label.append([lab("a", "structural")], BATCH, out, "x")
     assert not out.exists()
+
+
+def test_corrections_append_after_the_original_and_need_a_labelled_item(tmp_path):
+    out = tmp_path / "labels.jsonl"
+    llm_label.append([lab("a", "structural"), lab("b", "computation")], BATCH, out, "x")
+    llm_label.correct([lab("a", "not_an_error", "format_equivalent")], out, "audit")
+    rows = [json.loads(l) for l in out.read_text().splitlines()]
+    assert [r["item_id"] for r in rows] == ["a", "b", "a"]
+    assert rows[-1]["label"] == "not_an_error" and rows[-1]["annotator"] == "audit"
+    with pytest.raises(SystemExit, match="not labelled yet"):
+        llm_label.correct([lab("z", "structural")], out, "audit")
+    with pytest.raises(SystemExit, match="needs a reason"):
+        llm_label.correct([lab("a", "ambiguous")], out, "audit")

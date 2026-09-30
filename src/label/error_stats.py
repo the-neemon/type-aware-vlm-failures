@@ -34,6 +34,9 @@ def rescaled_match(gold: str, prediction: str) -> bool:
 
 def stats(predictions: list[dict], labels: list[dict]) -> dict:
     rows = {r["item_id"]: r for r in predictions}
+    # label files are append-only and a later line corrects an earlier one
+    # (src/label/multi_rater.py, src/label/llm_label.py correct): keep the last
+    labels = list({l["item_id"]: l for l in labels}.values())
     missing = [l["item_id"] for l in labels if l["item_id"] not in rows]
     if missing:
         raise SystemExit(f"{len(missing)} labels have no prediction row, e.g. {missing[0]}")

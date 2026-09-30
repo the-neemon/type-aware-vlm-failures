@@ -32,3 +32,12 @@ def test_labels_must_cover_the_errors():
     with pytest.raises(SystemExit, match="exactly"):
         stats([_row("a", "human", False), _row("b", "human", False)],
               [{"item_id": "a", "label": "structural"}])
+
+
+def test_a_later_label_line_replaces_an_earlier_one():
+    preds = [_row("a", "human", False), _row("b", "human", False)]
+    labels = [{"item_id": "a", "label": "structural"}, {"item_id": "b", "label": "computation"},
+              {"item_id": "a", "label": "not_an_error", "reason": "gold_error"}]
+    s = stats(preds, labels)
+    assert s["by_source"]["human"]["errors"] == 2 and s["gold_wrong"] == 1
+    assert s["by_source"]["human"]["real_errors"] == 1

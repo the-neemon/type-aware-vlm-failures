@@ -92,6 +92,27 @@ def append(labels: list[dict], batch: list[dict], out: pathlib.Path, annotator: 
     return len(labels)
 
 
+def correct(corrections: list[dict], out: pathlib.Path, annotator: str) -> int:
+    """Append audited corrections to items already in `out`. Later lines win for every reader.
+
+    The original line stays in the file, so the history of every changed label
+    is visible without git archaeology.
+    """
+    done = {r["item_id"] for r in read_jsonl(out)} if out.is_file() else set()
+    problems = check(corrections, [{"item_id": c.get("item_id")} for c in corrections])
+    problems += [f"{c['item_id']}: not labelled yet, nothing to correct"
+                 for c in corrections if c.get("item_id") not in done]
+    if problems:
+        raise SystemExit("corrections not appended:\n  " + "\n  ".join(problems))
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    with open(out, "a", encoding="utf-8") as f:
+        for c in corrections:
+            f.write(json.dumps({"item_id": c["item_id"], "label": c["label"], "reason": c.get("reason"),
+                                "rationale": c["rationale"].strip(), "annotator": annotator,
+                                "timestamp": now}, ensure_ascii=False) + "\n")
+    return len(corrections)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -105,6 +126,10 @@ def main() -> None:
     a.add_argument("--labels", type=pathlib.Path, required=True)
     a.add_argument("--out", type=pathlib.Path, required=True)
     a.add_argument("--annotator", required=True)
+    c = sub.add_parser("correct", help="append audited corrections to labelled items")
+    c.add_argument("--corrections", type=pathlib.Path, required=True)
+    c.add_argument("--out", type=pathlib.Path, required=True)
+    c.add_argument("--annotator", required=True)
     args = ap.parse_args()
 
     if args.cmd == "batches":
@@ -114,9 +139,12 @@ def main() -> None:
             with open(args.out / f"batch_{i:03d}.jsonl", "w", encoding="utf-8") as f:
                 f.writelines(json.dumps(it, ensure_ascii=False) + "\n" for it in batch)
         print(f"{sum(map(len, batches))} errors in {len(batches)} batches -> {args.out}")
-    else:
+    elif args.cmd == "append":
         n = append(read_jsonl(args.labels), read_jsonl(args.batch), args.out, args.annotator)
         print(f"appended {n} labels -> {args.out}")
+    else:
+        n = correct(read_jsonl(args.corrections), args.out, args.annotator)
+        print(f"appended {n} corrections -> {args.out}")
 
 
 if __name__ == "__main__":
