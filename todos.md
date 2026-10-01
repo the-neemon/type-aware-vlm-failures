@@ -1,23 +1,21 @@
 # To-dos after the mid-submission
 
-Written 29 Sep 2026. Ordered by importance within each section. Cost: **CPU** =
+Written 29 Sep 2026; status updated 1 Oct 2026. Ordered by importance within each section. Cost: **CPU** =
 minutes on a compute node from existing caches; **GPU** = a new Qwen or LLaVA
 run; **labelling** = people's time. Results so far: `paper/mid/main.pdf`,
 `results/synth_type_probes.md`, `results/probes/`.
 
 ## Before the 30 Sep submission
 
-- [ ] **Finish the report** (`paper/mid/main.tex`). Two table fixes pending:
-      Table 3 and Table 4 are a few points too wide (add
-      `\setlength{\tabcolsep}{4pt}` after `\centering\small`), and Table 4's
-      `\multirow{4}{*}{Missing, value}` should span 3 rows. Proofread; each
-      member submits individually.
-- [ ] **Commit and merge.** `paper/mid/` and two result files are uncommitted:
-      `results/probes/binary_without_not_an_error_qwen2_5_vl_7b_test.json` and
-      `results/probes/structural_chartqa_qwen2_5_vl_7b_test.json`. Merge
-      `llava-next` into `main`.
+- [x] **Finish the report** (`paper/mid/main.tex`). Table widths and the
+      `\multirow` span fixed; labelling statistics for both models added
+      (d577072).
+- [x] **Commit and merge.** `paper/mid/` and both result files committed;
+      `llava-next` fully merged into `main`.
 - [ ] **Repo access for graders.** Public, or TA mentors granted access, before
       30 Sep; HuggingFace or WandB links in the README (TASKS.md checklist).
+      Status 1 Oct: the repo is private (GitHub API returns 404 without login);
+      unknown whether TAs were added. README still says "HuggingFace: none yet".
 
 ## Core plan still owed (October)
 
@@ -27,29 +25,41 @@ run; **labelling** = people's time. Results so far: `paper/mid/main.pdf`,
       type, for both models. Expected if the taxonomy matters: misreads recover
       with cropping (especially LLaVA's gridline rounding), missing-bar
       fabrications do not. The whole "type-aware" argument rests on this.
+      Status 1 Oct: code and pre-registration exist, never run.
 - [ ] **E5, controller** (CPU, after E4). Missing-bar probe -> abstain; binary
       and misread probes -> re-look. Risk-coverage and AURC against binary-only
       abstention and the label-aware oracle.
 - [ ] **Human agreement check** (labelling). Two people label the same 200 Qwen
       errors blind; kappa > 0.6. The only validation the ChartQA labels have.
+      Status 1 Oct: not done. The LLaVA kappas (0.917 calibration, 0.834
+      re-label) are between AI labellers, not people; sample both models.
 - [ ] **Finish E2** (CPU, small code changes):
   - [ ] residualised probes (Sahoo et al.): probe accuracy after regressing
         surface features out of the activations;
-  - [ ] a surface baseline for the ChartQA structural probe;
+  - [x] a surface baseline for the ChartQA structural probe (1 Oct,
+        `results/chartqa_type_probes.md`: 0.813 vs 0.536 LLaVA, 0.892 vs
+        0.651 Qwen);
   - [ ] add "value position relative to gridlines" to the synthetic metadata
         baseline, declared in advance this time (it predicts LLaVA's misreads
         at 0.852, above its probe).
 
 ## Cheap experiments that would strengthen the paper (CPU, existing caches)
 
-- [x] **Synthetic -> ChartQA transfer.** Train the misread and missing-bar
+- [ ] **Synthetic -> ChartQA transfer.** Train the misread and missing-bar
       probes on synthetic charts, apply them to real ChartQA items. Does the
       synthetic misread probe flag Naman's 71 structural errors? The strongest
       test that the synthetic findings mean anything for real charts.
-      Code done (`python -m src.probes.run_transfer transfer`); results pending
-      a run on the cluster once maintenance ends.
-- [ ] **Computation as a third class.** Largest class of real errors (93 of
+      Code only (`python -m src.probes.run_transfer transfer`, 29 Sep); never
+      run, no results anywhere as of 1 Oct. Left unticked until it is.
+- [x] **Computation as a third class.** Largest class of real errors (93 of
       Qwen's 317). Can a probe tell computation errors from misreads?
+      Done 1 Oct for both models (`results/chartqa_type_probes.md`): misreads
+      vs computation errors 0.961 LLaVA, 0.897 Qwen. `run_transfer computation`
+      (same experiment, Qwen only) is no longer needed.
+  - [ ] Follow-up: much of the computation signal is the question type (layer 0
+        already gives 0.865 for LLaVA). Tag questions as arithmetic or
+        retrieval, and rerun K vs C within arithmetic questions only, and S vs C
+        within retrieval questions only.
 - [ ] **Use val_human** (960 Qwen questions, 193 errors, no chart shared with
       test) as extra training data or a second held-out test.
 
@@ -64,8 +74,9 @@ run; **labelling** = people's time. Results so far: `paper/mid/main.pdf`,
 - [ ] **Node-link diagrams**, the "diagram" half of the title. Generator exists
       (`src/synth/node_links.py`), never run. Misreads = wrong path tracing;
       fabrications = answers about nodes that do not exist.
-- [ ] **LLaVA's 1,178 ChartQA errors labelled** (labelling, expensive), then a
-      LLaVA structural probe on real charts. Only if the paper needs it.
+- [x] **LLaVA's 1,178 ChartQA errors labelled** (Sanjith, 30 Sep-1 Oct: 583
+      structural, 435 computation, 74 ambiguous, 69 not_an_error, 17
+      fabrication). The LLaVA type probes on them are running (see above).
 
 ## Optional, higher risk
 
@@ -82,13 +93,12 @@ run; **labelling** = people's time. Results so far: `paper/mid/main.pdf`,
 
 - [ ] Decide whether naming the shown bar in "Which is larger, <missing> or
       <shown>?" (`picked_present`) counts as fabrication.
-- [ ] Fix the 3 failing item_id tests (`src/extract/test_cache_io.py` x2,
-      `src/label/test_pool.py::test_item_id_is_the_inf_md_scheme`).
+- [x] Fix the 3 failing item_id tests (Naman, 7677bf8; all pass).
 - [ ] Delete leftover shard folders on Ada once their runs are confirmed:
-      `~/activations/*/shards_*` in Shrish's home (Qwen ~4.5 GB, plus LLaVA's
-      `shards_synth_pilot` and `shards_synth_pilot2`). The final `.npz` files
-      stay.
+      `~/activations/*/shards_*` in Shrish's home. The Qwen shards are gone;
+      LLaVA's `shards_synth_pilot` and `shards_synth_pilot2` remain. The final
+      `.npz` files stay.
 
 **If only two:** E4 (the experiment the thesis rests on) and synthetic ->
 ChartQA transfer (minutes of CPU, and it says whether the synthetic results
-generalise).
+generalise). Neither has been run as of 1 Oct.
