@@ -57,7 +57,7 @@ A collapse of the two into one signal is a reportable outcome, not a failure.
 \midrule
 E1 & Can a probe predict \emph{whether} the answer will be wrong? & done \\
 E2 & Is the probe just reading surface features of the input? & partial \\
-E3 & Are the misread and fabrication signals different (cross-transfer)? & done (synthetic) \\
+E3 & Are the misread and fabrication signals different (cross-transfer)? & done \\
 E4 & Does the failure type decide which repair works? & code ready \\
 E5 & A controller that picks the repair from the probes & Oct \\
 \bottomrule
@@ -201,8 +201,7 @@ Test AUROC [95\% CI] & Probe & Surface baseline \\
 Qwen, all errors & 0.877 {\scriptsize[.83, .92]} & 0.715 \\
 Qwen, without \cls{not\_an\_error} & \hl{0.932} {\scriptsize[.90, .96]} & 0.786 \\
 LLaVA, all errors & 0.798 {\scriptsize[.76, .84]} & 0.608 \\
-\midrule
-Qwen, structural vs.\ correct & 0.905 {\scriptsize[.84, .97]} & -- \\
+LLaVA, without \cls{not\_an\_error} & \hl{0.819} {\scriptsize[.78, .85]} & 0.636 \\
 \bottomrule
 \end{tabular}
 \vspace{0.8em}
@@ -210,7 +209,7 @@ Qwen, structural vs.\ correct & 0.905 {\scriptsize[.84, .97]} & -- \\
 \begin{itemize}
 \item Surface baseline: question source, length, image tokens, numeric gold
 \item Removing label noise \emph{raises} the probe: part of its ``error'' was
-the labels
+the labels (smaller rise for LLaVA: only 6\% of its errors are not errors)
 \item Not just question style: within human-written questions only, 0.895
 (Qwen) and 0.850 (LLaVA)
 \end{itemize}
@@ -229,6 +228,35 @@ the labels
 hallucination): for charts, the state that has read the question matters
 \end{itemize}
 \end{columns}
+\end{frame}
+
+\begin{frame}{E3 on real charts: misreads vs.\ arithmetic errors}
+\centering\small
+\begin{tabular}{lcc}
+\toprule
+AUROC (5-fold CV by chart) & Qwen & LLaVA \\
+\midrule
+Misread vs.\ correct & \hl{0.892} {\scriptsize[.85, .93]} & \hl{0.813} {\scriptsize[.79, .83]} \\
+\quad surface baseline & 0.651 & 0.536 \\
+Computation vs.\ correct & \hl{0.904} {\scriptsize[.87, .93]} & \hl{0.949} {\scriptsize[.94, .96]} \\
+\quad surface baseline & 0.818 & 0.821 \\
+Misread vs.\ computation & \hl{0.897} {\scriptsize[.84, .94]} & \hl{0.961} {\scriptsize[.95, .97]} \\
+\quad surface baseline & 0.693 & 0.845 \\
+\midrule
+Cross: misread probe on comp.\ vs.\ correct & 0.820 & 0.586 \\
+\bottomrule
+\end{tabular}
+\vspace{0.2em}
+\raggedright
+\begin{itemize}\footnotesize
+\item Classes: Qwen 71 misread / 93 computation; LLaVA 583 / 435. Too few
+fabrications for a probe (1 and 17)
+\item LLaVA's probes are type-specific; Qwen's misread probe also fires on
+arithmetic errors, but surface features alone give 0.765 there
+\item \textbf{Caveat:} the arithmetic signal is partly the question
+(``difference'', ``ratio''): at layer 0 the computation probe already gives
+0.865 (LLaVA). Next: compare only within arithmetic questions
+\end{itemize}
 \end{frame}
 
 % ---------------------------------------------------------------------------
@@ -364,19 +392,21 @@ be produced, not an early warning
 
 \begin{frame}{Verdict so far}
 \textbf{Hypothesis: supported for Qwen, partly for LLaVA.}
-\begin{itemize}
+\begin{itemize}\small
 \item \qwen: misread and missing-bar states are linearly distinguishable, each
 probe largely blind to the other type
 \item \llava: missing-bar signal is specific, but the misread probe captures a
 general lack of grounding; a one-number chart feature (distance to nearest
 gridline) predicts its misreads at 0.852, above the probe
+\item Real charts (ChartQA): misreads and arithmetic errors separable in both
+(0.897 Qwen, 0.961 LLaVA), type-specific in LLaVA
 \end{itemize}
 \vspace{0.5em}
 \textbf{Caveats we already know about}
-\begin{itemize}
+\begin{itemize}\small
 \item On synthetic data, ``fabrication'' and ``missing category'' coincide
-\item Qwen has only 46 synthetic misreads; the ChartQA structural probe has 13
-test positives and no surface baseline yet
+\item Qwen has only 46 synthetic misreads; on ChartQA the arithmetic probe
+partly detects the question type, not the error
 \item Labels are from one LLM annotator (blind self-agreement $\kappa=0.917$),
 human $\kappa$ check pending
 \end{itemize}
@@ -390,20 +420,19 @@ human $\kappa$ check pending
 \item Full-depth caches: both models, ChartQA test, both pilots; val\_human
 (Qwen)
 \item Error labels for both models (317 Qwen, 1,178 LLaVA)
-\item E1 both models; E3 both models
+\item E1 both models; E3 both models, synthetic and ChartQA (misread
+vs.\ arithmetic)
 \end{itemize}
-\textbf{Coded, waiting for the cluster} {\footnotesize (caches live there)}
+\textbf{Coded, not yet run}
 \begin{itemize}\footnotesize
 \item Synthetic $\to$ ChartQA transfer of the misread probe
-\item LLaVA ChartQA type probes: misread, arithmetic, misread vs.\ arithmetic
-(583 / 435 errors)
 \item E4 intervention matrix
 \end{itemize}
 \column{0.5\textwidth}
 \textbf{Timeline}
 \begin{itemize}\small
 \item \textbf{Oct 1--8}: human $\kappa$ on 200 items (both models);
-residualised probes (E2)
+residualised probes (E2); ChartQA type probes within question type
 \item \textbf{Oct 1--15}: E4 repairs (crop, verify prompt, abstain) on
 synthetic items, both models
 \item \textbf{Oct 16--25}: E5 controller; risk--coverage vs.\ binary selective
@@ -419,7 +448,8 @@ prediction and the oracle
 acceptable operationalisation, or should we add out-of-range quantities so
 fabrication is not identical to absence?
 \item \textbf{Taxonomy.} Should \cls{computation} become a third type in the
-hypothesis, given it is the largest real error class?
+hypothesis, given it is the largest real error class and probes separate it
+from misreads?
 \item \textbf{Annotation.} Is an LLM annotator acceptable if it passes a
 two-person human agreement check ($\kappa > 0.6$ on 200 items)?
 \item \textbf{Label noise.} Should the \cls{not\_an\_error} items (Qwen 112,

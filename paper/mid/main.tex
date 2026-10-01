@@ -38,7 +38,10 @@ will be wrong with test AUROC 0.932 for Qwen (0.786 for a surface-feature
 baseline) and 0.798 for LLaVA (0.608). Labelling every error of both models
 showed that fabrication is essentially absent from ChartQA (1 of Qwen's 317
 errors, 17 of LLaVA's 1,178), and that 35\% of Qwen's scored errors are not
-errors at all. We therefore built a synthetic bar-chart
+errors at all. The real errors are misreads and arithmetic slips, and probes
+separate these two types (AUROC 0.897 for Qwen, 0.961 for LLaVA), though the
+question's wording explains part of the arithmetic signal. For fabrication we
+built a synthetic bar-chart
 arm that asks about categories absent from the chart. Both models almost never
 refuse such questions (15 refusals in 1,200 for Qwen, 0 for LLaVA), yet both
 represent that the asked category is missing (probe AUROC 0.96 to 1.00, with
@@ -208,14 +211,15 @@ selected from $\{1,10,10^2,10^3,10^4\}$. Probes are scored by AUROC: the
 probability that a randomly chosen positive item receives a higher score than a
 randomly chosen negative one. We train two kinds:
 
-\textbf{Single-split sweep probes} (binary, ChartQA structural, and
-absent-versus-present on synthetic data). Items are split 60/20/20 by
+\textbf{Single-split sweep probes} (binary, and absent-versus-present on
+synthetic data). Items are split 60/20/20 by
 \emph{figure} (hashed, seed 42), so no chart appears in two splits. Every
 (position, layer, $\lambda$) cell is fitted on train and scored on validation;
 the best cell is chosen on validation only, and the test set is scored once.
 
-\textbf{Cross-validated type probes} (the E3 matrix on synthetic data, where
-misreads are too few for a single held-out split). Items are assigned to five
+\textbf{Cross-validated type probes} (the E3 matrices on synthetic data and on
+ChartQA's labelled errors, where some classes are too small for a single
+held-out split). Items are assigned to five
 folds by figure. Within each outer fold, layer and $\lambda$ are chosen by an
 inner cross-validation over the other four folds, and the probe then scores the
 held-out fold. Every item thus receives an out-of-fold score from a probe that
@@ -256,7 +260,8 @@ imprecise reading, miscounting), \cls{fabrication} (content the figure does not
 support), \cls{computation} (inputs read correctly, arithmetic or logic wrong),
 \cls{not\_an\_error} (the answer is actually right: an equivalent format, a
 wrong gold answer, or a valid reading of an ambiguous question) and
-\cls{ambiguous}. Only \cls{structural} and \cls{fabrication} train type probes.
+\cls{ambiguous}. On ChartQA, \cls{structural} and \cls{computation} are frequent
+enough to train type probes (Section~\ref{sec:chartqa-types}).
 All 317 Qwen errors and all 1,178 LLaVA errors were labelled by the same LLM
 annotator (Claude), which saw only the chart image, question, gold answer and
 model answer, never the model's identity, following the written rubric. Two
@@ -351,16 +356,15 @@ not provide for.
  & Probe & Surface \\
 \midrule
 Qwen, all errors & 0.877 {\scriptsize[.83,.92]} & 0.715 \\
-Qwen, without \cls{not\_an\_error} & \textbf{0.932} {\scriptsize[.90,.96]} & 0.786 \\
+Qwen, w/o \cls{not\_an\_error} & \textbf{0.932} {\scriptsize[.90,.96]} & 0.786 \\
 LLaVA, all errors & 0.798 {\scriptsize[.76,.84]} & 0.608 \\
-\midrule
-Qwen, structural vs.\ correct & 0.905 {\scriptsize[.84,.97]} & -- \\
+LLaVA, w/o \cls{not\_an\_error} & \textbf{0.819} {\scriptsize[.78,.85]} & 0.636 \\
 \bottomrule
 \end{tabular}
-\caption{Test AUROC [95\% CI] of the binary probe (wrong vs.\ right) and of the
-Qwen structural probe on ChartQA, against a surface-only baseline (question
-source, question length, number of image tokens, numeric gold). All selected
-query\_last; Qwen layer 21 of 28, LLaVA layer 24 of 32.}
+\caption{Test AUROC [95\% CI] of the binary probe (wrong vs.\ right) on
+ChartQA, against a surface-only baseline (question source, question length,
+number of image tokens, numeric gold). All selected query\_last; Qwen layer 21
+of 28, LLaVA layer 24 of 32.}
 \label{tab:e1}
 \end{table}
 
@@ -369,7 +373,9 @@ each cache decodes what it plainly contains (human-written vs.\ augmented
 question: validation AUROC 1.000 for Qwen, 0.999 for LLaVA). For both models the
 probe clearly exceeds the surface baseline, with non-overlapping intervals.
 Removing Qwen's 112 \cls{not\_an\_error} items raises the probe from 0.877 to
-0.932: part of what looked like probe error was label noise. The probe is not
+0.932: part of what looked like probe error was label noise. For LLaVA, whose
+\cls{not\_an\_error} items are 6\% of its errors rather than 35\%, the same step
+gives a smaller rise, from 0.798 to 0.819. The probe is not
 reading question style, which alone predicts errors at 0.68 for Qwen because
 80\% of its errors are on human-written questions: within human-written
 questions only it reaches 0.895 (Qwen, cleaned) and 0.850 (LLaVA). LLaVA's lower
@@ -396,12 +402,63 @@ layer). Solid: last prompt token; dashed: mean over image tokens.}
 \label{fig:binary}
 \end{figure}
 
-\textbf{A structural probe on real charts.} Using the 71 \cls{structural} labels
-against all correct answers (other labels excluded), a Qwen probe reaches test
-AUROC 0.905, again at query\_last, layer 21. With only 13 structural errors in
-the test split the interval [0.84, 0.97] is the result, and this probe does not
-yet have its own surface baseline. With one fabrication, the corresponding
-fabrication probe cannot be trained on ChartQA.
+\subsection{Error types on real charts (E3, naturalistic)}
+\label{sec:chartqa-types}
+
+\begin{table}[t]
+\centering\small\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lcc}
+\toprule
+Probe (trained on) & Qwen & LLaVA \\
+\midrule
+Misread vs.\ correct & \textbf{0.892} {\scriptsize[.85,.93]} & \textbf{0.813} {\scriptsize[.79,.83]} \\
+\quad surface & 0.651 & 0.536 \\
+\quad on comp.\ vs.\ corr. & 0.820 & 0.586 \\
+Comp.\ vs.\ correct & \textbf{0.904} {\scriptsize[.87,.93]} & \textbf{0.949} {\scriptsize[.94,.96]} \\
+\quad surface & 0.818 & 0.821 \\
+\quad on misread vs.\ corr. & 0.732 & 0.540 \\
+Misread vs.\ comp. & \textbf{0.897} {\scriptsize[.84,.94]} & \textbf{0.961} {\scriptsize[.95,.97]} \\
+\quad surface & 0.693 & 0.845 \\
+\midrule
+classes (C / S / K) & 2,183 / 71 / 93 & 1,322 / 583 / 435 \\
+\bottomrule
+\end{tabular}
+\caption{Type probes on ChartQA's labelled errors: out-of-fold AUROC [95\% CI]
+on the contrast each probe was trained for (comp.: computation), its surface-only baseline, and the
+same probe applied to the other error type (cross-transfer). Five folds by
+figure; query\_last; layers chosen per fold (14 to 26).}
+\label{tab:chartqa-types}
+\end{table}
+
+With 71 (Qwen) and 583 (LLaVA) misreads and 93 and 435 computation errors, the
+ChartQA labels support type probes for the two error types real charts produce,
+though not for fabrication. We use the cross-validated design of
+Section~\ref{sec:probes} and train three probes: misread vs.\ correct,
+computation vs.\ correct, and misread vs.\ computation (Table~\ref{tab:chartqa-types}).
+
+\textbf{Misreads are detectable on real charts}, well above the surface features,
+for both models (0.892 and 0.813). For Qwen this agrees with an earlier
+single-split probe (0.905 with 13 test positives), now measured on all 71.
+\textbf{Misreads and computation errors are separable} (0.897 and 0.961), above
+a surface baseline that is itself strong for LLaVA (0.845), because LLaVA's
+computation errors fall mostly on human-written questions and its misreads on
+augmented ones. \textbf{In LLaVA the two probes are type-specific}: the misread
+probe barely responds to computation errors (0.586) and the computation probe
+barely to misreads (0.540). Qwen's misread probe also flags computation errors
+(0.820), but the surface features alone reach 0.765 on that contrast, so much of
+this is question style rather than a shared error direction. Two further checks
+from the same matrix: LLaVA's 69 \cls{not\_an\_error} answers look like correct
+ones to its misread probe (0.490), as they should; and its 17 fabrications look
+more like misreads than like correct answers (0.752, [0.64, 0.85]), a
+descriptive result only.
+
+\textbf{Caveat: the computation signal is partly the question.} Computation
+errors occur only on questions that ask for arithmetic (``difference'',
+``ratio'', ``average''), and that wording is in the activations from the first
+layer: the computation probe at layer~0 already reaches 0.865 (LLaVA) and 0.769
+(Qwen), and misread vs.\ computation 0.907 and 0.716. The misread probe is less
+affected (0.757 and 0.805 at layer~0). The fair test, comparing computation
+errors only with correct answers to arithmetic questions, is planned.
 
 \section{Synthetic Arm}
 \label{sec:synth}
@@ -595,6 +652,10 @@ misread probe captures a general lack of grounding that is strongest on
 fabrications, and a chart-level feature explains its misreads better. Under the
 criterion we set in the proposal (``strong cross-transfer indicates one signal
 wearing two labels''), LLaVA shows exactly that, from the structural side.
+On real charts the picture is more favourable: misreads and computation errors
+are separable in both models, and in LLaVA the two probes are type-specific.
+Whether that reflects the error or only the kind of question is the open point
+(Section~\ref{sec:chartqa-types}).
 
 \paragraph{What the fabrication signal is.} With our data, a fabrication is
 defined by the missing category, so ``predicting fabrication'' and ``detecting
@@ -629,7 +690,8 @@ Section~\ref{sec:limits}.
 test (2,500), ChartQA validation (960, Qwen) and both synthetic pilots (2,400);
 error labels for both models (317 Qwen, 1,178 LLaVA); E1 for both models with
 surface baselines; the E3
-matrix for both models on synthetic data; the within-source and
+matrix for both models on synthetic data and on ChartQA's labelled errors
+(misread vs.\ computation), with surface baselines; the within-source and
 image-token controls.
 
 \paragraph{Changed.} The LLM judge was replaced by an LLM annotator with a
@@ -646,10 +708,10 @@ pursues E4 and E5 rather than a purely negative write-up.
 \paragraph{Remaining.}
 \begin{itemize}\itemsep0pt
 \item \textbf{Oct 1--8:} human agreement check ($\kappa$ on 200 items, two
-annotators, sampling both models); type probes on LLaVA's labelled ChartQA
-errors (583 structural, 435 computation; implemented, awaiting the cluster);
-residualised probes (E2) and a surface baseline for the ChartQA structural
-probe.
+annotators, sampling both models); ChartQA type probes restricted by question
+type (computation errors against correct arithmetic answers, misreads against
+correct retrieval answers); residualised probes (E2); synthetic-to-ChartQA
+transfer of the misread probe.
 \item \textbf{Oct 1--15:} E4 cross-intervention matrix (question-conditioned
 crop, verify prompt, abstain) on synthetic items, whose bar geometry is recorded
 at render time, for both models.
@@ -665,8 +727,9 @@ The ChartQA labels come from a single LLM annotator; its blind self-agreement is
 high ($\kappa=0.917$), but it has not yet passed the human agreement check. Fabrication is absent from ChartQA, so the type contrast
 rests on synthetic bar charts and on one question template, where fabrication
 coincides with a missing category. Qwen has only 46 synthetic misreads, and the
-two models' type matrices rest on very different class balances. The ChartQA
-structural probe has 13 positives in test and no surface baseline yet. Probes
+two models' type matrices rest on very different class balances. On ChartQA,
+Qwen's type probes rest on 71 and 93 errors, and the computation probes partly
+detect the question type rather than the error. Probes
 are linear and diagnostic; whether the signals support a useful intervention is
 the question E4 and E5 must answer.
 
