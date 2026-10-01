@@ -20,6 +20,34 @@ For synthetic charts, add `--figures <synth dir>/manifest.jsonl` with
 `--image-root <synth dir>`: that supplies each chart's bar geometry, which is
 what makes `I_crop` possible.
 
+**Synthetic mode** (`--synthetic <manifest>`, added 1 Oct 2026). The planned run
+is on the synthetic value questions ("What is the value of X?"), where both
+failure types occur under the same wording and bar geometry is known. No labels
+are needed: the type is what the model actually answered, scored by
+src/synth/items.py exactly as the probes use it (run_synth_types classes):
+
+    structural   a wrong value for a bar that is on the chart
+    fabrication  a made-up number for a category that is not on the chart
+    zero         "0" for a category that is not on the chart: a refusal expressed
+                 as a number (docs/taxonomy.md), reported as its own row
+
+A repaired answer is scored by the same scorer: relaxed accuracy for a shown
+bar, and for a missing one, recovered only when the model now says it is not
+there. The missing-bar outcome of every repair (rejected / zero / fabricated) is
+kept, so the summary can show whether a repair turns made-up numbers into "0"s
+rather than into refusals.
+
+    python -m src.intervene.run_matrix --synthetic <dir>/manifest.jsonl \
+        --predictions results/predictions/<model>_synth_pilot2.jsonl \
+        --out results/e4/<model>_synth_pilot2.outcomes.jsonl
+
+**Model.** Read from the predictions' `model` field, so a repair always asks the
+model that gave the original answer (`--model` overrides). Both go through the
+same loader and decoding as the original run (src/extract/qwen.py, llava.py).
+The pixel budget of `I_upsample` and `I_crop` is Qwen's 1,000,000 for both
+models; LLaVA's processor then resizes to its own tile grid, which it does for
+both repairs alike, so the two still see the same number of image tokens.
+
 Output is one row per (item, repair), appended and fsynced as it goes, so a
 killed job resumes where it stopped. Field names follow cross.md 7. On Ada, run
 it through `scripts/intervene.sbatch`. `--summarize` prints the matrix and the
@@ -42,7 +70,7 @@ from typing import Callable, Iterable
 from PIL import Image
 
 from src.eval.relaxed_accuracy import is_correct
-from src.extract import qwen
+from src.extract import llava, qwen
 from src.intervene.matrix import (
     Outcome, argmax_flip_stability, cell_counts, did_with_ci, recovery_matrix,
 )
@@ -51,8 +79,12 @@ from src.intervene.interventions import (
     build_query, parse_verified,
 )
 from src.label.multi_rater import consensus, load_raters
+from src.synth import items as synth_items
 
 TYPES = ("structural", "fabrication")
+SYNTH_TYPES = ("structural", "fabrication", "zero")
+VALUE_TEMPLATES = ("read_value", "absent_category", "absent_value")   # as run_synth_types
+MODELS = {m.MODEL_KEY: m for m in (qwen, llava)}
 Responder = Callable[[Query], str]
 
 
@@ -99,6 +131,40 @@ def select_items(predictions: Iterable[dict], labels: Iterable[dict]) -> tuple[l
     return items, counts
 
 
+def select_synthetic_items(predictions: Iterable[dict],
+                           manifest: str | pathlib.Path) -> tuple[list[dict], dict]:
+    """Value-question errors of a synthetic run, typed by what the model answered.
+
+    Re-scored with the current scorer (the run's own may be older), as the probes do.
+    """
+    figures = {f["figure_id"]: f for f in read_jsonl(manifest)}
+    items, skipped = [], {}
+    for r in predictions:
+        if r.get("template") not in VALUE_TEMPLATES:
+            continue
+        r = {**r, "categories": figures[r["figure_id"]]["categories"]}
+        r.update(synth_items.score(r, r["prediction"]))
+        if r["correct"]:
+            continue
+        ftype = ("structural" if not r["absent"] else
+                 {"fabricated": "fabrication", "zero": "zero"}.get(r["outcome"]))
+        if ftype is None:
+            skipped[r["outcome"]] = skipped.get(r["outcome"], 0) + 1
+            continue
+        items.append({**r, "failure_type": ftype})
+    counts = {"used": len(items), "skipped_absent_outcomes": skipped,
+              **{t: sum(i["failure_type"] == t for i in items) for t in SYNTH_TYPES}}
+    return items, counts
+
+
+def rescore(it: dict, prediction: str) -> tuple[bool, str | None]:
+    """(recovered, missing-bar outcome) of a repaired answer, by the original scorer."""
+    if "template" in it:
+        fields = synth_items.score(it, prediction)
+        return bool(fields["correct"]), fields.get("outcome")
+    return bool(is_correct(it["gold"], prediction)), None
+
+
 def figure_loader(image_root: str | pathlib.Path,
                   figures: str | pathlib.Path | None) -> Callable[[dict], Figure]:
     """Map a prediction row to its image, plus bar geometry when a manifest has it."""
@@ -120,15 +186,19 @@ def figure_loader(image_root: str | pathlib.Path,
 # The model
 # ---------------------------------------------------------------------------
 
-class QwenResponder:
-    """The model, loaded and queried through `src.extract.qwen` (cross.md 3.3)."""
+class ModelResponder:
+    """The model, loaded and queried through its src.extract module (cross.md 3.3)."""
 
-    def __init__(self):
-        self.model, self.processor = qwen.load()
+    def __init__(self, module=qwen):
+        self.module = module
+        self.model, self.processor = module.load()
 
     def __call__(self, q: Query) -> str:
-        return qwen.generate(self.model, self.processor, q.image, q.prompt,
-                             sample=q.sample, max_new_tokens=q.max_new_tokens)
+        return self.module.generate(self.model, self.processor, q.image, q.prompt,
+                                    sample=q.sample, max_new_tokens=q.max_new_tokens)
+
+
+QwenResponder = ModelResponder          # the name earlier callers used
 
 
 # ---------------------------------------------------------------------------
@@ -171,9 +241,13 @@ def run(items: list[dict], load_figure: Callable[[dict], Figure], responder: Res
                 continue
             raw = responder(q)
             pred, parsed = parse_verified(raw) if iv == VERIFY else (raw.strip(), True)
-            _append({**base, "intervention": iv, "applicable": True, "raw": raw,
-                     "prediction": pred, "parsed": parsed, "note": q.note,
-                     "recovered": bool(parsed and is_correct(it["gold"], pred))}, out)
+            recovered, outcome = rescore(it, pred)
+            row = {**base, "intervention": iv, "applicable": True, "raw": raw,
+                   "prediction": pred, "parsed": parsed, "note": q.note,
+                   "recovered": bool(parsed and recovered)}
+            if outcome is not None:
+                row["outcome"] = outcome if parsed else "unparsed"
+            _append(row, out)
         log(f"[{n}/{len(items)}] {it['item_id']} {it['failure_type']}")
 
 
@@ -189,10 +263,11 @@ def summarize(out: str | pathlib.Path, n_boot: int = 2000) -> str:
     unparsed = sum(r.get("parsed") is False for r in rows)
     matrix, counts = recovery_matrix(outcomes), cell_counts(outcomes)
     ivs = [BASELINE] + [iv for iv in REQUERIED if any(k[1] == iv for k in counts)]
+    types = [t for t in SYNTH_TYPES if any(k[0] == t for k in counts)]
 
     lines = ["| Failure type | " + " | ".join(ivs) + " |",
              "| --- |" + " --- |" * len(ivs)]
-    for t in TYPES:
+    for t in types:
         cells = [f"{matrix[(t, iv)]:.3f} (n={counts[(t, iv)]})" if (t, iv) in counts else "n/a"
                  for iv in ivs]
         lines.append(f"| {t} | " + " | ".join(cells) + " |")
@@ -215,6 +290,19 @@ def summarize(out: str | pathlib.Path, n_boot: int = 2000) -> str:
               "(below about 0.9 the flip is unsupported)",
               f"Not applicable (no geometry for I_crop): {skipped} rows. "
               f"Unparseable I_verify responses, scored as not recovered: {unparsed}."]
+    missing = [r for r in rows if r.get("outcome") and r["failure_type"] != "structural"]
+    if missing:
+        lines += ["", "**What the missing-bar answers became** (counts per repair)",
+                  "| Original | Repair | rejected | zero | fabricated | other |",
+                  "| --- | --- | --- | --- | --- | --- |"]
+        for t in ("fabrication", "zero"):
+            for iv in REQUERIED:
+                o = [r["outcome"] for r in missing
+                     if r["failure_type"] == t and r["intervention"] == iv]
+                if o:
+                    n = {k: o.count(k) for k in ("rejected", "zero", "fabricated")}
+                    lines.append(f"| {t} | {iv} | {n['rejected']} | {n['zero']} | "
+                                 f"{n['fabricated']} | {len(o) - sum(n.values())} |")
     return "\n".join(lines)
 
 
@@ -227,6 +315,10 @@ def main() -> None:
                     help="the annotations/ folder, or one labels file")
     ap.add_argument("--image-root", type=pathlib.Path)
     ap.add_argument("--figures", type=pathlib.Path, help="synthetic manifest with bar geometry")
+    ap.add_argument("--synthetic", type=pathlib.Path,
+                    help="synthetic manifest: type the errors from the answers, no labels")
+    ap.add_argument("--model", choices=sorted(MODELS),
+                    help="default: the predictions' `model` field")
     ap.add_argument("--interventions", nargs="+", default=list(REQUERIED), choices=REQUERIED)
     ap.add_argument("--limit", type=int, help="first N items only, for a smoke run")
     args = ap.parse_args()
@@ -234,16 +326,28 @@ def main() -> None:
     if args.summarize:
         print(summarize(args.out))
         return
-    if not (args.predictions and args.labels and args.image_root):
-        ap.error("--predictions, --labels and --image-root are required to run")
-
-    labels, unresolved = load_labels(args.labels)
-    items, counts = select_items(read_jsonl(args.predictions), labels)
-    print("items:", json.dumps({**counts, "unresolved_disagreements": unresolved}))
-    if counts["unlabelled"]:
-        print(f"warning: {counts['unlabelled']} incorrect answers have no label and are skipped")
+    predictions = read_jsonl(args.predictions) if args.predictions else []
+    if args.synthetic:
+        if not args.predictions:
+            ap.error("--synthetic needs --predictions")
+        items, counts = select_synthetic_items(predictions, args.synthetic)
+        image_root, figures = args.synthetic.parent, args.synthetic
+        print("items:", json.dumps(counts))
+    else:
+        if not (args.predictions and args.labels and args.image_root):
+            ap.error("--predictions, --labels and --image-root are required to run")
+        labels, unresolved = load_labels(args.labels)
+        items, counts = select_items(predictions, labels)
+        image_root, figures = args.image_root, args.figures
+        print("items:", json.dumps({**counts, "unresolved_disagreements": unresolved}))
+        if counts["unlabelled"]:
+            print(f"warning: {counts['unlabelled']} incorrect answers have no label and are skipped")
+    model_key = args.model or predictions[0].get("model")
+    if model_key not in MODELS:
+        ap.error(f"cannot tell which model to load ({model_key!r}); pass --model")
+    print(f"model: {model_key}", flush=True)
     run(items[:args.limit] if args.limit else items,
-        figure_loader(args.image_root, args.figures), QwenResponder(), args.out,
+        figure_loader(image_root, figures), ModelResponder(MODELS[model_key]), args.out,
         args.interventions)
     print(summarize(args.out))
 

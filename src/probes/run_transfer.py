@@ -21,9 +21,11 @@ computation
     other folds. Baseline: the same probes on the four surface features of the E1
     baseline (source, question length, vision tokens, numeric gold).
 
-Classes on ChartQA: C = correct, S = structural, P = computation, from
-results/labels/qwen2_5_vl_7b_test.claude.jsonl. not_an_error, ambiguous and the
-single fabrication are left out.
+Classes on ChartQA: C = correct, S = structural, P = computation, F =
+fabrication, from results/labels/<model>_test.claude.jsonl. not_an_error and
+ambiguous are left out. Transfer also reports F vs C when there are at least
+MIN_TARGET fabrications (LLaVA has 17, Qwen 1): does the missing-bar probe flag
+real fabrications? Any model works; pass that model's caches and labels.
 
     python -m src.probes.run_transfer transfer \\
         --chartqa <test.npz> <qwen2_5_vl_7b_test.jsonl> <labels.jsonl> \\
@@ -56,11 +58,13 @@ from src.probes.run_synth_types import (
     DEFAULT_L2, N_FOLDS, activations, fold_of, load_items as load_synth_items,
 )
 
-LABEL_CLASS = {"structural": "S", "computation": "P"}
+LABEL_CLASS = {"structural": "S", "computation": "P", "fabrication": "F"}
+MIN_TARGET = 5
 TRANSFER_PROBES = {"structural": ("S", "C"), "missing_bar": ("F", "C")}
 CHARTQA_PROBES = {"structural": ("S", "C"), "computation": ("P", "C"),
                   "comp_vs_struct": ("P", "S")}
 CHARTQA_TARGETS = {"S_vs_C": ("S", "C"), "P_vs_C": ("P", "C"), "P_vs_S": ("P", "S")}
+TRANSFER_TARGETS = {**CHARTQA_TARGETS, "F_vs_C": ("F", "C")}
 
 
 # ---------------------------------------------------------------------------
@@ -165,7 +169,9 @@ def run_transfer(args):
     ccls = np.array([it["cls"] for it in chartqa])
     cfigs = np.array([it["figure_id"] for it in chartqa])
     print("synthetic:", {c: sum(it["cls"] == c for it in synth) for c in "CSFZ"})
-    print("chartqa:  ", {c: int((ccls == c).sum()) for c in "CSP"}, flush=True)
+    print("chartqa:  ", {c: int((ccls == c).sum()) for c in "CSPF"}, flush=True)
+    targets = {t: pn for t, pn in TRANSFER_TARGETS.items()
+               if min((ccls == pn[0]).sum(), (ccls == pn[1]).sum()) >= MIN_TARGET}
 
     per_layer = {}
     t0 = time.time()
@@ -175,7 +181,7 @@ def run_transfer(args):
             per_layer[L] = out
             print(f"  layer {L} done ({n}/{len(layers)}) [{time.time() - t0:.0f}s]", flush=True)
 
-    report = {"probes": {}, "chartqa_classes": {c: int((ccls == c).sum()) for c in "CSP"}}
+    report = {"probes": {}, "chartqa_classes": {c: int((ccls == c).sum()) for c in "CSPF"}}
     for name in TRANSFER_PROBES:
         # selection on synthetic evidence only
         best = max(layers, key=lambda L: np.nan_to_num(per_layer[L][name]["synth_oof_auroc"],
@@ -184,7 +190,7 @@ def run_transfer(args):
         report["probes"][name] = {
             "selected_on_synthetic": {"layer": best, "l2": chosen["l2"],
                                       "synth_oof_auroc": chosen["synth_oof_auroc"]},
-            "chartqa": evaluate(chosen["chartqa_scores"], ccls, cfigs, CHARTQA_TARGETS),
+            "chartqa": evaluate(chosen["chartqa_scores"], ccls, cfigs, targets),
             "chartqa_S_vs_C_by_layer_descriptive_only": {
                 L: auroc(*_pair(ccls, per_layer[L][name]["chartqa_scores"], "S", "C"))
                 for L in layers},

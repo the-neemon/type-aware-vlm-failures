@@ -240,3 +240,70 @@ class TestRunner:
         p = tmp_path / "labels.jsonl"
         p.write_text(json.dumps({"item_id": "a", "label": "structural"}) + "\n")
         assert load_labels(p) == ([{"item_id": "a", "label": "structural"}], 0)
+
+
+class TestSyntheticMode:
+    """--synthetic: errors typed from the answers, repairs scored by the synthetic scorer."""
+
+    @pytest.fixture(scope="class")
+    def pilot(self, tmp_path_factory):
+        from src.synth.absent_pairs import generate
+        d = tmp_path_factory.mktemp("pilot")
+        generate(d, num_charts=8, seed=3)
+        return d / "manifest.jsonl"
+
+    @staticmethod
+    def _preds(manifest):
+        """Shown bars answered wrongly; missing bars answered 37, 0 and None in turn."""
+        from src.synth.items import load_manifest_items
+        absent_answers = ["37", "0", "None"]
+        preds = []
+        for n, it in enumerate(load_manifest_items(manifest, ("train", "validation", "test"))):
+            pred = absent_answers[n % 3] if it["absent"] else "12345"
+            preds.append({"item_id": f"i{n}", "model": "qwen2_5_vl_7b",
+                          "figure_id": it["figure_id"],
+                          # prefixed: charts share question wording, and the scripted
+                          # model below looks answers up by question
+                          "question": f"[{it['figure_id']}] {it['question']}",
+                          "gold": it["gold"], "prediction": pred, "correct": False,
+                          "split": it["split"], "source": "synthetic",
+                          **{k: it[k] for k in ("template", "absent", "phrasing", "asks_about")}})
+        return preds
+
+    def test_types_come_from_the_answers(self, pilot):
+        from src.intervene.run_matrix import select_synthetic_items
+        preds = self._preds(pilot)
+        items, counts = select_synthetic_items(preds, pilot)
+        by_type = {t: [i for i in items if i["failure_type"] == t]
+                   for t in ("structural", "fabrication", "zero")}
+        assert all(not i["absent"] for i in by_type["structural"])
+        assert all(i["prediction"] == "37" for i in by_type["fabrication"])
+        assert all(i["prediction"] == "0" for i in by_type["zero"])
+        # "None" is a correct refusal, so it is not an error at all
+        assert not any(i["prediction"] == "None" for i in items)
+        assert counts["skipped_absent_outcomes"] == {}
+        assert counts["structural"] and counts["fabrication"] and counts["zero"]
+
+    def test_missing_bar_recovers_only_by_refusing(self, pilot, tmp_path):
+        from src.intervene.run_matrix import select_synthetic_items
+        items, _ = select_synthetic_items(self._preds(pilot), pilot)
+        gold = {it["question"]: (it["gold"], it["absent"]) for it in items}
+
+        def model(q):            # reads shown bars right; missing bars: "Not shown" if verified
+            g, absent = gold[q.prompt.split("\n")[0]]
+            verify = VERIFY_SUFFIX in q.prompt
+            if not absent:
+                return f"The bar.\nAnswer: {g}" if verify else g
+            return "It is not on the chart.\nAnswer: Not shown" if verify else "0"
+
+        out = tmp_path / "e4.jsonl"
+        run(items, figure_loader(pilot.parent, pilot), model, out, log=lambda s: None)
+        rows = [r for r in read_jsonl(out) if r["intervention"] != "I_0"]
+        for r in rows:
+            if r["failure_type"] == "structural":
+                assert r["recovered"] and "outcome" not in r
+            else:
+                assert r["recovered"] is (r["intervention"] == VERIFY)
+                assert r["outcome"] == ("rejected" if r["intervention"] == VERIFY else "zero")
+        text = summarize(out, n_boot=100)
+        assert "| zero |" in text and "What the missing-bar answers became" in text

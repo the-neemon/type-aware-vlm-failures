@@ -134,16 +134,18 @@ def _fit_score(X, y, train, score, l2):
     return predict_scores((X[score] - mu) / sd, w)
 
 
-def cross_validate(X, cls, folds, probe, l2_grid, probes=None):
+def cross_validate(X, cls, folds, probe, l2_grid, probes=None, outer=None):
     """Per outer fold: inner-CV AUROC per L2, and scores for every item of that fold.
 
     `probes` maps a probe name to its (positive, negative) classes; default PROBES.
+    `outer` limits the outer folds computed (default all), for callers whose
+    features depend on the outer fold.
     """
     pos, neg = (probes or PROBES)[probe]
     member = np.isin(cls, (pos, neg))
     y = (cls == pos).astype(float)
     out = {}
-    for k in range(N_FOLDS):
+    for k in (range(N_FOLDS) if outer is None else outer):
         fold_k = folds == k
         res = {}
         for l2 in l2_grid:
