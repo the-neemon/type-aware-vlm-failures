@@ -39,3 +39,16 @@ logs/
 .DS_Store
 .vscode/
 .idea/
+
+# LaTeX build files (the .tex sources and the built .pdf are tracked)
+paper/**/*.aux
+paper/**/*.bbl
+paper/**/*.blg
+paper/**/*.log
+paper/**/*.out
+paper/**/*.nav
+paper/**/*.snm
+paper/**/*.toc
+paper/**/*.fls
+paper/**/*.fdb_latexmk
+paper/**/*.synctex.gz
