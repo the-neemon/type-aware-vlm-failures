@@ -20,9 +20,12 @@
 \title{Type-Aware Failure Prediction for Chart and Diagram\\Reasoning in Vision-Language Models: Mid-Term Report}
 
 \author{Yash More, Naman Singhal, Shrish Kadam, Sanjith Ganapathi \\
-  \texttt{\{yash.more, naman.s, shrish.kadam\}@research.iiit.ac.in}, \texttt{sanjith.ganapathi@students.iiit.ac.in} \\
-  International Institute of Information Technology, Hyderabad \\
-  \url{https://github.com/the-neemon/type-aware-vlm-failures}}
+  \texttt{\{yash.more, naman.s, shrish.kadam\}@research.iiit.ac.in}, \\
+  \texttt{sanjith.ganapathi@students.iiit.ac.in} \\
+  International Institute of Information Technology, Hyderabad}
+
+% keep column bottoms natural; the abstract footnote otherwise stretches page 1
+\raggedbottom
 
 \begin{document}
 \maketitle
@@ -44,7 +47,8 @@ that the category is missing (AUROC 0.96 to 1.00).
 Probes for misreads and for missing-bar fabrications are largely type-specific in
 Qwen but not in LLaVA, and on synthetic charts the position of a value relative
 to the gridlines predicts misreads as well as the probes do. The synthetic probes
-transfer poorly to real charts.
+transfer poorly to real charts.\footnote{Code and results:
+\url{https://github.com/the-neemon/type-aware-vlm-failures}}
 \end{abstract}
 
 \section{Introduction}
