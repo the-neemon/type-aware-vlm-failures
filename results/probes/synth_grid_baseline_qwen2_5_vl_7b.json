@@ -1,0 +1,107 @@
+{
+  "declared": "1 Oct 2026, before running; see module docstring",
+  "n_misread": 46,
+  "n_correct": 554,
+  "single_feature_auroc_no_fitting": {
+    "grid_offset": 0.6335347669125726,
+    "ten_offset": 0.6415201695181291
+  },
+  "cross_validated": {
+    "metadata": {
+      "S_vs_C": 0.8141775231517815,
+      "ci95": [
+        0.7585177069805195,
+        0.8631917589551051
+      ],
+      "chosen_per_fold": {
+        "0": {
+          "layer": "metadata",
+          "l2": 10.0
+        },
+        "1": {
+          "layer": "metadata",
+          "l2": 1.0
+        },
+        "2": {
+          "layer": "metadata",
+          "l2": 1.0
+        },
+        "3": {
+          "layer": "metadata",
+          "l2": 1.0
+        },
+        "4": {
+          "layer": "metadata",
+          "l2": 1.0
+        }
+      }
+    },
+    "metadata_plus_grid": {
+      "S_vs_C": 0.8525153037199812,
+      "ci95": [
+        0.8039262122769317,
+        0.8964342688283405
+      ],
+      "chosen_per_fold": {
+        "0": {
+          "layer": "metadata_plus_grid",
+          "l2": 1.0
+        },
+        "1": {
+          "layer": "metadata_plus_grid",
+          "l2": 1.0
+        },
+        "2": {
+          "layer": "metadata_plus_grid",
+          "l2": 1.0
+        },
+        "3": {
+          "layer": "metadata_plus_grid",
+          "l2": 1.0
+        },
+        "4": {
+          "layer": "metadata_plus_grid",
+          "l2": 1.0
+        }
+      }
+    },
+    "grid_only": {
+      "S_vs_C": 0.4970765970805211,
+      "ci95": [
+        0.41251989222019514,
+        0.5809492851660154
+      ],
+      "chosen_per_fold": {
+        "0": {
+          "layer": "grid_only",
+          "l2": 100.0
+        },
+        "1": {
+          "layer": "grid_only",
+          "l2": 1000.0
+        },
+        "2": {
+          "layer": "grid_only",
+          "l2": 100.0
+        },
+        "3": {
+          "layer": "grid_only",
+          "l2": 10000.0
+        },
+        "4": {
+          "layer": "grid_only",
+          "l2": 10000.0
+        }
+      }
+    }
+  },
+  "activation_probe_S_vs_C": {
+    "auroc": 0.8867132318317376,
+    "ci95": [
+      0.8194329164384229,
+      0.9421079028471796
+    ],
+    "n_pos": 46,
+    "n_neg": 554
+  }
+}
