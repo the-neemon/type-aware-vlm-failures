@@ -10,6 +10,7 @@
 \newcommand{\cls}[1]{\MakeUppercase{#1}}
 \newcommand{\hl}[1]{\alert{\textbf{#1}}}
 \setbeamerfont{footnote}{size=\tiny}
+\setbeamerfont{title}{size=\Large}
 
 \title{Type-Aware Failure Prediction for Chart Reasoning in VLMs}
 \subtitle{Mid-term status, for TA guidance}
@@ -56,10 +57,10 @@ A collapse of the two into one signal is a reportable outcome, not a failure.
 & What it asks & Status \\
 \midrule
 E1 & Can a probe predict \emph{whether} the answer will be wrong? & done \\
-E2 & Is the probe just reading surface features of the input? & partial \\
+E2 & Is the probe just reading surface features of the input? & done \\
 E3 & Are the misread and fabrication signals different (cross-transfer)? & done \\
-E4 & Does the failure type decide which repair works? & code ready \\
-E5 & A controller that picks the repair from the probes & Oct \\
+E4 & Does the failure type decide which repair works? & not yet run \\
+E5 & A controller that picks the repair from the probes & not yet run \\
 \bottomrule
 \end{tabular}
 \vspace{1em}
@@ -72,6 +73,7 @@ Two data arms: \textbf{ChartQA} (real charts, naturally occurring errors) and a
 \section{Pipeline}
 
 \begin{frame}{Setup}
+\small
 \begin{columns}[T]
 \column{0.5\textwidth}
 \textbf{Models} (frozen, fp16, greedy)
@@ -158,8 +160,8 @@ strong model's leftover errors are mostly scoring artefacts
 \item \cls{computation} is large for both; the proposal's two-class taxonomy
 had no slot for it
 \end{itemize}
-$\Rightarrow$ ChartQA cannot supply fabrication examples. This is why the
-synthetic arm exists.
+{\small\raggedright $\Rightarrow$ ChartQA cannot supply fabrication examples.
+This is why the synthetic arm exists.\par}
 \end{columns}
 \end{frame}
 
@@ -179,9 +181,9 @@ Real errors & 140 & 25 & 607 & 428 \\
 Gold answer wrong & 16 & \hl{18} & 22 & 22 \\
 \bottomrule
 \end{tabular}
-\vspace{0.6em}
+\vspace{0.3em}
 \raggedright
-\begin{itemize}
+\begin{itemize}\small
 \item Gold answers wrong: 34 (Qwen) and 44 (LLaVA); on Qwen's augmented
 questions that is 28\% of the ``errors''
 \item Counting \cls{not\_an\_error} as correct: Qwen 87.3\% $\to$ 91.8\%,
@@ -194,24 +196,28 @@ Every probe trained on relaxed-accuracy labels inherits this noise.
 
 \begin{frame}{E1: predicting whether the answer will be wrong}
 \centering
-\begin{tabular}{lcc}
+\small
+\begin{tabular}{lcccc}
 \toprule
-Test AUROC [95\% CI] & Probe & Surface baseline \\
+Test AUROC & Probe [95\% CI] & 5 splits & Resid. & Surface \\
 \midrule
-Qwen, all errors & 0.877 {\scriptsize[.83, .92]} & 0.715 \\
-Qwen, without \cls{not\_an\_error} & \hl{0.932} {\scriptsize[.90, .96]} & 0.786 \\
-LLaVA, all errors & 0.798 {\scriptsize[.76, .84]} & 0.608 \\
-LLaVA, without \cls{not\_an\_error} & \hl{0.819} {\scriptsize[.78, .85]} & 0.636 \\
+Qwen, all errors & 0.877 {\scriptsize[.83, .92]} & .862 {\scriptsize$\pm$.02} & .803 & .715 \\
+Qwen, without \cls{not\_an\_error} & \hl{0.932} {\scriptsize[.90, .96]} & .910 {\scriptsize$\pm$.02} & .901 & .786 \\
+LLaVA, all errors & 0.798 {\scriptsize[.76, .84]} & .801 {\scriptsize$\pm$.02} & .783 & .608 \\
+LLaVA, without \cls{not\_an\_error} & \hl{0.819} {\scriptsize[.78, .85]} & .810 {\scriptsize$\pm$.01} & .798 & .636 \\
 \bottomrule
 \end{tabular}
-\vspace{0.8em}
+\vspace{0.5em}
 \raggedright
-\begin{itemize}
-\item Surface baseline: question source, length, image tokens, numeric gold
-\item Removing label noise \emph{raises} the probe: part of its ``error'' was
-the labels (smaller rise for LLaVA: only 6\% of its errors are not errors)
-\item Not just question style: within human-written questions only, 0.895
-(Qwen) and 0.850 (LLaVA)
+\begin{itemize}\footnotesize
+\item Surface: question source, length, image tokens, numeric gold. Resid.: those
+features regressed out of the activations; most of the signal survives
+\item 5 splits: mean $\pm$ s.d.\ over five figure splits; Qwen's reported split is
+above the mean
+\item Removing label noise \emph{raises} the probe; within human-written questions
+only, 0.895 (Qwen) and 0.850 (LLaVA)
+\item Unseen charts (960 Qwen validation questions): 0.772; probabilities
+calibrated (ECE 0.03 Qwen, 0.05 LLaVA)
 \end{itemize}
 \end{frame}
 
@@ -231,15 +237,17 @@ hallucination): for charts, the state that has read the question matters
 \end{frame}
 
 \begin{frame}{E3 on real charts: misreads vs.\ arithmetic errors}
-\centering\small
+\centering\footnotesize
 \begin{tabular}{lcc}
 \toprule
 AUROC (5-fold CV by chart) & Qwen & LLaVA \\
 \midrule
 Misread vs.\ correct & \hl{0.892} {\scriptsize[.85, .93]} & \hl{0.813} {\scriptsize[.79, .83]} \\
 \quad surface baseline & 0.651 & 0.536 \\
+\quad retrieval questions only & 0.913 & 0.805 \\
 Computation vs.\ correct & \hl{0.904} {\scriptsize[.87, .93]} & \hl{0.949} {\scriptsize[.94, .96]} \\
 \quad surface baseline & 0.818 & 0.821 \\
+\quad arithmetic questions only & 0.845 & 0.836 \\
 Misread vs.\ computation & \hl{0.897} {\scriptsize[.84, .94]} & \hl{0.961} {\scriptsize[.95, .97]} \\
 \quad surface baseline & 0.693 & 0.845 \\
 \midrule
@@ -249,13 +257,13 @@ Cross: misread probe on comp.\ vs.\ correct & 0.820 & 0.586 \\
 \vspace{0.2em}
 \raggedright
 \begin{itemize}\footnotesize
-\item Classes: Qwen 71 misread / 93 computation; LLaVA 583 / 435. Too few
+\item Qwen 71 misreads / 93 computation errors; LLaVA 583 / 435; too few
 fabrications for a probe (1 and 17)
 \item LLaVA's probes are type-specific; Qwen's misread probe also fires on
-arithmetic errors, but surface features alone give 0.765 there
-\item \textbf{Caveat:} the arithmetic signal is partly the question
-(``difference'', ``ratio''): at layer 0 the computation probe already gives
-0.865 (LLaVA). Next: compare only within arithmetic questions
+arithmetic errors (surface features alone: 0.765)
+\item Question wording gives part of the arithmetic signal away (layer 0: 0.865
+for LLaVA), but probes trained \emph{within} one question type still work
+\item Surface features regressed out (Qwen): all three probes stay at 0.83 to 0.92
 \end{itemize}
 \end{frame}
 
@@ -314,8 +322,8 @@ Missing, neighbor & fabricated & 300 & 290 \\
 \end{itemize}
 \end{columns}
 \vspace{0.5em}
-Value template gives four classes: \cls{c} correct, \cls{s} misread,
-\cls{f} invented number, \cls{z} ``0''.
+{\small Value template gives four classes: \cls{c} correct, \cls{s} misread,
+\cls{f} invented number, \cls{z} ``0''.\par}
 \end{frame}
 
 \begin{frame}{Do the models know the bar is missing? Yes.}
@@ -373,6 +381,30 @@ fabrications than on misreads, a general ``not grounded'' direction
 {\footnotesize 5-fold CV by chart, out-of-fold AUROC, synthetic value questions.}
 \end{frame}
 
+\begin{frame}{Synthetic misreads: a chart property, and no transfer}
+\textbf{Gridline position predicts synthetic misreads} {\small (misread vs.\ correct, AUROC)}
+\begin{center}\small
+\begin{tabular}{lcc}
+\toprule
+ & Qwen & LLaVA \\
+\midrule
+Activation probe & 0.887 & 0.776 \\
+Metadata + gridline distance (declared in advance) & 0.853 & 0.642 \\
+Metadata + distance relative to the value (post hoc) & \hl{0.920} & \hl{0.860} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}\small
+\item Scoring tolerates a 5\% \emph{relative} error: rounding 34 to 30 is wrong,
+134 to 130 is not
+\item \textbf{Synthetic probes on real charts:} misread probe on real misreads 0.597
+(Qwen), 0.557 (LLaVA); missing-bar probe on LLaVA's 17 real fabrications 0.650,
+but equally on real misreads (0.669)
+\item So the synthetic misread signal may describe the chart, and the
+synthetic probes do not carry over to ChartQA
+\end{itemize}
+\end{frame}
+
 \begin{frame}{E3: where the type signals live}
 \begin{columns}[c]
 \column{0.55\textwidth}
@@ -391,55 +423,56 @@ be produced, not an early warning
 \section{Where we stand}
 
 \begin{frame}{Verdict so far}
-\textbf{Hypothesis: supported for Qwen, partly for LLaVA.}
+\textbf{Hypothesis: partly supported.}
 \begin{itemize}\small
-\item \qwen: misread and missing-bar states are linearly distinguishable, each
-probe largely blind to the other type
-\item \llava: missing-bar signal is specific, but the misread probe captures a
-general lack of grounding; a one-number chart feature (distance to nearest
-gridline) predicts its misreads at 0.852, above the probe
-\item Real charts (ChartQA): misreads and arithmetic errors separable in both
-(0.897 Qwen, 0.961 LLaVA), type-specific in LLaVA
+\item Real charts: misreads and arithmetic errors separable in both models
+(0.897 Qwen, 0.961 LLaVA), also within one question type; type-specific in LLaVA
+\item Synthetic: both models encode that the bar is missing; in Qwen the
+misread and missing-bar probes are largely blind to each other's type
+\item Against: LLaVA's synthetic misread probe fires more on fabrications, and
+gridline position predicts synthetic misreads as well as either probe
 \end{itemize}
 \vspace{0.5em}
-\textbf{Caveats we already know about}
+\textbf{Caveats}
 \begin{itemize}\small
-\item On synthetic data, ``fabrication'' and ``missing category'' coincide
-\item Qwen has only 46 synthetic misreads; on ChartQA the arithmetic probe
-partly detects the question type, not the error
-\item Labels are from one LLM annotator (blind self-agreement $\kappa=0.917$),
-human $\kappa$ check pending
+\item On synthetic data, ``fabrication'' and ``missing category'' coincide, and
+the synthetic probes do not transfer to real charts
+\item Qwen has only 46 synthetic and 71 real misreads
+\item Labels are from one LLM annotator (blind self-agreement $\kappa=0.917$);
+no two-person human check yet
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Status and next steps}
-\begin{columns}[T]
-\column{0.48\textwidth}
+\begin{frame}{Status}
 \textbf{Done}
-\begin{itemize}\footnotesize
-\item Full-depth caches: both models, ChartQA test, both pilots; val\_human
-(Qwen)
-\item Error labels for both models (317 Qwen, 1,178 LLaVA)
-\item E1 both models; E3 both models, synthetic and ChartQA (misread
-vs.\ arithmetic)
-\end{itemize}
-\textbf{Coded, not yet run}
-\begin{itemize}\footnotesize
-\item Synthetic $\to$ ChartQA transfer of the misread probe
-\item E4 intervention matrix
-\end{itemize}
-\column{0.5\textwidth}
-\textbf{Timeline}
 \begin{itemize}\small
-\item \textbf{Oct 1--8}: human $\kappa$ on 200 items (both models);
-residualised probes (E2); ChartQA type probes within question type
-\item \textbf{Oct 1--15}: E4 repairs (crop, verify prompt, abstain) on
-synthetic items, both models
-\item \textbf{Oct 16--25}: E5 controller; risk--coverage vs.\ binary selective
-prediction and the oracle
-\item \textbf{Oct 26--31}: final report
+\item Full-depth activation caches: both models, ChartQA test, both synthetic
+pilots; ChartQA validation (Qwen)
+\item Error labels for both models (317 Qwen, 1,178 LLaVA)
+\item E1 for both models, with five-split robustness, calibration and an
+unseen-chart test (Qwen)
+\item E2: surface baselines everywhere; residualised probes (binary both
+models, type probes Qwen)
+\item E3 for both models: synthetic matrix, ChartQA misread vs.\ arithmetic
+(also within question type), synthetic $\to$ ChartQA transfer
 \end{itemize}
-\end{columns}
+\end{frame}
+
+\begin{frame}{Timeline for the rest of the project}
+Final submission: 31 October. E4 code is written and tested.
+\vspace{0.6em}
+\begin{itemize}\small
+\item \textbf{3--10 Oct.} E4 cross-intervention matrix on every synthetic
+value-question error of both models (Qwen 631, LLaVA 1,015): crop, upsample,
+verify prompt, sampled re-ask; pre-registered difference-in-differences test.
+In parallel: two-person human $\kappa$ on 200 errors (both models); LLaVA
+residualised type probes
+\item \textbf{11--20 Oct.} E5 controller: abstain when the missing-bar probe
+fires, re-look when the binary or misread probe fires; risk--coverage and AURC
+against binary selective prediction and the oracle. In parallel: out-of-range
+synthetic pilot, so fabrication no longer equals a missing category
+\item \textbf{21--31 Oct.} Final paper, code release, viva slides
+\end{itemize}
 \end{frame}
 
 \begin{frame}{Where we would like guidance}

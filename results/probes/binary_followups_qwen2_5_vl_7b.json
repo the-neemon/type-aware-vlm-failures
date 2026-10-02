@@ -1,0 +1,164 @@
+{
+  "activations": "/home2/yash.more/anlp/project/vlm-failures-durable/qwen2_5_vl_7b_test/test.npz",
+  "position": "query_last",
+  "n_items": 2500,
+  "n_errors": 317,
+  "dropped_not_an_error": 0,
+  "seeds": {
+    "42": {
+      "plain": {
+        "layer": 21,
+        "l2": 1000.0,
+        "val_auroc": 0.8738373554550025,
+        "test_auroc": 0.8771570319240725,
+        "n_test": 517,
+        "test_errors": 61,
+        "ci95": [
+          0.8324992345962495,
+          0.915681015618306
+        ],
+        "within_source": {
+          "human": 0.829187925170068,
+          "augmented": 0.8781065088757396
+        }
+      },
+      "residualised": {
+        "layer": 21,
+        "l2": 1000.0,
+        "val_auroc": 0.8543866264454499,
+        "test_auroc": 0.8032786885245902,
+        "n_test": 517,
+        "test_errors": 61,
+        "ci95": [
+          0.7318963537928512,
+          0.8654938404848227
+        ],
+        "within_source": {
+          "human": 0.8107993197278912,
+          "augmented": 0.8494082840236686
+        }
+      }
+    },
+    "1": {
+      "plain": {
+        "layer": 20,
+        "l2": 1000.0,
+        "val_auroc": 0.851911976911977,
+        "test_auroc": 0.8309584520773962,
+        "n_test": 511,
+        "test_errors": 59
+      },
+      "residualised": {
+        "layer": 18,
+        "l2": 100.0,
+        "val_auroc": 0.8177489177489178,
+        "test_auroc": 0.744562771861407,
+        "n_test": 511,
+        "test_errors": 59
+      }
+    },
+    "2": {
+      "plain": {
+        "layer": 22,
+        "l2": 10000.0,
+        "val_auroc": 0.8972945500039096,
+        "test_auroc": 0.8887495676236596,
+        "n_test": 521,
+        "test_errors": 49
+      },
+      "residualised": {
+        "layer": 20,
+        "l2": 10000.0,
+        "val_auroc": 0.8140589569160998,
+        "test_auroc": 0.8454254583189208,
+        "n_test": 521,
+        "test_errors": 49
+      }
+    },
+    "3": {
+      "plain": {
+        "layer": 25,
+        "l2": 1000.0,
+        "val_auroc": 0.9033365477338476,
+        "test_auroc": 0.8601528384279477,
+        "n_test": 518,
+        "test_errors": 60
+      },
+      "residualised": {
+        "layer": 25,
+        "l2": 1000.0,
+        "val_auroc": 0.8634522661523626,
+        "test_auroc": 0.7840975254730713,
+        "n_test": 518,
+        "test_errors": 60
+      }
+    },
+    "4": {
+      "plain": {
+        "layer": 23,
+        "l2": 1000.0,
+        "val_auroc": 0.8973352033660589,
+        "test_auroc": 0.8510926118626431,
+        "n_test": 527,
+        "test_errors": 62
+      },
+      "residualised": {
+        "layer": 23,
+        "l2": 100.0,
+        "val_auroc": 0.8597163783699548,
+        "test_auroc": 0.7954214360041624,
+        "n_test": 527,
+        "test_errors": 62
+      }
+    }
+  },
+  "calibration": {
+    "raw": {
+      "ece": 0.0264720341419577,
+      "brier": 0.07578464264830709,
+      "mean_p": 0.11228533587818826,
+      "base_rate": 0.11798839458413926
+    },
+    "platt_on_val": {
+      "ece": 0.02653105878486793,
+      "brier": 0.075592145105574,
+      "mean_p": 0.1297449201378461,
+      "base_rate": 0.11798839458413926
+    }
+  },
+  "val_human_as_test": {
+    "layer": 21,
+    "l2": 1000.0,
+    "n": 960,
+    "errors": 193,
+    "auroc": 0.771797799109646,
+    "ci95": [
+      0.7328656536501544,
+      0.8095742786602731
+    ]
+  },
+  "val_human_as_training": {
+    "layer": 21,
+    "l2": 1000.0,
+    "val_auroc": 0.8747486173956762,
+    "test_auroc": 0.883592177164222,
+    "ci95": [
+      0.8410384952952024,
+      0.9206561189827952
+    ]
+  },
+  "over_seeds": {
+    "plain": {
+      "mean": 0.8616221003831438,
+      "sd": 0.022530655580128622,
+      "min": 0.8309584520773962,
+      "max": 0.8887495676236596
+    },
+    "residualised": {
+      "mean": 0.7945571760364303,
+      "sd": 0.03630853414304706,
+      "min": 0.744562771861407,
+      "max": 0.8454254583189208
+    }
+  }
+}

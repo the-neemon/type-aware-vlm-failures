@@ -2,21 +2,27 @@
   "declared": "1 Oct 2026, before running; see module docstring",
   "n_misread": 415,
   "n_correct": 185,
+  "post_hoc_features": [
+    "rel_grid_offset",
+    "rel_ten_offset"
+  ],
   "single_feature_auroc_no_fitting": {
     "grid_offset": 0.7145880820579615,
-    "ten_offset": 0.7125822207749919
+    "ten_offset": 0.7125822207749919,
+    "rel_grid_offset": 0.8235688700748942,
+    "rel_ten_offset": 0.8519830674047542
   },
   "cross_validated": {
     "metadata": {
-      "S_vs_C": 0.5496320416802345,
+      "S_vs_C": 0.5116118528166721,
       "ci95": [
-        0.4994039832907102,
-        0.5991664835426231
+        0.46127083944239144,
+        0.5628138006177059
       ],
       "chosen_per_fold": {
         "0": {
           "layer": "metadata",
-          "l2": 1000.0
+          "l2": 10000.0
         },
         "1": {
           "layer": "metadata",
@@ -91,6 +97,64 @@
         "4": {
           "layer": "grid_only",
           "l2": 100.0
+        }
+      }
+    },
+    "post_hoc_metadata_plus_all_grid": {
+      "S_vs_C": 0.8595506349723218,
+      "ci95": [
+        0.8299347032805362,
+        0.8877619521427865
+      ],
+      "chosen_per_fold": {
+        "0": {
+          "layer": "post_hoc_metadata_plus_all_grid",
+          "l2": 1.0
+        },
+        "1": {
+          "layer": "post_hoc_metadata_plus_all_grid",
+          "l2": 1.0
+        },
+        "2": {
+          "layer": "post_hoc_metadata_plus_all_grid",
+          "l2": 1.0
+        },
+        "3": {
+          "layer": "post_hoc_metadata_plus_all_grid",
+          "l2": 1.0
+        },
+        "4": {
+          "layer": "post_hoc_metadata_plus_all_grid",
+          "l2": 1.0
+        }
+      }
+    },
+    "post_hoc_all_grid_only": {
+      "S_vs_C": 0.8552197981113644,
+      "ci95": [
+        0.8228085660281358,
+        0.8832365565885615
+      ],
+      "chosen_per_fold": {
+        "0": {
+          "layer": "post_hoc_all_grid_only",
+          "l2": 1.0
+        },
+        "1": {
+          "layer": "post_hoc_all_grid_only",
+          "l2": 1.0
+        },
+        "2": {
+          "layer": "post_hoc_all_grid_only",
+          "l2": 1.0
+        },
+        "3": {
+          "layer": "post_hoc_all_grid_only",
+          "l2": 1.0
+        },
+        "4": {
+          "layer": "post_hoc_all_grid_only",
+          "l2": 1.0
         }
       }
     }

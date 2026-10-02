@@ -1,0 +1,143 @@
+{
+  "activations": "/home2/shrish.kadam/activations/llava_next_mistral_7b/test.npz",
+  "position": "query_last",
+  "n_items": 2500,
+  "n_errors": 1178,
+  "dropped_not_an_error": 0,
+  "seeds": {
+    "42": {
+      "plain": {
+        "layer": 24,
+        "l2": 1000.0,
+        "val_auroc": 0.8432684140274238,
+        "test_auroc": 0.798397723869422,
+        "n_test": 517,
+        "test_errors": 252,
+        "ci95": [
+          0.7596364622128357,
+          0.8356240751516147
+        ],
+        "within_source": {
+          "human": 0.8502208630648997,
+          "augmented": 0.7355358316896778
+        }
+      },
+      "residualised": {
+        "layer": 23,
+        "l2": 1000.0,
+        "val_auroc": 0.8240049751243781,
+        "test_auroc": 0.7829589697514225,
+        "n_test": 517,
+        "test_errors": 252,
+        "ci95": [
+          0.7431691519650995,
+          0.8216476145906914
+        ],
+        "within_source": {
+          "human": 0.8167176350662589,
+          "augmented": 0.744904667981591
+        }
+      }
+    },
+    "1": {
+      "plain": {
+        "layer": 28,
+        "l2": 1000.0,
+        "val_auroc": 0.8285680268059122,
+        "test_auroc": 0.7915781697294302,
+        "n_test": 511,
+        "test_errors": 238
+      },
+      "residualised": {
+        "layer": 28,
+        "l2": 1000.0,
+        "val_auroc": 0.8112530403279302,
+        "test_auroc": 0.7620124973066149,
+        "n_test": 511,
+        "test_errors": 238
+      }
+    },
+    "2": {
+      "plain": {
+        "layer": 20,
+        "l2": 1000.0,
+        "val_auroc": 0.7882256297918948,
+        "test_auroc": 0.8271298593879239,
+        "n_test": 521,
+        "test_errors": 248
+      },
+      "residualised": {
+        "layer": 20,
+        "l2": 1000.0,
+        "val_auroc": 0.7617196056955093,
+        "test_auroc": 0.8102032376225925,
+        "n_test": 521,
+        "test_errors": 248
+      }
+    },
+    "3": {
+      "plain": {
+        "layer": 18,
+        "l2": 1000.0,
+        "val_auroc": 0.8048577211572806,
+        "test_auroc": 0.7749125874125874,
+        "n_test": 518,
+        "test_errors": 232
+      },
+      "residualised": {
+        "layer": 18,
+        "l2": 1000.0,
+        "val_auroc": 0.7892606262650316,
+        "test_auroc": 0.7760429225946467,
+        "n_test": 518,
+        "test_errors": 232
+      }
+    },
+    "4": {
+      "plain": {
+        "layer": 19,
+        "l2": 1000.0,
+        "val_auroc": 0.8010788183567686,
+        "test_auroc": 0.8112296821842924,
+        "n_test": 527,
+        "test_errors": 238
+      },
+      "residualised": {
+        "layer": 19,
+        "l2": 1000.0,
+        "val_auroc": 0.7860343592408939,
+        "test_auroc": 0.7847111162804222,
+        "n_test": 527,
+        "test_errors": 238
+      }
+    }
+  },
+  "calibration": {
+    "raw": {
+      "ece": 0.04641270529226835,
+      "brier": 0.18368224557331742,
+      "mean_p": 0.4496489405789992,
+      "base_rate": 0.4874274661508704
+    },
+    "platt_on_val": {
+      "ece": 0.03925174830709589,
+      "brier": 0.18313863499458394,
+      "mean_p": 0.4800071064263389,
+      "base_rate": 0.4874274661508704
+    }
+  },
+  "over_seeds": {
+    "plain": {
+      "mean": 0.8006496045167312,
+      "sd": 0.019766751670822934,
+      "min": 0.7749125874125874,
+      "max": 0.8271298593879239
+    },
+    "residualised": {
+      "mean": 0.7831857487111399,
+      "sd": 0.017547431592459122,
+      "min": 0.7620124973066149,
+      "max": 0.8102032376225925
+    }
+  }
+}
