@@ -16,7 +16,7 @@
 \subtitle{Mid-term status, for TA guidance}
 \author{Yash More \and Naman Singhal \and Shrish Kadam \and Sanjith Ganapathi}
 \institute{ANLP course project, IIIT Hyderabad}
-\date{30 September 2026}
+\date{October 2026\\[0.4em]\footnotesize\url{https://github.com/the-neemon/type-aware-vlm-failures}}
 
 \begin{document}
 
@@ -57,7 +57,7 @@ A collapse of the two into one signal is a reportable outcome, not a failure.
 & What it asks & Status \\
 \midrule
 E1 & Can a probe predict \emph{whether} the answer will be wrong? & done \\
-E2 & Is the probe just reading surface features of the input? & done \\
+E2 & Is the probe just reading surface features of the input? & mostly done \\
 E3 & Are the misread and fabrication signals different (cross-transfer)? & done \\
 E4 & Does the failure type decide which repair works? & not yet run \\
 E5 & A controller that picks the repair from the probes & not yet run \\
@@ -126,8 +126,10 @@ Qwen is wrong on \textbf{317} questions, LLaVA on \textbf{1,178}.
 \end{frame}
 
 \begin{frame}{What the errors actually are}
+\small
 \begin{columns}[T]
 \column{0.46\textwidth}
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{lrrrr}
 \toprule
  & \multicolumn{2}{c}{Qwen} & \multicolumn{2}{c}{LLaVA} \\
@@ -160,14 +162,15 @@ strong model's leftover errors are mostly scoring artefacts
 \item \cls{computation} is large for both; the proposal's two-class taxonomy
 had no slot for it
 \end{itemize}
-{\small\raggedright $\Rightarrow$ ChartQA cannot supply fabrication examples.
-This is why the synthetic arm exists.\par}
+\vspace{0.3em}
+{\footnotesize\raggedright $\Rightarrow$ ChartQA cannot supply fabrication
+examples; this is why the synthetic arm exists.\par}
 \end{columns}
 \end{frame}
 
 \begin{frame}{Label noise, and where each model's errors come from}
 \centering
-\small
+\footnotesize
 \begin{tabular}{lcc|cc}
 \toprule
  & \multicolumn{2}{c|}{Qwen} & \multicolumn{2}{c}{LLaVA} \\
@@ -183,7 +186,7 @@ Gold answer wrong & 16 & \hl{18} & 22 & 22 \\
 \end{tabular}
 \vspace{0.3em}
 \raggedright
-\begin{itemize}\small
+\begin{itemize}\footnotesize
 \item Gold answers wrong: 34 (Qwen) and 44 (LLaVA); on Qwen's augmented
 questions that is 28\% of the ``errors''
 \item Counting \cls{not\_an\_error} as correct: Qwen 87.3\% $\to$ 91.8\%,
@@ -191,7 +194,7 @@ LLaVA 52.9\% $\to$ 55.6\%
 \item LLaVA's error type follows the question source: arithmetic on
 human-written questions, misreads on augmented ones
 \end{itemize}
-Every probe trained on relaxed-accuracy labels inherits this noise.
+{\footnotesize Every probe trained on relaxed-accuracy labels inherits this noise.\par}
 \end{frame}
 
 \begin{frame}{E1: predicting whether the answer will be wrong}
@@ -216,7 +219,7 @@ features regressed out of the activations; most of the signal survives
 above the mean
 \item Removing label noise \emph{raises} the probe; within human-written questions
 only, 0.895 (Qwen) and 0.850 (LLaVA)
-\item Unseen charts (960 Qwen validation questions): 0.772; probabilities
+\item Unseen charts (960 Qwen validation questions): 0.772, against 0.829 on the human-written test questions; probabilities
 calibrated (ECE 0.03 Qwen, 0.05 LLaVA)
 \end{itemize}
 \end{frame}
@@ -237,7 +240,7 @@ hallucination): for charts, the state that has read the question matters
 \end{frame}
 
 \begin{frame}{E3 on real charts: misreads vs.\ arithmetic errors}
-\centering\footnotesize
+\centering\scriptsize
 \begin{tabular}{lcc}
 \toprule
 AUROC (5-fold CV by chart) & Qwen & LLaVA \\
@@ -256,7 +259,7 @@ Cross: misread probe on comp.\ vs.\ correct & 0.820 & 0.586 \\
 \end{tabular}
 \vspace{0.2em}
 \raggedright
-\begin{itemize}\footnotesize
+\begin{itemize}\scriptsize
 \item Qwen 71 misreads / 93 computation errors; LLaVA 583 / 435; too few
 fabrications for a probe (1 and 17)
 \item LLaVA's probes are type-specific; Qwen's misread probe also fires on
@@ -296,6 +299,7 @@ designed to cause
 \begin{columns}[T]
 \column{0.52\textwidth}
 \small
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{llcc}
 \toprule
 & & Qwen & LLaVA \\
@@ -322,8 +326,8 @@ Missing, neighbor & fabricated & 300 & 290 \\
 \end{itemize}
 \end{columns}
 \vspace{0.5em}
-{\small Value template gives four classes: \cls{c} correct, \cls{s} misread,
-\cls{f} invented number, \cls{z} ``0''.\par}
+{\small\raggedright Value template gives four classes: \cls{c} correct,
+\cls{s} misread, \cls{f} invented number, \cls{z} ``0''.\par}
 \end{frame}
 
 \begin{frame}{Do the models know the bar is missing? Yes.}
@@ -353,7 +357,7 @@ question, attention is causal)
 \end{columns}
 \end{frame}
 
-\begin{frame}{E3: cross-transfer matrix (the central result)}
+\begin{frame}{E3 on synthetic charts: cross-transfer matrix}
 \centering
 \small
 \begin{tabular}{l|ccc|ccc}
@@ -455,6 +459,11 @@ unseen-chart test (Qwen)
 models, type probes Qwen)
 \item E3 for both models: synthetic matrix, ChartQA misread vs.\ arithmetic
 (also within question type), synthetic $\to$ ChartQA transfer
+\end{itemize}
+\textbf{Not started}
+\begin{itemize}\small
+\item Node-link diagrams, the ``diagram'' half of the title: the generator is
+written but has not been run
 \end{itemize}
 \end{frame}
 
