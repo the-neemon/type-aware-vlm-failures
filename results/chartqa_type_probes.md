@@ -138,6 +138,28 @@ every item (a keyword rule would do), and is the natural next step. The same
 restriction for misreads (retrieval questions only) would tighten the structural
 result too.
 
+## Residualised probes (E2): surface features regressed out
+
+The same three probes rerun with `--residualise`: the four surface features are
+regressed out of the activations by least squares fitted on each outer fold's
+training rows only (Sahoo et al.). Qwen: `results/probes/chartqa_types_residualised_qwen2_5_vl_7b.json`
+(1 Oct). LLaVA: `results/probes/chartqa_types_residualised_llava_next_mistral_7b.json`
+(14 Oct, Slurm job 20840, CPU only, numpy 2.2.6 and scipy 1.15.3; its
+non-residualised rows reproduce the LLaVA table above exactly).
+
+AUROC on each probe's own contrast, 95% CI:
+
+| Probe | Contrast | LLaVA | LLaVA residualised | Qwen | Qwen residualised |
+| --- | --- | --- | --- | --- | --- |
+| structural | S vs C | 0.813 | 0.798 [0.78, 0.82] | 0.892 | 0.830 [0.77, 0.89] |
+| computation | K vs C | 0.949 | 0.900 [0.88, 0.92] | 0.904 | 0.874 [0.84, 0.91] |
+| struct_vs_comp | S vs K | 0.961 | 0.920 [0.90, 0.94] | 0.897 | 0.918 [0.87, 0.96] |
+
+Regressing out the surface features costs 0.02 to 0.06 and leaves every probe
+well above its surface baseline (LLaVA 0.536, 0.821, 0.845; Qwen 0.651, 0.818,
+0.693). Layers chosen per fold, residualised: LLaVA structural 20 to 22,
+computation 17 to 21, struct_vs_comp 16 to 23.
+
 ## Limits
 
 - One annotator per model (an AI-assisted labelling pass, audited). The two-person
