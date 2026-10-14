@@ -307,3 +307,33 @@ class TestSyntheticMode:
                 assert r["outcome"] == ("rejected" if r["intervention"] == VERIFY else "zero")
         text = summarize(out, n_boot=100)
         assert "| zero |" in text and "What the missing-bar answers became" in text
+
+    def test_correct_mode_keeps_only_right_answers_and_scores_staying_right(self, pilot, tmp_path):
+        from src.intervene.run_matrix import select_synthetic_items
+        preds = self._preds(pilot)
+        for p in preds:                          # shown bars now read right
+            if not p["absent"]:
+                p["prediction"] = p["gold"]
+        items, counts = select_synthetic_items(preds, pilot, correct=True)
+        # right reads of shown bars and the "None" refusals; never an error
+        assert {i["failure_type"] for i in items} == {"correct"}
+        assert {i["prediction"] for i in items if i["absent"]} == {"None"}
+        assert counts["correct"] == len(items) == counts["used"]
+        assert select_synthetic_items(preds, pilot)[1]["used"] == sum(
+            p["absent"] and p["prediction"] != "None" for p in preds)
+
+        gold = {it["question"]: (it["gold"], it["absent"]) for it in items}
+
+        def model(q):            # gives the right answer again under every repair
+            g, absent = gold[q.prompt.split("\n")[0]]
+            right = "Not shown" if absent else g
+            return f"Checked.\nAnswer: {right}" if VERIFY_SUFFIX in q.prompt else right
+
+        out = tmp_path / "e5.jsonl"
+        run(items, figure_loader(pilot.parent, pilot), model, out, log=lambda s: None)
+        rows = read_jsonl(out)
+        # here "recovered" means the answer is still right, I_0 included
+        assert rows and all(r["recovered"] for r in rows)
+        assert {r["intervention"] for r in rows} == {"I_0", "I_reask", "I_upsample",
+                                                     "I_crop", "I_verify"}
+        assert "| correct |" in summarize(out, n_boot=50)

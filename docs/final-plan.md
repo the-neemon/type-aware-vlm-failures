@@ -24,7 +24,9 @@ upload something; currently we do not.
 1. **Check for existing output (14 Oct).** Look on Ada for any E4 output
    (`$DURABLE/e4/`) or other results not yet in the repo. Done when every
    finished run is either committed or known not to exist; tell the team which.
-2. **Share the caches with Naman (14 Oct).** Naman's agent runs the LLaVA
+2. **Done 14 Oct: the caches were already readable** from Naman's account (group
+   `research`), so nothing to do. Kept for the record: **Share the caches with
+   Naman (14 Oct).** Naman's agent runs the LLaVA
    residualised probes and E5 as CPU jobs under Naman's Ada account, reading
    the existing activation caches. Done when Naman's account can read the
    ChartQA and synthetic `.npz` caches of both models (group-readable, or a
@@ -39,17 +41,30 @@ upload something; currently we do not.
    cover all 631 Qwen and 1,015 LLaVA value-question errors under every
    intervention, and are committed under `results/e4/` (small JSONL files; no
    activations).
-4. **Label the 200 agreement items (15 to 19 Oct)** as annotator `shrish` in
+4. **Re-ask the correctly answered value questions for E5 (15 to 17 Oct).**
+   E4 re-asked only wrong answers; E5 also needs to know whether a repair keeps
+   a right answer right. `git pull` on Ada first, then for each model and each
+   of pilots 1 and 2:
+
+       PREDICTIONS=results/predictions/<model>_synth_pilot.jsonl \
+       SYNTH_MANIFEST=$HOME/data/synth/absent_pilot_v1/manifest.jsonl \
+       CORRECT=1 sbatch scripts/intervene.sbatch
+       # pilot 2: <model>_synth_pilot2.jsonl and absent_pilot_v2
+
+   About 570 Qwen and 185 LLaVA questions, four repairs each; resubmit the same
+   command after a timeout. Done when the four `*.correct.outcomes.jsonl` files
+   from `$DURABLE/e4/` are committed under `results/e4/` and Naman knows.
+5. **Label the 200 agreement items (15 to 19 Oct)** as annotator `shrish` in
    `streamlit run src/label/app.py`, once Sanjith's task files exist, while the
    E4 jobs run. A person does this; an agent only starts the app. Done when all
    200 are labelled.
-5. **Run pilot 3 (18 to 22 Oct)**, once Naman's generator lands: inference and
+6. **Run pilot 3 (18 to 22 Oct)**, once Naman's generator lands: inference and
    activation caching for both models, the same way as pilot 2. Done when both
    predictions files are in `results/predictions/` and both caches exist on
    Ada, with the cache paths sent to Yash.
-6. **Delete the leftover LLaVA shard folders on Ada**
+7. **Delete the leftover LLaVA shard folders on Ada**
    (`~/activations/*/shards_synth_pilot*`), keeping the final `.npz` files.
-7. **Write (25 to 28 Oct):** experimental setup, and the reproducibility
+8. **Write (25 to 28 Oct):** experimental setup, and the reproducibility
    appendix.
 
 ## Yash: pilot 3 probes, report lead

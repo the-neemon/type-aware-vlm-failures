@@ -16,12 +16,15 @@
 #   SYNTH_MANIFEST=$HOME/data/synth/absent_pilot_v2/manifest.jsonl \
 #   sbatch scripts/intervene.sbatch
 #
+# E5 follow-up: add CORRECT=1 to re-ask the correctly answered value questions
+# instead of the errors; the outcomes go to <predictions>.correct.outcomes.jsonl.
+#
 # The model is the one named in the predictions' `model` field (Qwen or LLaVA).
 #
 #SBATCH --job-name=vlmfail-e4
 #SBATCH --partition=u22
 #SBATCH --constraint=2080ti          # frozen card (decision 9); same as the original run
-#SBATCH --exclude=gnode068,gnode077  # mixed-GPU node; dead-driver node
+#SBATCH --exclude=gnode066,gnode068,gnode076,gnode077  # mixed-GPU node; dead-driver nodes
 #SBATCH --gres=gpu:2                 # 7B fp16 is ~16.6 GB; a 2080 Ti holds 11 GB
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
@@ -54,12 +57,12 @@ stage_in_model "$MODEL_ID"
 
 # Written straight to $HOME, not node-local /scratch: a resubmitted job may land
 # on a different node, and resuming needs to see every answer already saved.
-OUT="$DURABLE/e4/$(basename "$PREDICTIONS" .jsonl).outcomes.jsonl"
+OUT="$DURABLE/e4/$(basename "$PREDICTIONS" .jsonl)${CORRECT:+.correct}.outcomes.jsonl"
 mkdir -p "$(dirname "$OUT")"
 
 if [[ -n "${SYNTH_MANIFEST:-}" ]]; then
     python -m src.intervene.run_matrix \
-        --predictions "$PREDICTIONS" --synthetic "$SYNTH_MANIFEST" --out "$OUT"
+        --predictions "$PREDICTIONS" --synthetic "$SYNTH_MANIFEST" ${CORRECT:+--correct} --out "$OUT"
 else
     python -m src.intervene.run_matrix \
         --predictions "$PREDICTIONS" --labels "$LABELS" \

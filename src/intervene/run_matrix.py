@@ -41,6 +41,11 @@ rather than into refusals.
         --predictions results/predictions/<model>_synth_pilot2.jsonl \
         --out results/e4/<model>_synth_pilot2.outcomes.jsonl
 
+`--correct` (added 14 Oct 2026, for E5) re-asks the value questions the model
+answered correctly instead, typed `correct`, into a separate file
+(`<model>_synth_pilot2.correct.outcomes.jsonl`). There `recovered` means the
+repaired answer is still right, so E5 can price a re-look on a false alarm.
+
 **Model.** Read from the predictions' `model` field, so a repair always asks the
 model that gave the original answer (`--model` overrides). Both go through the
 same loader and decoding as the original run (src/extract/qwen.py, llava.py).
@@ -131,11 +136,14 @@ def select_items(predictions: Iterable[dict], labels: Iterable[dict]) -> tuple[l
     return items, counts
 
 
-def select_synthetic_items(predictions: Iterable[dict],
-                           manifest: str | pathlib.Path) -> tuple[list[dict], dict]:
+def select_synthetic_items(predictions: Iterable[dict], manifest: str | pathlib.Path,
+                           correct: bool = False) -> tuple[list[dict], dict]:
     """Value-question errors of a synthetic run, typed by what the model answered.
 
     Re-scored with the current scorer (the run's own may be older), as the probes do.
+    With `correct`, the value questions answered correctly instead, typed
+    "correct": E5 needs to know whether a repair applied to a false alarm keeps a
+    right answer right.
     """
     figures = {f["figure_id"]: f for f in read_jsonl(manifest)}
     items, skipped = [], {}
@@ -144,6 +152,10 @@ def select_synthetic_items(predictions: Iterable[dict],
             continue
         r = {**r, "categories": figures[r["figure_id"]]["categories"]}
         r.update(synth_items.score(r, r["prediction"]))
+        if correct:
+            if r["correct"]:
+                items.append({**r, "failure_type": "correct"})
+            continue
         if r["correct"]:
             continue
         ftype = ("structural" if not r["absent"] else
@@ -153,7 +165,8 @@ def select_synthetic_items(predictions: Iterable[dict],
             continue
         items.append({**r, "failure_type": ftype})
     counts = {"used": len(items), "skipped_absent_outcomes": skipped,
-              **{t: sum(i["failure_type"] == t for i in items) for t in SYNTH_TYPES}}
+              **{t: sum(i["failure_type"] == t for i in items)
+                 for t in SYNTH_TYPES + (("correct",) if correct else ())}}
     return items, counts
 
 
@@ -225,10 +238,11 @@ def run(items: list[dict], load_figure: Callable[[dict], Figure], responder: Res
         base = {"item_id": it["item_id"], "figure_id": it["figure_id"],
                 "failure_type": it["failure_type"], "gold": it["gold"]}
         if (it["item_id"], BASELINE) not in done:
-            # I_0 is the original answer, wrong by selection; recorded so the
-            # matrix has its baseline cell without a model call
+            # I_0 is the original answer, recorded so the matrix has its baseline
+            # cell without a model call: wrong by selection, except under --correct
             _append({**base, "intervention": BASELINE, "applicable": True,
-                     "prediction": it["prediction"], "recovered": False}, out)
+                     "prediction": it["prediction"],
+                     "recovered": bool(it.get("correct", False))}, out)
 
         todo = [iv for iv in interventions if (it["item_id"], iv) not in done]
         if not todo:
@@ -263,7 +277,7 @@ def summarize(out: str | pathlib.Path, n_boot: int = 2000) -> str:
     unparsed = sum(r.get("parsed") is False for r in rows)
     matrix, counts = recovery_matrix(outcomes), cell_counts(outcomes)
     ivs = [BASELINE] + [iv for iv in REQUERIED if any(k[1] == iv for k in counts)]
-    types = [t for t in SYNTH_TYPES if any(k[0] == t for k in counts)]
+    types = [t for t in SYNTH_TYPES + ("correct",) if any(k[0] == t for k in counts)]
 
     lines = ["| Failure type | " + " | ".join(ivs) + " |",
              "| --- |" + " --- |" * len(ivs)]
@@ -317,6 +331,9 @@ def main() -> None:
     ap.add_argument("--figures", type=pathlib.Path, help="synthetic manifest with bar geometry")
     ap.add_argument("--synthetic", type=pathlib.Path,
                     help="synthetic manifest: type the errors from the answers, no labels")
+    ap.add_argument("--correct", action="store_true",
+                    help="with --synthetic: re-ask the correctly answered value questions "
+                         "instead of the errors (E5)")
     ap.add_argument("--model", choices=sorted(MODELS),
                     help="default: the predictions' `model` field")
     ap.add_argument("--interventions", nargs="+", default=list(REQUERIED), choices=REQUERIED)
@@ -330,7 +347,7 @@ def main() -> None:
     if args.synthetic:
         if not args.predictions:
             ap.error("--synthetic needs --predictions")
-        items, counts = select_synthetic_items(predictions, args.synthetic)
+        items, counts = select_synthetic_items(predictions, args.synthetic, args.correct)
         image_root, figures = args.synthetic.parent, args.synthetic
         print("items:", json.dumps(counts))
     else:

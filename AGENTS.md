@@ -42,7 +42,9 @@ the decision until the team changes it here.
    the labels every experiment uses; the human check validates them. A κ below
    0.6 is reported as a limitation, with no relabelling round.
 7. **E5** runs on the synthetic value questions with E4 outcomes. Thresholds are
-   chosen on the validation split and scored once on test. Baselines:
+   chosen on the validation split and scored once on test. A re-look on a
+   question the model got right is priced from a GPU re-ask of those questions
+   (`CORRECT=1 scripts/intervene.sbatch`), never assumed harmless. Baselines:
    binary-only abstention and the label-aware oracle. Metric: risk-coverage
    curves and AURC.
 
