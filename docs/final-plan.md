@@ -29,7 +29,9 @@ upload something; currently we do not.
    the existing activation caches. Done when Naman's account can read the
    ChartQA and synthetic `.npz` caches of both models (group-readable, or a
    copy in Naman's `$HOME`) and Naman has their paths.
-3. **Run E4 for both models (14 to 18 Oct).** Submit
+3. **Done 14 Oct: E4 had already run on 1 Oct** (jobs 861 to 864); the outcomes
+   are in `results/e4/` and the analysis in `results/e4.md`. Kept for the record:
+   **Run E4 for both models (14 to 18 Oct).** Submit
    `scripts/intervene.sbatch` in synthetic mode (header shows the variables)
    for each model's pilot 1 and pilot 2 predictions. First update its
    `--exclude` line to the list in `AGENTS.md`. Jobs resume after a timeout, so
@@ -64,8 +66,6 @@ upload something; currently we do not.
 
 ## Naman: agent-run code and analysis
 
-Naman's coding agent does every task except 7; Naman reviews the results and
-writes task 7. Naman has no labelling tasks.
 
 1. **Pilot 3 generator (14 to 17 Oct)**, per decision 4 in `AGENTS.md`. Build it
    beside `src/synth/absent_pairs.py`, reusing its drawing, validation and
