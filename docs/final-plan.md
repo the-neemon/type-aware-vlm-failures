@@ -21,7 +21,9 @@ upload something; currently we do not.
 
 ## Shrish: GPU runs on Ada, annotator A
 
-1. **Check for existing output (14 Oct).** Look on Ada for any E4 output
+1. **Done 15 Oct: nothing uncommitted.** `$DURABLE/e4/` holds only the four
+   E4 outcome files, identical to `results/e4/` (same line and byte counts).
+   Kept for the record: **Check for existing output (14 Oct).** Look on Ada for any E4 output
    (`$DURABLE/e4/`) or other results not yet in the repo. Done when every
    finished run is either committed or known not to exist; tell the team which.
 2. **Done 14 Oct: the caches were already readable** from Naman's account (group
