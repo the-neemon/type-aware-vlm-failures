@@ -50,7 +50,8 @@ _REFUSAL = re.compile(
 _NUMBER = re.compile(r"^[-+]?\$?\d[\d,]*(\.\d+)?\s*%?$")
 # fields copied from a manifest question onto its item, and from there onto the
 # prediction row, when the generator wrote them
-_OPTIONAL = ("family", "lookalike_of", "compared_with", "closest_pair", "gap")
+_OPTIONAL = ("family", "lookalike_of", "compared_with", "closest_pair", "gap",
+             "direction", "years_beyond", "extrapolated")
 
 
 def _clean(prediction: str) -> str:

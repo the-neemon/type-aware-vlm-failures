@@ -92,6 +92,7 @@ def save_bar_chart(
     axis_min,
     axis_max,
     tick_density,
+    xlabel="Category",
 ):
     """Render one bar chart to a PNG file and return its pixel geometry.
 
@@ -106,7 +107,7 @@ def save_bar_chart(
     tick_count = TICK_COUNTS[tick_density]
     tick_step = (axis_max - axis_min) / (tick_count - 1)
     axis.set_yticks([axis_min + index * tick_step for index in range(tick_count)])
-    axis.set_xlabel("Category")
+    axis.set_xlabel(xlabel)
     axis.set_ylabel("Value")
     axis.grid(axis="y", alpha=0.25)
     figure.tight_layout()
