@@ -1,5 +1,7 @@
 # To-dos after the mid-submission
 
+**Superseded on 14 Oct 2026 by `AGENTS.md` and `docs/final-plan.md`.** Kept as history.
+
 Written 29 Sep 2026; status updated 1 Oct 2026. Ordered by importance within each section. Cost: **CPU** =
 minutes on a compute node from existing caches; **GPU** = a new Qwen or LLaVA
 run; **labelling** = people's time. Results so far: `paper/mid/main.pdf`,
