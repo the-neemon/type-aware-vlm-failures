@@ -82,7 +82,11 @@ upload something; currently we do not.
 
 ## Yash: pilot 3 probes, report lead
 
-1. **Pilot 3 probes (22 to 24 Oct)**, once Shrish's caches exist: the outcome
+1. **Done 15 Oct: `results/pilot3_probes.md`** (reports
+   `results/probes/pilot3_<model>.json`, code `src/probes/run_pilot3.py`). Both
+   missing-bar probes from pilots 1 and 2 fire on out-of-range years: Qwen 1.000,
+   LLaVA 0.911 (missing-vs-shown) and 0.880 (fabrication), with CIs. Kept for the
+   record: **Pilot 3 probes (22 to 24 Oct)**, once Shrish's caches exist: the outcome
    table (rejected, "0", fabricated) and whether the missing-bar probe from
    pilots 1 and 2 fires on out-of-range questions. Done when a result file in
    `results/` answers that with AUROC and confidence intervals for both models.
