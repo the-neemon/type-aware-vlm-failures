@@ -23,11 +23,13 @@ from src.label.annotation import (
 )
 
 
-def test_allowed_labels():
-    assert set(ALLOWED_LABELS) == {"structural", "fabrication", "ambiguous"}
-    assert KEY_MAP["s"] == "structural"
-    assert KEY_MAP["f"] == "fabrication"
-    assert KEY_MAP["a"] == "ambiguous"
+def test_allowed_labels_are_the_five_the_llm_labels_use():
+    # humans and the LLM annotator must share one label set, or kappa between
+    # them silently drops every computation and not_an_error label
+    from src.label.llm_label import LABELS as LLM_LABELS
+    assert set(ALLOWED_LABELS) == {"structural", "fabrication", "computation",
+                                   "not_an_error", "ambiguous"} == set(LLM_LABELS)
+    assert set(KEY_MAP.values()) == set(ALLOWED_LABELS)
 
 
 def test_annotation_item_blinding_strips_model_and_labels(tmp_path):

@@ -22,7 +22,8 @@ import pathlib
 import streamlit as st
 
 from src.label.annotation import (
-    AnnotationItem, append_annotation, load_completed_ids, load_items, make_record,
+    ALLOWED_LABELS, AnnotationItem, append_annotation, load_completed_ids, load_items,
+    make_record,
 )
 from src.label.multi_rater import (
     KAPPA_THRESHOLD, MIN_PAIR_ITEMS, disagreements, fleiss_kappa, label_counts,
@@ -34,8 +35,7 @@ REPO = pathlib.Path(__file__).resolve().parents[2]
 ANN_DIR = REPO / "annotations"
 TASK_DIR = ANN_DIR / "tasks"
 TAXONOMY = REPO / "docs" / "taxonomy.md"
-LABELS = [("Structural", "structural"), ("Fabrication", "fabrication"),
-          ("Ambiguous", "ambiguous")]
+LABELS = [(label.replace("_", " ").capitalize(), label) for label in ALLOWED_LABELS]
 
 st.set_page_config(page_title="Failure-type annotation", layout="wide")
 
@@ -126,7 +126,7 @@ def annotate() -> None:
             st.markdown(f"**Model answer**\n\n{item.model_answer}")
             st.text_input("One line on why (optional, but helps adjudication)",
                           key=f"why_{item.item_id}")
-            cols = st.columns(3)
+            cols = st.columns(len(LABELS))
             for col, (text, label) in zip(cols, LABELS):
                 col.button(text, key=f"{label}_{item.item_id}", width="stretch",
                            on_click=_save, args=(item, label, stem, out))
@@ -136,7 +136,7 @@ def annotate() -> None:
         st.divider()
         st.caption(f"Last saved: **{last['label']}** for \"{last['question']}\". "
                    "Misclicked? Change it here; the newer label replaces the old one.")
-        cols = st.columns(3)
+        cols = st.columns(len(LABELS))
         for col, (text, label) in zip(cols, LABELS):
             col.button(f"Change to {text}", key=f"re_{label}", disabled=label == last["label"],
                        on_click=_relabel, args=(last, label, stem, out))

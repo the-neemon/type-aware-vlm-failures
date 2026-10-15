@@ -17,10 +17,13 @@ import pathlib
 from dataclasses import asdict, dataclass
 from typing import Sequence
 
-ALLOWED_LABELS = ("structural", "fabrication", "ambiguous")
+from src.label.llm_label import LABELS as ALLOWED_LABELS   # the five labels of docs/taxonomy.md
+
 KEY_MAP = {
     "s": "structural",
     "f": "fabrication",
+    "c": "computation",
+    "n": "not_an_error",
     "a": "ambiguous",
 }
 

@@ -20,7 +20,7 @@ CHARTQA_ROOT=~/ChartQA streamlit run src/label/app.py
 Type your name in the sidebar (it must match your file in `annotations/tasks/`).
 For each item: look at the chart, read the question, the gold answer and the
 model's answer, optionally type one line on why, then click Structural,
-Fabrication or Ambiguous. The rubric is in the expander at the top and in
+Fabrication, Computation, Not an error or Ambiguous. The rubric is in the expander at the top and in
 `docs/taxonomy.md`.
 
 - Every click is saved to `annotations/<you>.jsonl` immediately. Close the tab
@@ -79,6 +79,7 @@ per item:
 
 Use the `item_id` values from the predictions file unchanged; that is the only
 join key.
-Labels must be `structural`, `fabrication` or `ambiguous`. The file then shows
+Labels must be one of the five in `docs/taxonomy.md`: `structural`,
+`fabrication`, `computation`, `not_an_error` or `ambiguous`. The file then shows
 up in the Agreement page's pairwise table as human-versus-Claude agreement, and
 is excluded from the headline human kappa by default.
