@@ -63,7 +63,15 @@ upload something; currently we do not.
    `streamlit run src/label/app.py`, once Sanjith's task files exist, while the
    E4 jobs run. A person does this; an agent only starts the app. Done when all
    200 are labelled.
-6. **Run pilot 3 (18 to 22 Oct)**, once Naman's generator lands: inference and
+6. **Done 15 Oct: pilot 3 predictions are in `results/predictions/`**
+   (`*_synth_pilot3.*`, 600 items each) and both caches exist on Ada as
+   `~/activations/<model>/synth_pilot3.npz` (jobs 22164 Qwen, 22165 LLaVA;
+   manifest hash in `configs/inference_synth_pilot3.yaml`). LLaVA's run failed
+   only its last step, the ChartQA-based accuracy floor (answerable 0.247
+   against 0.27); its summary keeps `"passed": false`. Its present-bar answers
+   are all numbers, and 286 of 300 are multiples of 10, the same gridline
+   reading as pilots 1 (85/300 correct) and 2 (100/300). Kept for the record:
+   **Run pilot 3 (18 to 22 Oct)**, once Naman's generator lands: inference and
    activation caching for both models, the same way as pilot 2. Done when both
    predictions files are in `results/predictions/` and both caches exist on
    Ada, with the cache paths sent to Yash.
