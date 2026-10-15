@@ -9,7 +9,8 @@
 #   python -m src.synth.out_of_range ~/data/synth/absent_pilot_v3 --num-charts 300
 #   python -m src.synth.out_of_range ~/data/synth/absent_pilot_v3 --verify
 #   sha256sum ~/data/synth/absent_pilot_v3/manifest.jsonl
-#     (record the hash here after the first generation on Ada; Python 3.10,
+#     ed311841aa1e09849bb4ace46913b86df6aae811bfe69719673fb8a053234e2c
+#     (generated 15 Oct 2026 on Ada; Python 3.10,
 #     matplotlib 3.10.0 and pillow 12.3.0 from requirements.txt)
 # then:
 #   TAG=synth_pilot3 INFERENCE_CONFIG=configs/inference_synth_pilot3.yaml \
