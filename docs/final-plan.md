@@ -43,7 +43,10 @@ upload something; currently we do not.
    cover all 631 Qwen and 1,015 LLaVA value-question errors under every
    intervention, and are committed under `results/e4/` (small JSONL files; no
    activations).
-4. **Re-ask the correctly answered value questions for E5 (15 to 17 Oct).**
+4. **Done 15 Oct: all four `*.correct.outcomes.jsonl` files are in
+   `results/e4/`** (Qwen 295 + 274, LLaVA 85 + 100 items, every repair;
+   provenance in `results/e4.md`). Kept for the record:
+   **Re-ask the correctly answered value questions for E5 (15 to 17 Oct).**
    E4 re-asked only wrong answers; E5 also needs to know whether a repair keeps
    a right answer right. `git pull` on Ada first, then for each model and each
    of pilots 1 and 2:
