@@ -1,0 +1,35 @@
+{
+  "passed": true,
+  "problems": [],
+  "cache": "$HOME/activations/qwen2_5_vl_7b/synth_pilot3.npz",
+  "predictions": "$HOME/anlp/project/type-aware-vlm-failures/results/predictions/qwen2_5_vl_7b_synth_pilot3.jsonl",
+  "relaxed_accuracy": {
+    "overall": 0.625,
+    "answerable": 0.91,
+    "absent_value": 0.34,
+    "read_value": 0.91
+  },
+  "absent_outcomes": {
+    "absent_value": {
+      "fabricated": 105,
+      "rejected": 102,
+      "unclear": 17,
+      "zero": 76
+    }
+  },
+  "n_correct": 375,
+  "n_incorrect": 225,
+  "error_rate": 0.375,
+  "vision_tokens": {
+    "min": 884,
+    "max": 884,
+    "mean": 884,
+    "median": 884.0,
+    "outside_measured_range": 600,
+    "measured_range": [
+      180,
+      630
+    ]
+  },
+  "validated_at": "2026-10-15T05:41:07.379442+00:00"
+}
