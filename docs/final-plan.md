@@ -75,7 +75,10 @@ upload something; currently we do not.
    activation caching for both models, the same way as pilot 2. Done when both
    predictions files are in `results/predictions/` and both caches exist on
    Ada, with the cache paths sent to Yash.
-7. **Delete the leftover LLaVA shard folders on Ada**
+7. **Done 15 Oct: no shard folders left on Ada**; every `.npz` kept. Only the
+   pilot 3 shards (both models, 1.06 GB) remained; the pilot 1 and 2 ones were
+   already gone. Kept for the record:
+   **Delete the leftover LLaVA shard folders on Ada**
    (`~/activations/*/shards_synth_pilot*`), keeping the final `.npz` files.
 8. **Write (25 to 28 Oct):** experimental setup, and the reproducibility
    appendix.
