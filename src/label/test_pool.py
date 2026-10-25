@@ -9,7 +9,9 @@ import math
 from src.label.multi_rater import (
     consensus, disagreements, fleiss_kappa, load_raters, pairwise, shared_items,
 )
-from src.label.pool import assign, build_pool, item_id as _iid, sanitize
+from src.label.pool import (
+    allocate, assign, build_pool, item_id as _iid, sample_pool, sanitize,
+)
 
 
 def _predictions(tmp_path):
@@ -71,6 +73,67 @@ class TestBuildPool:
         except ValueError:
             return
         raise AssertionError("the same predictions file twice should raise")
+
+
+def _labels(tmp_path, paths):
+    """LLM labels for every error: 19 structural, 1 fabrication per model."""
+    out = tmp_path / "labels.jsonl"
+    with open(out, "w") as f:
+        for p in paths:
+            errs = [r for r in map(json.loads, open(p)) if not r["correct"]]
+            for k, r in enumerate(errs):
+                f.write(json.dumps({"item_id": r["item_id"],
+                                    "label": "fabrication" if k == 0 else "structural"}) + "\n")
+    return out
+
+
+class TestAllocate:
+    def test_sums_to_n_and_respects_counts(self):
+        counts = {"not_an_error": 112, "computation": 93, "structural": 71,
+                  "ambiguous": 40, "fabrication": 1}
+        take = allocate(counts, 100, 5)
+        assert sum(take.values()) == 100
+        assert all(take[c] <= counts[c] for c in counts)
+        assert take["fabrication"] == 1
+
+    def test_floor_lifts_rare_label(self):
+        assert allocate({"a": 990, "b": 10}, 100, 5)["b"] == 5
+
+    def test_too_many_raises(self):
+        try:
+            allocate({"a": 3}, 4, 0)
+        except ValueError:
+            return
+        raise AssertionError("n above the available items should raise")
+
+
+class TestSamplePool:
+    def test_per_model_count_and_rare_label_kept(self, tmp_path):
+        paths = _predictions(tmp_path)
+        pool, key = sample_pool(paths, [_labels(tmp_path, paths)], per_model=10, floor=1)
+        models = collections.Counter(k["model"] for k in key)
+        assert models == {"qwen2_5_vl_7b": 10, "llava_next_mistral_7b": 10}
+        fab = {json.loads(l)["item_id"] for l in open(tmp_path / "labels.jsonl")
+               if json.loads(l)["label"] == "fabrication"}
+        assert fab <= {p["item_id"] for p in pool}
+
+    def test_blind_and_deterministic(self, tmp_path):
+        paths = _predictions(tmp_path)
+        labels = [_labels(tmp_path, paths)]
+        pool, _ = sample_pool(paths, labels, per_model=10)
+        assert all(set(p) == {"item_id", "image_path", "question", "gold_answer",
+                              "model_answer"} for p in pool)
+        assert sample_pool(paths, labels, per_model=10) == (pool, _)
+
+    def test_unlabelled_error_raises(self, tmp_path):
+        paths = _predictions(tmp_path)
+        empty = tmp_path / "none.jsonl"
+        empty.write_text("")
+        try:
+            sample_pool(paths, [empty], per_model=10)
+        except ValueError:
+            return
+        raise AssertionError("an error without an LLM label should raise")
 
 
 def _pool(n):

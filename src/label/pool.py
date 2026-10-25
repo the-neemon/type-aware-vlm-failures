@@ -3,6 +3,8 @@
 Two steps, both deterministic (seed 42, the project convention):
 
     build  : predictions files -> pool.jsonl (blind) + pool_key.jsonl (private)
+    sample : as build, but a fixed number of errors per model, stratified by
+             the LLM label (the human agreement check, AGENTS.md decision 6)
     assign : pool.jsonl -> tasks/<annotator>.jsonl, with a designed overlap
 
 Item IDs are taken unchanged from the predictions file, which mints them with
@@ -30,6 +32,17 @@ estimate. Usage:
         --out annotations/tasks
     python -m src.label.pool assign --pool annotations/tasks/pool.jsonl \\
         --annotators naman yash shrish sanjith --overlap 200 --out annotations/tasks
+
+The final-submission agreement check (200 items, both annotators label all):
+
+    python -m src.label.pool sample \\
+        --predictions results/predictions/qwen2_5_vl_7b_test.jsonl \\
+        --predictions results/predictions/llava_next_mistral_7b_test.jsonl \\
+        --labels results/labels/qwen2_5_vl_7b_test.claude.jsonl \\
+        --labels results/labels/llava_next_mistral_7b_test.claude.jsonl \\
+        --per-model 100 --out annotations/tasks
+    python -m src.label.pool assign --pool annotations/tasks/pool.jsonl \\
+        --annotators shrish sanjith --overlap 200 --out annotations/tasks
 """
 
 from __future__ import annotations
@@ -68,29 +81,84 @@ def item_id(model: str, figure_id: str, question: str, source: str | None = None
     return hashlib.sha1(raw).hexdigest()[:12]
 
 
-def build_pool(paths: Sequence[str | pathlib.Path]) -> tuple[list[dict], list[dict]]:
-    """Keep only incorrect answers, keep their IDs, shuffle. Returns (pool, key)."""
-    pool, key = [], []
-    for path in paths:
-        for row in _read(pathlib.Path(path)):
-            if row["correct"]:
-                continue
-            pool.append({
-                "item_id": row["item_id"],
-                "image_path": f"{row['split']}/png/{row['figure_id']}",
-                "question": row["question"],
-                "gold_answer": row["gold"],
-                "model_answer": row["prediction"],
-            })
-            key.append({k: row.get(k) for k in
-                        ("item_id", "model", "figure_id", "split", "source", "occurrence")})
+def _pool_row(row: dict) -> dict:
+    """What the annotator sees: no model, no label."""
+    return {
+        "item_id": row["item_id"],
+        "image_path": f"{row['split']}/png/{row['figure_id']}",
+        "question": row["question"],
+        "gold_answer": row["gold"],
+        "model_answer": row["prediction"],
+    }
 
+
+def _key_row(row: dict) -> dict:
+    return {k: row.get(k) for k in
+            ("item_id", "model", "figure_id", "split", "source", "occurrence")}
+
+
+def _finish(rows: list[dict]) -> tuple[list[dict], list[dict]]:
+    pool, key = [_pool_row(r) for r in rows], [_key_row(r) for r in rows]
     ids = [p["item_id"] for p in pool]
     if len(ids) != len(set(ids)):
         raise ValueError("duplicate item IDs across the predictions files")
-
     random.Random(SEED).shuffle(pool)
     return pool, key
+
+
+def build_pool(paths: Sequence[str | pathlib.Path]) -> tuple[list[dict], list[dict]]:
+    """Keep only incorrect answers, keep their IDs, shuffle. Returns (pool, key)."""
+    return _finish([row for path in paths for row in _read(pathlib.Path(path))
+                    if not row["correct"]])
+
+
+def allocate(counts: dict[str, int], n: int, floor: int) -> dict[str, int]:
+    """Split n draws across strata: each gets min(count, floor), the rest in
+    proportion to what is left in each stratum (largest remainder, ties broken
+    by label name). Without the floor a rare label, such as Qwen's single
+    fabrication, would get no item and kappa would say nothing about it."""
+    if n > sum(counts.values()):
+        raise ValueError(f"asked for {n} items, only {sum(counts.values())} available")
+    take = {c: min(k, floor) for c, k in counts.items()}
+    if sum(take.values()) > n:
+        raise ValueError(f"floor {floor} over {len(counts)} labels exceeds n={n}")
+    left = {c: counts[c] - take[c] for c in counts}
+    rest, total = n - sum(take.values()), sum(left.values())
+    if total:
+        quota = {c: rest * left[c] / total for c in counts}
+        for c in counts:
+            take[c] += int(quota[c])
+        short = n - sum(take.values())
+        for c in sorted(counts, key=lambda c: (-(quota[c] - int(quota[c])), c))[:short]:
+            take[c] += 1
+    return take
+
+
+def sample_pool(paths: Sequence[str | pathlib.Path], label_paths: Sequence[str | pathlib.Path],
+                per_model: int = 100, floor: int = 5) -> tuple[list[dict], list[dict]]:
+    """The human agreement sample (AGENTS.md decision 6): per_model errors from
+    each predictions file, stratified by the LLM label. Returns (pool, key) in
+    the same blind format as build_pool."""
+    labels: dict[str, str] = {}
+    for path in label_paths:
+        for rec in _read(pathlib.Path(path)):
+            labels[rec["item_id"]] = rec["label"]          # last record wins
+
+    rng = random.Random(SEED)
+    chosen: list[dict] = []
+    for path in paths:
+        strata: dict[str, list[dict]] = {}
+        for row in _read(pathlib.Path(path)):
+            if row["correct"]:
+                continue
+            if row["item_id"] not in labels:
+                raise ValueError(f"{path}: error {row['item_id']} has no LLM label")
+            strata.setdefault(labels[row["item_id"]], []).append(row)
+        take = allocate({c: len(v) for c, v in strata.items()}, per_model, floor)
+        for c in sorted(strata):
+            rows = sorted(strata[c], key=lambda r: r["item_id"])
+            chosen.extend(rng.sample(rows, take[c]))
+    return _finish(chosen)
 
 
 def assign(pool: Sequence[dict], annotators: Sequence[str],
@@ -149,6 +217,16 @@ def main() -> None:
                    help="inf.md 3.2 format; repeat once per model")
     b.add_argument("--out", type=pathlib.Path, default=pathlib.Path("annotations/tasks"))
 
+    sm = sub.add_parser("sample", help="stratified sample of errors -> blind pool + private key")
+    sm.add_argument("--predictions", action="append", required=True, type=pathlib.Path,
+                    help="inf.md 3.2 format; repeat once per model")
+    sm.add_argument("--labels", action="append", required=True, type=pathlib.Path,
+                    help="LLM label file(s) to stratify by; repeat once per model")
+    sm.add_argument("--per-model", type=int, default=100)
+    sm.add_argument("--floor", type=int, default=5,
+                    help="minimum items per label, or all of a label if it has fewer")
+    sm.add_argument("--out", type=pathlib.Path, default=pathlib.Path("annotations/tasks"))
+
     a = sub.add_parser("assign", help="pool -> one task file per annotator")
     a.add_argument("--pool", type=pathlib.Path, required=True)
     a.add_argument("--annotators", nargs="+", required=True)
@@ -156,8 +234,11 @@ def main() -> None:
     a.add_argument("--out", type=pathlib.Path, default=pathlib.Path("annotations/tasks"))
 
     args = ap.parse_args()
-    if args.cmd == "build":
-        pool, key = build_pool(args.predictions)
+    if args.cmd in ("build", "sample"):
+        if args.cmd == "build":
+            pool, key = build_pool(args.predictions)
+        else:
+            pool, key = sample_pool(args.predictions, args.labels, args.per_model, args.floor)
         _write(pool, args.out / "pool.jsonl")
         _write(key, args.out / "pool_key.jsonl")
         print(f"pool: {len(pool)} incorrect answers -> {args.out / 'pool.jsonl'}")
