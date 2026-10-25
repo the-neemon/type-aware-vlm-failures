@@ -1,0 +1,51 @@
+% Naman's sections of the final report: E4, E5 and the discussion.
+% Structure only. Every paragraph below is for Naman to write (the course
+% requires the report text to be written by the team). Each TODO names the
+% result file holding its facts; every number must match that file.
+% Tables and figure: regenerate with `python scripts/final_assets.py`.
+
+\section{Does the failure type decide the repair? (E4)}
+\label{sec:e4}
+
+% TODO (Naman): setup. What was re-asked (every value-question error of
+% synthetic pilots 1 and 2: Qwen 631, LLaVA 1,015), the four repairs, how a
+% repair counts as a recovery, and the pre-registered test.
+% Facts: results/e4.md (Provenance), results/e4-preregistration.md.
+
+\input{tables/e4.tex}
+
+% TODO (Naman): result of the pre-registered test, both models (Table~\ref{tab:e4}).
+% Facts: results/e4.md, Qwen and LLaVA sections.
+
+% TODO (Naman): what limits the reading. Facts: results/e4.md,
+% "Read these before writing them up", points 1 to 5.
+
+\section{A type-aware controller (E5)}
+\label{sec:e5}
+
+% TODO (Naman): setup. The policies compared, how a re-look is priced on right
+% answers (the re-ask of correct answers), cross-fitting by figure fold, AURC.
+% Facts: results/e5.md, and src/controller/e5.py docstring for the method.
+
+\input{tables/e5.tex}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/e5_risk_coverage.pdf}
+\caption{TODO}
+\label{fig:e5}
+\end{figure}
+
+% TODO (Naman): results (Table~\ref{tab:e5}, Figure~\ref{fig:e5}).
+% Facts: results/e5.md tables and the per-class re-look breakdown.
+
+% TODO (Naman): what the re-look actually fixes, and the oracle gap.
+% Facts: results/e5.md, "Read these before writing them up", points 1 to 5.
+
+\section{Discussion}
+\label{sec:discussion}
+
+% TODO (Naman): is the type separability hypothesis supported, now that E4 and
+% E5 are in. Inputs: E3 (results/synth_type_probes.md,
+% results/chartqa_type_probes.md), E4 and E5 above, and pilot 3 once Yash's
+% probe results are in.

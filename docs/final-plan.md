@@ -101,23 +101,27 @@ upload something; currently we do not.
 
 ## Naman: agent-run code and analysis
 
-
-1. **Pilot 3 generator (14 to 17 Oct)**, per decision 4 in `AGENTS.md`. Build it
+1. **Pilot 3 generator (14 to 17 Oct).** Done 14 Oct (`src/synth/out_of_range.py`).
+   Per decision 4 in `AGENTS.md`: build it
    beside `src/synth/absent_pairs.py`, reusing its drawing, validation and
    `--verify` pattern, with tests like `test_absent_pairs.py`. Done when 300
    charts generate deterministically with seed 42, `--verify` passes, the tests
    pass, and Shrish has the command.
-2. **LLaVA residualised type probes (14 to 16 Oct)**, the same procedure as
+2. **LLaVA residualised type probes (14 to 16 Oct).** Done 14 Oct
+   (`results/chartqa_type_probes.md`).
+   The same procedure as
    Qwen's in `results/chartqa_type_probes.md`, as a CPU job on Ada. Done when
    the LLaVA column of the residualised rows is filled and committed. This
    closes E2.
-3. **E4 analysis (19 to 20 Oct)**, once Shrish's outcomes are committed: the
+3. **E4 analysis (19 to 20 Oct).** Done 14 Oct (`results/e4.md`).
+   Once Shrish's outcomes are committed: the
    recovery matrix by failure type, and the pre-registered test with
    `src/intervene/matrix.py`. Done when `results/e4.md` reports the full matrix
    for both models and the `I_crop` difference in differences with its 95%
    cluster bootstrap interval, stated against the pre-registered prediction
    whether it holds or fails.
-4. **E5 controller (21 to 24 Oct)**, per decision 7 in `AGENTS.md`: abstain when
+4. **E5 controller (21 to 24 Oct).** Done 15 Oct (`results/e5.md`).
+   Per decision 7 in `AGENTS.md`: abstain when
    the missing-bar probe fires, re-look with the best E4 repair when the binary
    or misread probe fires. Done when `results/e5.md` has risk-coverage curves
    and AURC for the controller, binary-only abstention and the oracle, both
