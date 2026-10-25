@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Download and unpack ChartQA. Bash port of scripts/download_chartqa.ps1
+# Download and unpack ChartQA. Bash port of the original PowerShell script (removed 25 Oct)
 # (open decision 11): PowerShell does not run on Ada, and the images have to
 # land there before inference can start.
 #

@@ -68,7 +68,7 @@ walltime slot, so see P1.7 on resumability.
 
 ### 1.2 Daily plans
 
-Today's tasks live in [TODAY.md](TODAY.md), rewritten each working day.
+Daily task lists lived in `TODAY.md` (removed 25 Oct; it is in the git history).
 The phase breakdown below is the backlog those tasks are drawn from.
 
 --- | --- | --- |
