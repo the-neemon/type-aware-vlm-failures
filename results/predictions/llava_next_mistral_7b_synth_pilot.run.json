@@ -90,19 +90,19 @@
       "query_last",
       "query_mean"
     ],
-    "dataset_root": "/home2/shrish.kadam/data/synth/absent_pilot_v1",
+    "dataset_root": "$HOME/data/synth/absent_pilot_v1",
     "dataset_splits": [
       "train",
       "validation",
       "test"
     ],
     "expected_items": 600,
-    "dataset_manifest": "/home2/shrish.kadam/data/synth/absent_pilot_v1/manifest.jsonl"
+    "dataset_manifest": "$HOME/data/synth/absent_pilot_v1/manifest.jsonl"
   },
   "segments": [
     {
       "started_at": "2026-09-28T20:01:53.608875+00:00",
-      "node": "gnode059",
+      "node": "<compute node>",
       "slurm_job_id": "2721978",
       "gpus": [
         "NVIDIA GeForce RTX 2080 Ti",

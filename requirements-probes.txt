@@ -6,7 +6,7 @@
 #
 # numpy is pinned to the SAME version as the inference env (requirements.txt),
 # so float16 activation arrays written by the extractor round-trip identically.
-# Resolved and verified on Ada gnode077, 26 September 2026, Python 3.10.12.
+# Resolved and verified on an Ada compute node, 26 September 2026, Python 3.10.12.
 #
 # Build it from inside a job (the head node's python3 is 3.6):
 #     python3 -m venv ~/envs/probes

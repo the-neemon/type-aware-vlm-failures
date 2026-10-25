@@ -1,8 +1,8 @@
 {
   "passed": true,
   "problems": [],
-  "cache": "/home2/shrish.kadam/activations/qwen2_5_vl_7b/synth_pilot.npz",
-  "predictions": "/home2/shrish.kadam/anlp/project/type-aware-vlm-failures/results/predictions/qwen2_5_vl_7b_synth_pilot.jsonl",
+  "cache": "$HOME/activations/qwen2_5_vl_7b/synth_pilot.npz",
+  "predictions": "$HOME/anlp/project/type-aware-vlm-failures/results/predictions/qwen2_5_vl_7b_synth_pilot.jsonl",
   "relaxed_accuracy": {
     "overall": 0.4917,
     "answerable": 0.9533,

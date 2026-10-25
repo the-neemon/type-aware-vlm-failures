@@ -2,9 +2,9 @@
 
 Raw output: `binary_llava_next_mistral_7b_test.json` (all validation curves) and
 `sanity_llava_next_mistral_7b_test.json`. Produced by `src/probes/run_sweep.py`
-on Ada gnode026 (CPU), from Shrish's cache
-`/home2/shrish.kadam/activations/llava_next_mistral_7b/test.npz` (run 28 Sep on
-gnode057, 2x RTX 2080 Ti, fp16, sdpa; validation passed). Same procedure as the
+on an Ada compute node (CPU), from Shrish's cache
+`$HOME/activations/llava_next_mistral_7b/test.npz` (run 28 Sep on
+a GPU node, 2x RTX 2080 Ti, fp16, sdpa; validation passed). Same procedure as the
 Qwen run (`binary_qwen2_5_vl_7b_test.md`), so the two are directly comparable.
 
 ## Setup

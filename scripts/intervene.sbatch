@@ -24,7 +24,7 @@
 #SBATCH --job-name=vlmfail-e4
 #SBATCH --partition=u22
 #SBATCH --constraint=2080ti          # frozen card (decision 9); same as the original run
-#SBATCH --exclude=gnode066,gnode068,gnode076,gnode077  # mixed-GPU node; dead-driver nodes
+# Pass --exclude="$BAD_NODES" to sbatch (README, Setup): broken-driver and mixed-card nodes
 #SBATCH --gres=gpu:2                 # 7B fp16 is ~16.6 GB; a 2080 Ti holds 11 GB
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G

@@ -1,4 +1,4 @@
-# Type-Aware Failure Prediction for Chart and Diagram Reasoning in VLMs
+# Type-Aware Failure Prediction for Chart Reasoning in Vision-Language Models
 
 Advanced NLP, Monsoon 2026, IIIT Hyderabad.
 Yash More, Naman Singhal, Shrish Kadam, Sanjith Ganapathi.
@@ -6,16 +6,37 @@ Yash More, Naman Singhal, Shrish Kadam, Sanjith Ganapathi.
 Do vision-language models fail on charts in two mechanically different ways
 (misreading the figure versus fabricating a value), is that difference visible
 in the model's internal state before it generates, and is knowing it worth
-anything?
+anything? Two frozen models (Qwen2.5-VL-7B, LLaVA-NeXT-7B), ChartQA plus three
+synthetic bar-chart pilots, linear probes on cached activations, a repair
+experiment (E4) and a type-aware controller (E5).
 
-- [SPEC.md](SPEC.md): what we are building and what counts as done.
-- [TASKS.md](TASKS.md): who does what, when, and what will bite us.
+- [SPEC.md](SPEC.md): the design and what counts as done.
+- [docs/taxonomy.md](docs/taxonomy.md): the five error labels.
+- [paper/](paper/): the mid and final reports.
 
-## Status
+## Results and how to reproduce them
 
-Phase P0 (infrastructure). The environment is pinned and `scripts/smoke.sbatch`
-runs one ChartQA figure through Qwen2.5-VL-7B end to end on Ada. No evaluation,
-no activation caching and no probes yet.
+Every number in the reports comes from a file under `results/`. Each script's
+docstring gives its full arguments; the table names the script and the files it
+writes. GPU steps run as SLURM jobs on RTX 2080 Ti nodes; probe and analysis
+steps need only a CPU and the cached activations.
+
+| Step | What it produces | Command | Output |
+| --- | --- | --- | --- |
+| Synthetic data | Pilot 1, 2, 3 charts and questions | `python -m src.synth.absent_pairs`, `src.synth.absent_lookalikes`, `src.synth.out_of_range` | `$HOME/data/synth/absent_pilot_v{1,2,3}/` (hash in each `configs/inference_synth_pilot*.yaml`) |
+| Inference and caching (GPU) | Answers and pooled activations, every layer | `TAG=<tag> INFERENCE_CONFIG=configs/[llava/]inference*.yaml sbatch scripts/cache_chartqa.sbatch` | `results/predictions/*.jsonl` (+ `.run.json`, `.summary.json`); activations `.npz` kept off the repo |
+| Error labels | Five-label annotation of every ChartQA error | LLM annotator following `docs/taxonomy.md` (`src/label/llm_label.py`); human check in `src/label/app.py` | `results/labels/*.claude.jsonl` |
+| Error statistics | Labels by source, gold-answer errors | `python -m src.label.error_stats` | `results/labels/*.error_stats.json` |
+| E1 binary probes | Will the answer be wrong? | `python -m src.probes.run_sweep --target binary` (and `--target source` for the sanity probe) | `results/probes/binary_*_test.{json,md}`, `sanity_*` |
+| E1/E2 follow-ups | Five splits, residualised, calibration, val_human | `python -m src.probes.run_followups binary` | `results/probes/binary_followups*.json` |
+| E3 synthetic | Type probes and cross-transfer matrix | `python -m src.probes.run_synth_types`; gridline baseline `run_followups grid` | `results/probes/synth_types_*.json`, `synth_grid_baseline_*.json`, `results/synth_type_probes.md` |
+| E3 ChartQA | Misread vs computation probes, per question type, residualised | `python -m src.probes.run_chartqa_types [--question-type ...] [--residualise]` | `results/probes/chartqa_types_*.json`, `results/chartqa_type_probes.md` |
+| Transfer | Synthetic probes applied to ChartQA | `python -m src.probes.run_transfer transfer` | `results/probes/transfer_chartqa_*.json` |
+| E4 (GPU) | Every repair on every synthetic value-question error | `PREDICTIONS=... SYNTH_MANIFEST=... sbatch scripts/intervene.sbatch` | `results/e4/*.outcomes.jsonl`, `results/e4.md` |
+| E5 re-ask (GPU) | The same repairs on the correct answers | as E4 with `CORRECT=1` | `results/e4/*.correct.outcomes.jsonl` |
+| E5 | Controller vs selective prediction | `python -m src.controller.e5_scores` (CPU job), then `python -m src.controller.e5 --models ...` | `results/e5/`, `results/e5.md` |
+
+E4 is pre-registered in [results/e4-preregistration.md](results/e4-preregistration.md).
 
 ## Setup
 
@@ -23,11 +44,16 @@ Everything runs on Ada, partition `u22`, on RTX 2080 Ti nodes. The GPU type is
 frozen for the project (`configs/activations.yaml`), because a model's answers
 and the activations recorded alongside them have to come from the same kernels.
 
+Some nodes have broken GPU drivers or mixed card types. Keep their names in a
+`BAD_NODES` shell variable (comma-separated, not committed) and pass
+`--exclude="$BAD_NODES"` to every GPU job; each job also checks the card at
+start-up and stops rather than fall back to the CPU.
+
 Build the environment from inside a job, never on the head node, which runs an
 older glibc than the compute nodes:
 
 ```bash
-srun -p u22 --constraint=2080ti --exclude=gnode077 --gres=gpu:1 \
+srun -p u22 --constraint=2080ti --exclude="$BAD_NODES" --gres=gpu:1 \
      -c 8 --mem=32G -t 01:00:00 bash scripts/setup_env.sh
 ```
 
@@ -96,21 +122,19 @@ node the scheduler happened to pick.
 
 ## Synthetic data generation
 
-Run these commands from the repository root. Each output directory must be new;
-the generators write PNG figures and a JSONL manifest.
+The three pilots the results use, from the repository root (each output
+directory must be new; generate on the cluster, since bar geometry depends on
+the pinned matplotlib build):
 
 ```bash
-python3 -m src.synth.generate_bar_charts data/synthetic_bars \
-  --num-charts 20 --seed 42
-
-python3 -m src.synth.generate_followups nodes data/synthetic_nodes \
-  --num-figures 20 --path-length 4 --edge-crossings 3 --seed 42
-
-python3 -m src.synth.generate_followups pairs data/synthetic_pairs \
-  --pair-count 10 --seed 42
+python -m src.synth.absent_pairs      ~/data/synth/absent_pilot_v1 --num-charts 300
+python -m src.synth.absent_lookalikes ~/data/synth/absent_pilot_v2 --num-charts 300
+python -m src.synth.out_of_range      ~/data/synth/absent_pilot_v3 --num-charts 300
 ```
 
-See [TAXONOMY.md](src/synth/TAXONOMY.md) for the synthetic failure labels.
+Each takes `--verify` to check a folder against its manifest. The earlier
+generators (`src.synth.generate_bar_charts`, `generate_followups`, including the
+unused node-link diagrams) are kept for reference.
 
 ## Models
 

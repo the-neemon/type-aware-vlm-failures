@@ -91,7 +91,7 @@ gpu_attn_implementation: sdpa
 # true is the 4.57 default and the maintained path. FROZEN with gpu_type.
 processor_use_fast: true
 gpus_per_job: 2           # 16.6 GiB of fp16 weights does not fit 11 GiB of VRAM
-slurm_constraint: "--constraint=2080ti --exclude=gnode077"
+slurm_constraint: "--constraint=2080ti"   # plus --exclude="$BAD_NODES" at submission (README)
 
 # --------------------------------------------------------------------------
 # Models

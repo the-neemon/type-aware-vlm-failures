@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # P0.2: build the pinned project environment. Run this INSIDE an Ada job:
 #
-#   srun -p u22 --constraint=2080ti --exclude=gnode077 --gres=gpu:1 \
+#   srun -p u22 --constraint=2080ti --exclude="$BAD_NODES" --gres=gpu:1 \
 #        -c 8 --mem=32G -t 01:00:00 bash scripts/setup_env.sh
 #
 # Not on the head node: it runs an older glibc than the u22 compute nodes, so

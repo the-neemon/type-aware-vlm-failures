@@ -57,7 +57,7 @@
       "query_last",
       "query_mean"
     ],
-    "dataset_root": "/home2/shrish.kadam/data/ChartQA",
+    "dataset_root": "$HOME/data/ChartQA",
     "dataset_splits": [
       "val_human"
     ],
@@ -66,7 +66,7 @@
   "segments": [
     {
       "started_at": "2026-09-26T15:18:29.767692+00:00",
-      "node": "gnode057",
+      "node": "<compute node>",
       "slurm_job_id": "2717548",
       "gpus": [
         "NVIDIA GeForce RTX 2080 Ti",

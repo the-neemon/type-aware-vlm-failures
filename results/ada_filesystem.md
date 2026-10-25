@@ -1,7 +1,7 @@
 # Ada filesystem and compute inventory (P0.1, P0.3)
 
 Measured on 2 September 2026 by workstream A, from the head node and from
-compute nodes gnode012, gnode056, gnode063, gnode078 and gnode092. Everything
+five compute nodes. Everything
 below is observed, not quoted from documentation.
 
 This resolves **open decision 8** and fills the `TBD` fields in
@@ -13,14 +13,14 @@ in that file, so read Section 5 before the evening sync.
 All four members exist and hold a SLURM association, so nobody is blocked on a
 multi-day account request.
 
-| Member | Ada username | uid | SLURM account | QOS |
-| --- | --- | --- | --- | --- |
-| Yash More | `yash.more` | 4041 | research | medium |
-| Naman Singhal | `naman.s` | 4082 | research | medium |
-| Shrish Kadam | `shrish.kadam` | 4093 | research | medium |
-| Sanjith Ganapathi | `sanjith.ganapathi` | 3906 | research | **low** |
+| Member | SLURM account | QOS |
+| --- | --- | --- |
+| Yash More | research | medium |
+| Naman Singhal | research | medium |
+| Shrish Kadam | research | medium |
+| Sanjith Ganapathi | research | **low** |
 
-All four share gid 2000 (`research`), which is what makes a group-writable
+All four share one group (`research`), which is what makes a group-writable
 directory on a node's `/scratch` usable between us.
 
 Two things to note. Sanjith is on QOS `low`, so his jobs queue behind the rest
@@ -45,7 +45,7 @@ This is the finding that matters, and it is not what SPEC Section 4.1 assumed.
 
 | Path | Visible from | Size / quota | Writable | Durable |
 | --- | --- | --- | --- | --- |
-| `$HOME` (`/home2/<user>`) | head node **and** every compute node | **30 GiB per user** | yes | yes |
+| `$HOME` (one directory per user) | head node **and** every compute node | **30 GiB per user** | yes | yes |
 | `/scratch` | **only the node you are on** | 1.8 TB, ~1.5 TB free | yes | **no, purged, see Section 3** |
 | `/ssd_scratch` | only the node you are on | 880 GB | yes | no |
 | `/share1` | **only the head node** | 100 GiB per user | yes | yes, but unreachable from jobs |
@@ -58,8 +58,8 @@ This is the finding that matters, and it is not what SPEC Section 4.1 assumed.
 directly, and a compute node cannot reach the head node over ssh either:
 
 ```
-$ ssh ada.iiit.ac.in            # from gnode063, inside a job
-yash.more@ada.iiit.ac.in: Permission denied (publickey,password,hostbased).
+$ ssh <login node>             # from a compute node, inside a job
+<user>@<login node>: Permission denied (publickey,password,hostbased).
 ```
 
 So the 100 GiB in `/share1` is reachable only by hand, from the head node,
@@ -67,7 +67,7 @@ after a job has already put its output somewhere the head node can see. It is
 usable as an archive, not as `durable_root`. See Section 5 for the one change
 that would unlock it.
 
-**Home quota, measured:** 30720 MiB soft, 31744 MiB hard. `yash.more` is at
+**Home quota, measured:** 30720 MiB soft, 31744 MiB hard. One member is at
 18113 MiB, leaving **about 12.6 GiB free** before the project venv. The venv
 itself is 6.0 GiB, so roughly **6.5 GiB free today**. The other three members
 have their own 30 GiB each and have not been measured.
@@ -92,7 +92,7 @@ default applies.
 
 **Answer to P0.3(c): `/scratch` is purged daily of anything not accessed in
 7 days.** The empirical check agrees: across 129 entries from many users on
-gnode063, the oldest surviving entry was 5 days old and nothing older than a
+one compute node, the oldest surviving entry was 5 days old and nothing older than a
 week was present. Separately, `/ssd_scratch/cvit` has its own explicit rule at
 `+10d`.
 
@@ -121,7 +121,7 @@ Nodes are genuinely mixed, and SLURM exposes the difference as a feature label:
 
 Unlabelled nodes are the older tranche. Since `configs/activations.yaml`
 freezes one GPU type for the project, every job carries
-`--constraint=2080ti` and `--exclude=gnode077`, and `ada_env.sh` re-checks the
+`--constraint=2080ti` and `--exclude` for the known-bad node, and `ada_env.sh` re-checks the
 card at runtime via `require_gpu_type` rather than trusting the scheduler.
 
 **Set `gpu_type: 2080ti` in `configs/activations.yaml`.**

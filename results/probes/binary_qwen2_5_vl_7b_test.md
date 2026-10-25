@@ -2,7 +2,7 @@
 
 Raw output: `binary_qwen2_5_vl_7b_test.json` (all validation curves) and
 `sanity_qwen2_5_vl_7b_test.json`. Produced by `src/probes/run_sweep.py` on
-Ada gnode077, from the cache in `~/anlp/project/vlm-failures-durable/`.
+an Ada compute node, from the cache in `~/anlp/project/vlm-failures-durable/`.
 
 ## Setup
 

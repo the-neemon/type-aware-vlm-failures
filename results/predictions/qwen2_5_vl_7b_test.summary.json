@@ -1,8 +1,8 @@
 {
   "passed": true,
   "problems": [],
-  "cache": "/home2/shrish.kadam/activations/qwen2_5_vl_7b/test.npz",
-  "predictions": "/home2/shrish.kadam/anlp/project/type-aware-vlm-failures/results/predictions/qwen2_5_vl_7b_test.jsonl",
+  "cache": "$HOME/activations/qwen2_5_vl_7b/test.npz",
+  "predictions": "$HOME/anlp/project/type-aware-vlm-failures/results/predictions/qwen2_5_vl_7b_test.jsonl",
   "relaxed_accuracy": {
     "overall": 0.8732,
     "human": 0.7984,

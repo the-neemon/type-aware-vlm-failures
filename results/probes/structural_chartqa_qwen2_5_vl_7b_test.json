@@ -1,6 +1,6 @@
 {
  "target": "structural",
- "labels": "/home2/yash.more/anlp/project/type-aware-vlm-failures/results/labels/qwen2_5_vl_7b_test.claude.jsonl",
+ "labels": "$HOME/anlp/project/type-aware-vlm-failures/results/labels/qwen2_5_vl_7b_test.claude.jsonl",
  "rest": "include_correct",
  "l2_grid": [
   1.0,

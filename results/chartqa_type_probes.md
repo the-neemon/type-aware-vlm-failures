@@ -1,6 +1,6 @@
 # Type-aware probes on ChartQA with the labelled errors (E3, real-chart arm)
 
-Run 1 Oct 2026 on gnode002 (CPU only, Slurm job 106), `src/probes/run_chartqa_types.py`.
+Run 1 Oct 2026 on a compute node (CPU only, Slurm job 106), `src/probes/run_chartqa_types.py`.
 Full reports: `results/probes/chartqa_types_llava_next_mistral_7b.json` and
 `results/probes/chartqa_types_qwen2_5_vl_7b.json`. This is the ChartQA counterpart
 of `results/synth_type_probes.md`: the same folds, layer selection and probes, but

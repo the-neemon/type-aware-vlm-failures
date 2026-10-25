@@ -1,6 +1,6 @@
 # P0.10: vision-token counts verified against the real processor
 
-Run 7 September 2026 on Ada, gnode055, inside the pinned environment
+Run 7 September 2026 on an Ada compute node, inside the pinned environment
 (`transformers==4.57.6`). Command:
 
 ```bash

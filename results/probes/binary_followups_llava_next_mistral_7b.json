@@ -1,5 +1,5 @@
 {
-  "activations": "/home2/shrish.kadam/activations/llava_next_mistral_7b/test.npz",
+  "activations": "$HOME/activations/llava_next_mistral_7b/test.npz",
   "position": "query_last",
   "n_items": 2500,
   "n_errors": 1178,

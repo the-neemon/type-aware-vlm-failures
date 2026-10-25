@@ -9,7 +9,7 @@
 #SBATCH --job-name=vlmfail-tokens
 #SBATCH --partition=u22
 #SBATCH --constraint=2080ti
-#SBATCH --exclude=gnode066,gnode068,gnode076,gnode077  # mixed-GPU node; dead-driver nodes (AGENTS.md)
+# Pass --exclude="$BAD_NODES" to sbatch (README, Setup): broken-driver and mixed-card nodes
 #SBATCH --gres=gpu:1                 # processor is CPU-side, but hold the node
                                      # class identical to the inference jobs
 #SBATCH --cpus-per-task=4

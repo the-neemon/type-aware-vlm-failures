@@ -10,7 +10,7 @@ contrast**: the same question type, asked about a missing category, and the
 probe separates answers that fabricated from answers that rejected the premise.
 Every outcome is scored from the model's actual answer (`src/synth/items.py`).
 
-## Pilot 1 (run 27 Sep, Shrish, gnode090, TAG=synth_pilot)
+## Pilot 1 (run 27 Sep, Shrish, TAG=synth_pilot)
 
 Generator `src/synth/absent_pairs.py`, config `configs/inference_synth_pilot.yaml`.
 300 bar charts, 2 questions each, same words: "What is the value of Mango?"

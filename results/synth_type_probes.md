@@ -1,6 +1,6 @@
 # Type-aware probes on synthetic value questions (E3, synthetic arm)
 
-Run 28 Sep on gnode028 (CPU only), `src/probes/run_synth_types.py`; full report
+Run 28 Sep on a compute node (CPU only), `src/probes/run_synth_types.py`; full report
 `results/probes/synth_types_qwen2_5_vl_7b.json`.
 
 ## Data

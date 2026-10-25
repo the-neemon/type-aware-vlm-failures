@@ -62,7 +62,7 @@ neither blocks on the download Sanjith is starting.
    missed: request walltime explicitly, because the default is one hour and no
    real job finishes in it; name **one** GPU type in the constraint, because the
    nodes are mixed and a model whose answers and activations come from different
-   cards silently breaks the P4.4 coupling; and exclude `gnode077`.
+   cards silently breaks the P4.4 coupling; and exclude the known-bad node.
 3. Record the chosen GPU type in `configs/activations.yaml` under `gpu_type`,
    which is currently `TBD`. Once set, it is frozen for the project.
 

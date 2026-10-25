@@ -1,5 +1,5 @@
 {
-  "activations": "/home2/yash.more/anlp/project/vlm-failures-durable/qwen2_5_vl_7b_test/test.npz",
+  "activations": "$HOME/anlp/project/vlm-failures-durable/qwen2_5_vl_7b_test/test.npz",
   "position": "query_last",
   "n_items": 2388,
   "n_errors": 205,

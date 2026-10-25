@@ -53,7 +53,7 @@ inside a job and not on the head node** (the head node runs an older glibc than
 the compute nodes, so a venv built there will not import):
 
 ```bash
-srun -p u22 --constraint=2080ti --exclude=gnode077 --gres=gpu:1 \
+srun -p u22 --constraint=2080ti --exclude="$BAD_NODES" --gres=gpu:1 \
      -c 8 --mem=32G -t 01:00:00 bash scripts/setup_env.sh
 ```
 

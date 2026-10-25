@@ -62,13 +62,13 @@ the decision until the team changes it here.
 - **Every number in the report traces to a file in `results/`.** Commit the
   result file alongside the code that made it, with the command in its header.
 - **Cluster details stay out of the repo.** Use `$HOME`, `$PROJ` or a config
-  variable in place of any `/home2/<user>` path, node name or cluster hostname.
+  variable in place of any home-directory path, node name or cluster hostname.
   The repo is public and is submitted.
-- **Ada GPU jobs:** `--constraint=2080ti`,
-  `--exclude=gnode066,gnode068,gnode076,gnode077`, and an explicit `--time`
-  (the default is 1 hour). gnode066, gnode076 and gnode077 have had broken CUDA
-  drivers; `torch` silently falls back to CPU there, so CPU fallback is a hard
-  error in every job. Run Python only under `sbatch`/`srun`, never on the login
+- **Ada GPU jobs:** `--constraint=2080ti`, `--exclude="$BAD_NODES"` and an
+  explicit `--time` (the default is 1 hour). `BAD_NODES` lives in your shell,
+  never in the repo: the nodes with broken CUDA drivers or mixed cards (ask the
+  team for the list). On a broken-driver node `torch` silently falls back to
+  CPU, so CPU fallback is a hard error in every job. Run Python only under `sbatch`/`srun`, never on the login
   node.
 - **Git:** short one-line commit messages, batched. Push only when your person
   asks. Pull before starting, since four people share `main`.

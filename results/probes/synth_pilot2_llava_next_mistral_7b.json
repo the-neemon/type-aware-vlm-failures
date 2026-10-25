@@ -1,6 +1,6 @@
 {
-  "activations": "/home2/shrish.kadam/activations/llava_next_mistral_7b/synth_pilot2.npz",
-  "predictions": "/home2/shrish.kadam/anlp/project/type-aware-vlm-failures/results/predictions/llava_next_mistral_7b_synth_pilot2.jsonl",
+  "activations": "$HOME/activations/llava_next_mistral_7b/synth_pilot2.npz",
+  "predictions": "$HOME/anlp/project/type-aware-vlm-failures/results/predictions/llava_next_mistral_7b_synth_pilot2.jsonl",
   "skipped": [],
   "contrasts": {
     "absent_value_vs_present": {

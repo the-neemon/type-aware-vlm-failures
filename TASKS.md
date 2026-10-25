@@ -87,7 +87,7 @@ its quota. That number decides whether the checkpoints can be downloaded once or
 have to be replicated per node. Pin `transformers` and `qwen-vl-utils` in `requirements.txt` and
 record the exact versions, because activations differ silently across versions.
 In the SLURM template, request walltime explicitly (the default is one hour),
-constrain the GPU type since nodes are mixed, and exclude `gnode077`. The day is
+constrain the GPU type since nodes are mixed, and exclude the known-bad node. The day is
 successful if one image and one question produce one answer string. Do not batch,
 do not evaluate, do not tune the prompt yet.
 
@@ -236,10 +236,10 @@ the caching code. Everything else is a status round.
 - [x] **P0.5** SLURM job template. Request explicit walltime; the cluster default
       is 1 hour and a full ChartQA pass will not finish in it. Pin GPU type in the
       constraint, since nodes are mixed and a job that lands on the wrong card
-      will OOM or run slow. Avoid `gnode077` (known dead GPU).
+      will OOM or run slow. Avoid the known dead-GPU node.
       `scripts/ada_env.sh` is the shared preamble; `scripts/smoke.sbatch` and
       `scripts/verify_tokens.sbatch` are the two templates. Explicit `--time`,
-      `--constraint=2080ti`, `--exclude=gnode077`, and `--gres=gpu:2` because
+      `--constraint=2080ti`, `--exclude` for the known-bad node, and `--gres=gpu:2` because
       16.6 GiB of fp16 weights does not fit one 11 GiB card. `require_gpu_type`
       re-checks the card at runtime rather than trusting the scheduler, and
       `stage_out` implements P0.9 by failing the job loudly if output does not
@@ -592,7 +592,7 @@ in October.
 
 Request explicit walltime; the default is one hour. Nodes carry mixed GPU types,
 so constrain the GPU in the job script or a large model will land on a card that
-cannot hold it. Avoid `gnode077`.
+cannot hold it. Avoid the known dead-GPU node.
 
 **The frozen card is the RTX 2080 Ti** (`--constraint=2080ti`), measured
 7 September: Turing, compute capability **7.5**, **11 GiB** of VRAM. Three
@@ -820,5 +820,5 @@ Record the resolution here as each is made.
 | 7 | ChartGemma stretch goal: keep or drop | 30 Sep | Open |
 | 8 | Shared storage path for weights and caches, given node-local `/scratch` | 8 Sep | **Closed 2 Sep by P0.3.** `durable_root=$HOME`, 30 GiB per user. `/share1` has 100 GiB but no compute node can reach it. Weights go to `HF_HOME=/scratch/vlm-failures/hf`, which is purged at 7 days and repaired on demand by `stage_in_model`. |
 | 10 | Can probe training read `/share1` from the login node | 20 Sep | Open. Would unlock 100 GiB of cold archive; only matters if the item count grows. |
-| 11 | Port `scripts/download_chartqa.ps1` to bash for Ada | 5 Sep | **Closed 7 Sep.** `scripts/download_chartqa.sh`, run on gnode055. ChartQA is now on Ada at `$HOME/data/ChartQA`: 32,719 questions over 20,882 figures, 1.1 GiB, and `python -m src.eval.chartqa` loads it with the P5.4 split assertion passing. Images live in `$HOME`, not `/scratch`, because `/scratch` is node-local and purged at 7 days. |
+| 11 | Port `scripts/download_chartqa.ps1` to bash for Ada | 5 Sep | **Closed 7 Sep.** `scripts/download_chartqa.sh`, run on a compute node. ChartQA is now on Ada at `$HOME/data/ChartQA`: 32,719 questions over 20,882 figures, 1.1 GiB, and `python -m src.eval.chartqa` loads it with the P5.4 split assertion passing. Images live in `$HOME`, not `/scratch`, because `/scratch` is node-local and purged at 7 days. |
 | 9 | Which pool runs which model, fixed for the project | 14 Sep | **Decided 2 Sep, revised same day.** Ada only; the H100 is unavailable. One frozen GPU type, named in every job constraint. See Section 1.1. |

@@ -122,11 +122,10 @@ upload something; currently we do not.
    or misread probe fires. Done when `results/e5.md` has risk-coverage curves
    and AURC for the controller, binary-only abstention and the oracle, both
    models.
-5. **Code release (23 to 27 Oct).**
-   - Replace every `/home2/<user>` path, node name and cluster hostname in
-     tracked files with a variable (`git grep -n -E "/home2|gnode[0-9]|ada\.iiit"`
-     lists them; 39 files at the mid submission). Done when that grep returns
-     nothing and the tests still pass.
+5. **Code release (23 to 27 Oct).** Done 15 Oct.
+   - Replace every home-directory path, node name and cluster hostname in
+     tracked files with a variable or a neutral word. Done when a search for
+     them returns only our author emails in the reports, and the tests pass.
    - README: setup, and the command that reproduces each result file. Done when
      every result file the report cites has its command in the README.
 6. **Report tables and figures (25 to 28 Oct):** LaTeX tables and figures for
