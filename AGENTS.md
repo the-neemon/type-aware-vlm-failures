@@ -41,8 +41,11 @@ the decision until the team changes it here.
    over the five labels, per model and overall, gate 0.6. The LLM labels remain
    the labels every experiment uses; the human check validates them. A κ below
    0.6 is reported as a limitation, with no relabelling round.
-7. **E5** runs on the synthetic value questions with E4 outcomes. Thresholds are
-   chosen on the validation split and scored once on test. A re-look on a
+7. **E5** runs on the synthetic value questions with E4 outcomes. The re-look
+   threshold and repair are cross-fitted by figure fold (chosen on four folds,
+   applied to the fifth), so every question is scored by a rule chosen without
+   its chart. (Changed 15 Oct from "validation split, then test once": the
+   validation split holds about 7 Qwen misreads, too few to tune on.) A re-look on a
    question the model got right is priced from a GPU re-ask of those questions
    (`CORRECT=1 scripts/intervene.sbatch`), never assumed harmless. Baselines:
    binary-only abstention and the label-aware oracle. Metric: risk-coverage

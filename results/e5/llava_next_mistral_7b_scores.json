@@ -1,0 +1,98 @@
+{
+  "position": "query_last",
+  "n_folds": 5,
+  "pilots": [
+    "pilot1",
+    "pilot2"
+  ],
+  "classes": {
+    "C": 185,
+    "S": 415,
+    "F": 368,
+    "Z": 232,
+    "R": 0
+  },
+  "probes": {
+    "binary": {
+      "positive": "SFZ",
+      "negative": "CR",
+      "auroc": 0.8936333377712689,
+      "chosen_per_fold": {
+        "0": {
+          "layer": 18,
+          "l2": 100.0
+        },
+        "1": {
+          "layer": 19,
+          "l2": 100.0
+        },
+        "2": {
+          "layer": 20,
+          "l2": 100.0
+        },
+        "3": {
+          "layer": 21,
+          "l2": 1000.0
+        },
+        "4": {
+          "layer": 28,
+          "l2": 1000.0
+        }
+      }
+    },
+    "missing": {
+      "positive": "FZR",
+      "negative": "CS",
+      "auroc": 0.9861444444444445,
+      "chosen_per_fold": {
+        "0": {
+          "layer": 16,
+          "l2": 10.0
+        },
+        "1": {
+          "layer": 30,
+          "l2": 1.0
+        },
+        "2": {
+          "layer": 19,
+          "l2": 1.0
+        },
+        "3": {
+          "layer": 28,
+          "l2": 1.0
+        },
+        "4": {
+          "layer": 16,
+          "l2": 1.0
+        }
+      }
+    },
+    "misread": {
+      "positive": "S",
+      "negative": "C",
+      "auroc": 0.7756821882123087,
+      "chosen_per_fold": {
+        "0": {
+          "layer": 22,
+          "l2": 1000.0
+        },
+        "1": {
+          "layer": 20,
+          "l2": 1000.0
+        },
+        "2": {
+          "layer": 30,
+          "l2": 1000.0
+        },
+        "3": {
+          "layer": 21,
+          "l2": 1000.0
+        },
+        "4": {
+          "layer": 28,
+          "l2": 1000.0
+        }
+      }
+    }
+  }
+}
