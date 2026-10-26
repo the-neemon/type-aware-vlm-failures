@@ -1,51 +1,150 @@
-% Naman's sections of the final report: E4, E5 and the discussion.
-% Structure only. Every paragraph below is for Naman to write (the course
-% requires the report text to be written by the team). Each TODO names the
-% result file holding its facts; every number must match that file.
-% Tables and figure: regenerate with `python scripts/final_assets.py`.
+% Naman's contribution to the team report. Sources are recorded beside the text.
+% Input from paper/final/ after the synthetic arm; requires booktabs, graphicx
+% and amsmath. Keep the team's limitations section immediately before references.
 
 \section{Does the failure type decide the repair? (E4)}
 \label{sec:e4}
 
-% TODO (Naman): setup. What was re-asked (every value-question error of
-% synthetic pilots 1 and 2: Qwen 631, LLaVA 1,015), the four repairs, how a
-% repair counts as a recovery, and the pre-registered test.
-% Facts: results/e4.md (Provenance), results/e4-preregistration.md.
+We re-query all erroneous value questions in synthetic pilots 1 and 2 (631
+for Qwen, 1,015 for LLaVA) to test whether the best repair depends on failure
+type. Types come from the original answers, independently of probes: misreads
+of shown bars ($S$), invented nonzero values for missing bars ($F$), and
+missing-bar ``0'' answers ($Z$). We score $Z$ as wrong, separately from
+fabrication.
+
+We compare four repairs: a sampled re-ask of the original question
+(temperature 0.7); whole-chart upsampling; a question-conditioned crop retaining
+the target bar and y-axis strip; and a verification prompt requesting chart
+evidence before the final answer. The latter three use greedy decoding.
+Upsample and crop share a 1,000,000-pixel budget. Recovery requires a correct
+read under the original 5\% numeric tolerance, or an explicit refusal for a
+missing bar. The re-ask controls for improvement from another attempt.
+
+% Sources: results/e4.md; results/e4-preregistration.md;
+% src/intervene/interventions.py; src/intervene/matrix.py.
+Before running the interventions, we pre-registered the difference in recovery
+gains between $S$ and $F$ as the primary contrast on 2 September:
+\begin{equation}
+\Delta_{\mathrm{crop}}=
+ (r_{S,\mathrm{crop}}-r_{S,0})-(r_{F,\mathrm{crop}}-r_{F,0}),
+\end{equation}
+where $r$ denotes recovery rate. Baseline recovery is zero because we select
+only errors; the contrast excludes $Z$. We use 2,000 figure-bootstrap
+resamples for 95\% confidence intervals (CIs).
 
 \input{tables/e4.tex}
 
-% TODO (Naman): result of the pre-registered test, both models (Table~\ref{tab:e4}).
-% Facts: results/e4.md, Qwen and LLaVA sections.
+% Source: results/e4.md, matrices, contrasts and outcome transitions.
+The crop DiDs are +0.261 for Qwen and +0.152 for LLaVA, with CIs excluding
+zero as predicted (Table~\ref{tab:e4}). The pre-registered secondary verify
+DiD is $-0.056$ [$-0.162$, +0.053] for Qwen, including zero, and +0.031
+[+0.015, +0.050] for LLaVA.
 
-% TODO (Naman): what limits the reading. Facts: results/e4.md,
-% "Read these before writing them up", points 1 to 5.
+Qwen's best repair is crop for misreads and verify for fabrications and $Z$
+answers, recovering 14.3\% and 69.2\% respectively. Misreads and fabrications
+select different best repairs in 99\% of bootstrap resamples. LLaVA's crop
+helps misreads, but no repair recovers any of its 600 missing-bar errors.
+All repairs tie on these errors, making an argmax change uninformative.
+Re-asking turns 215 of its 232 $Z$ answers into invented numbers.
+
+Crop falls back to upsampling when the bar is missing. The two repairs give
+identical answers on all 1,185 missing-bar errors across models, so the primary
+contrast cannot isolate localisation. Comparing crop with upsample isolates
+this gain: +0.145 [0.111, 0.181] for LLaVA and +0.130 [$-0.023$, 0.289] for
+Qwen. Qwen's interval includes zero, with only 46 misreads available.
 
 \section{A type-aware controller (E5)}
 \label{sec:e5}
 
-% TODO (Naman): setup. The policies compared, how a re-look is priced on right
-% answers (the re-ask of correct answers), cross-fitting by figure fold, AURC.
-% Facts: results/e5.md, and src/controller/e5.py docstring for the method.
+% Sources: results/e5.md; src/controller/{e5,e5_scores}.py.
+We compare a type-aware controller with binary selective prediction on all
+1,200 value questions per model, including correct reads and refusals. Three
+linear probes on the last prompt-token hidden state score wrong versus right,
+missing versus shown bar, and misread versus correct read before generation.
+Scores use five figure folds: each probe trains on the other four, selecting
+layer and regularisation within its training folds.
+
+The \emph{controller} re-looks above a misread-score threshold and withholds
+questions with the highest missing-bar scores first. We choose the repair and
+threshold to maximise accuracy on four folds, then apply them to the fifth.
+Baselines include the plain model, binary abstention,
+missing-bar abstention, and \emph{Re-look + binary}, which uses
+the controller's re-look rule with binary ranking. The label-aware oracle
+chooses the best action for each true class and withholds the least recoverable
+classes first. Re-query outcomes on initially correct answers count harmful
+repairs against each policy: crop breaks 133 of Qwen's 554 correct reads.
+
+Coverage is the fraction retained; risk is their error rate. AURC averages
+risk over coverage (lower is better), averaging tied confidence scores.
+Correct refusals count as correct answers; policy abstention removes questions
+from coverage. CIs use 1,000 figure-bootstrap resamples.
 
 \input{tables/e5.tex}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/e5_risk_coverage.pdf}
-\caption{TODO}
+\caption{Risk versus coverage on synthetic value questions. The controller
+and Re-look + binary use the same repaired answers with different
+abstention rankings. At full coverage, the reduction in risk is the net gain
+from re-looking. Curves average over tied confidence scores.}
 \label{fig:e5}
 \end{figure}
 
-% TODO (Naman): results (Table~\ref{tab:e5}, Figure~\ref{fig:e5}).
-% Facts: results/e5.md tables and the per-class re-look breakdown.
+% Source: results/e5.md, policy comparisons and per-class breakdown.
+Adding a re-look lowers AURC under either abstention ranking in both models
+(Table~\ref{tab:e5}, Figure~\ref{fig:e5}; all four gain CIs exclude zero).
+The controller beats
+binary abstention only for Qwen: AURC difference $-0.017$
+[$-0.028$, $-0.004$], compared with +0.069 [0.045, 0.094] for LLaVA.
+Without re-looking, binary ranking also outperforms missing-bar ranking
+because it flags misreads as well as missing-bar errors. Re-look + binary
+has the lowest AURC of the evaluated probe-based policies in both models
+(0.114 and 0.638).
 
-% TODO (Naman): what the re-look actually fixes, and the oracle gap.
-% Facts: results/e5.md, "Read these before writing them up", points 1 to 5.
+Qwen selects verify in every fold. Of 222 fixes, 212 are $Z$ answers
+converted to refusals, seven are fabrications, and only three are misreads;
+one correct refusal becomes wrong. Most gains are refusals on missing-bar
+questions, although the re-look was intended to correct misreads.
+The misread probe also responds to missing bars and therefore triggers this
+repair. LLaVA selects crop in every fold. It fixes 12 misreads and re-looks
+at 437 missing-bar questions without recovering any. With access to true
+classes, the oracle achieves lower AURCs of 0.056 and 0.497, so better
+policies are possible within this evaluation.
 
 \section{Discussion}
 \label{sec:discussion}
 
-% TODO (Naman): is the type separability hypothesis supported, now that E4 and
-% E5 are in. Inputs: E3 (results/synth_type_probes.md,
-% results/chartqa_type_probes.md), E4 and E5 above, and pilot 3 once Yash's
-% probe results are in.
+% Sources: results/probes/binary_*_test.md;
+% results/chartqa_type_probes.md; results/synth_type_probes.md;
+% results/probes/{synth_grid_baseline,transfer_chartqa}_*.json.
+E1 predicts wrong answers (AUROC 0.877 for Qwen, 0.798 for LLaVA; surface
+baselines 0.715 and 0.608). Real-chart probes distinguish misreads from
+computation errors (0.897 and 0.961), including after surface residualisation
+(0.918 and 0.920). This partly supports type separability for a different
+pair from the proposed misread/fabrication contrast. Question wording may
+still explain part of the separation: the surface controls do not remove
+question type.
+
+The synthetic results depend on the model. Qwen's misread probe responds more
+strongly to misreads (0.887) than fabrications (0.594); LLaVA's responds more
+to fabrications (0.879) than misreads (0.776). Post-hoc gridline features with
+chart metadata exceed both probes on misreads (0.920 and 0.860). Synthetic
+misread probes also transfer weakly to ChartQA (0.597 and 0.557). We therefore
+cannot infer a general mechanism shared by the models from separability alone.
+
+% Source: results/pilot3_probes.md.
+In pilot 3, the missing-versus-shown probes trained on absent category names
+detect out-of-range years (AUROC 1.000 and 0.911). Qwen's probe barely separates
+fabrication from correct refusal (0.521): its score tracks whether the chart supports answering, with
+little separation between these responses. Qwen refuses 102 of 300
+out-of-range questions, compared with 15 of 600 absent-name questions.
+Its response differs between kinds of unsupported questions; chart design
+also changes between these pilots.
+
+Repair effects depend on failure type in E4, yet the type-aware controller
+in E5 improves on binary abstention only for Qwen, mainly by prompting
+refusals. For LLaVA's missing-bar errors, policy abstention is the only
+effective option we tested. These results favour using answerability together
+with a general error score, and assessing the repair and abstention ranking
+as parts of the same policy.
