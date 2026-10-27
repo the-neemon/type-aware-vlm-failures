@@ -59,7 +59,8 @@ upload something; currently we do not.
    About 570 Qwen and 185 LLaVA questions, four repairs each; resubmit the same
    command after a timeout. Done when the four `*.correct.outcomes.jsonl` files
    from `$DURABLE/e4/` are committed under `results/e4/` and Naman knows.
-5. **Label the 200 agreement items (15 to 19 Oct)** as annotator `shrish` in
+5. **Done 25 Oct: all 200 labelled** (`annotations/shrish.jsonl`). Kept for the
+   record: **Label the 200 agreement items (15 to 19 Oct)** as annotator `shrish` in
    `streamlit run src/label/app.py`, once Sanjith's task files exist, while the
    E4 jobs run. A person does this; an agent only starts the app. Done when all
    200 are labelled.
@@ -93,7 +94,10 @@ upload something; currently we do not.
    table (rejected, "0", fabricated) and whether the missing-bar probe from
    pilots 1 and 2 fires on out-of-range questions. Done when a result file in
    `results/` answers that with AUROC and confidence intervals for both models.
-2. **Write (14 to 29 Oct):** start now on the updated introduction and related
+2. **In progress: `paper/final/main.tex` skeleton exists (27 Oct)** and compiles;
+   each section is a file in `paper/final/sections/` with its owner and a red
+   placeholder box to remove once written. The ChartQA arm (E1 to E3,
+   `sections/chartqa.tex`) has no owner in this plan. **Write (14 to 29 Oct):** start now on the updated introduction and related
    work (title change per decision 1), then the synthetic arm and E3. Merge everyone's sections into `paper/final/` and bring the
    report to the page limit. Done when it compiles without errors at 8 pages or
    fewer before the references.
@@ -132,7 +136,8 @@ upload something; currently we do not.
      them returns only our author emails in the reports, and the tests pass.
    - README: setup, and the command that reproduces each result file. Done when
      every result file the report cites has its command in the README.
-6. **Report tables and figures (25 to 28 Oct):** LaTeX tables and figures for
+6. **E4, E5 and pilot 3 tables done** (`scripts/final_assets.py`; pilot 3 table
+   added 27 Oct by Yash). **Report tables and figures (25 to 28 Oct):** LaTeX tables and figures for
    E4, E5 and pilot 3 from the result files, handed to the section writers. No
    prose.
 7. **Write (25 to 28 Oct):** E4, E5 and the discussion.
@@ -143,14 +148,21 @@ upload something; currently we do not.
 
 ## Sanjith: labelling lead, annotator B, slides
 
-1. **Set up the agreement check (14 to 15 Oct)**, per decision 6 in
+1. **Done 25 Oct** (`annotations/tasks/`). Kept for the record: **Set up the agreement check (14 to 15 Oct)**, per decision 6 in
    `AGENTS.md`. Draw the 200 items with seed 42, write them as a pool, then
    `python -m src.label.pool assign --pool <your pool.jsonl> --annotators shrish sanjith
    --overlap 200 --out annotations/tasks`.
    Done when both task files exist and neither shows the model or the LLM label.
-2. **Label the 200 items (15 to 19 Oct)** as annotator `sanjith`. A person does
+2. **Done 25 Oct: all 200 labelled** (`annotations/sanjith.jsonl`). Kept for the
+   record: **Label the 200 items (15 to 19 Oct)** as annotator `sanjith`. A person does
    this; an agent only starts the app. Done when all 200 are labelled.
-3. **Agreement result (20 to 21 Oct).** Done when `results/human_agreement.md`
+3. **Done 27 Oct: `results/human_agreement.md`.** Kappa between the two
+   annotators 0.421 overall (Qwen 0.452, LLaVA 0.345), below the 0.6 gate. The
+   79 disagreements were adjudicated by Shrish and Sanjith together
+   (`annotations/adjudicated.jsonl`); the final human labels vs the LLM labels
+   give kappa 0.614 overall (Qwen 0.589, LLaVA 0.613; 72.0% raw agreement).
+   Kept for the record:
+   **Agreement result (20 to 21 Oct).** Done when `results/human_agreement.md`
    reports κ per model and overall, the human-vs-LLM agreement, and the
    adjudicated disagreements.
 4. **Write and assemble slides (25 to 30 Oct):** the labelling and data

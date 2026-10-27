@@ -1,0 +1,63 @@
+% Final report, HiddenStates (due 31 Oct 2026). Build:
+%   pdflatex main && bibtex main && pdflatex main && pdflatex main
+% Rules (course and ACL): at most 8 pages before the references; up to 2
+% appendix pages after them; the limitations, challenges and future work
+% section sits immediately before the references and holds no results;
+% abstract at most 200 words of plain text; no em dashes; every number traces
+% to a file in results/. Section owners follow docs/final-plan.md.
+\documentclass[11pt]{article}
+\usepackage[final]{acl}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{xspace}
+\usepackage{xcolor}
+
+\newcommand{\qwen}{Qwen2.5-VL-7B\xspace}
+\newcommand{\llava}{LLaVA-NeXT-7B\xspace}
+\newcommand{\cls}[1]{\textsc{#1}}
+% Placeholder for a section not yet written; remove every use before submitting.
+\newcommand{\pending}[2]{\par\noindent\fbox{\parbox{0.95\linewidth}{\small
+  \textcolor{red}{\textbf{To write (#1):}} #2}}\par}
+
+\title{Type-Aware Failure Prediction for Chart Reasoning in\\Vision-Language Models}
+
+\author{Yash More, Naman Singhal, Shrish Kadam, Sanjith Ganapathi \\
+  \texttt{\{yash.more, naman.s, shrish.kadam\}@research.iiit.ac.in}, \texttt{sanjith.ganapathi@students.iiit.ac.in} \\
+  International Institute of Information Technology, Hyderabad}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\pending{Yash}{Abstract: at most 200 words, plain text with no LaTeX commands.}
+\end{abstract}
+
+\input{sections/introduction}
+\input{sections/related_work}
+\input{sections/setup}
+\input{sections/labels}
+\input{sections/chartqa}
+\input{sections/synthetic}
+\input{sections/e4_e5_discussion}
+\input{sections/conclusion}
+\input{sections/limitations}
+
+% Temporary: lists every reference until the sections cite them. Remove once
+% the related work section is in, so only cited works appear.
+\nocite{*}
+\bibliography{references}
+
+\clearpage
+\appendix
+\input{sections/appendix}
+
+\end{document}

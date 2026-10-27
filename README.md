@@ -32,6 +32,8 @@ steps need only a CPU and the cached activations.
 | E3 synthetic | Type probes and cross-transfer matrix | `python -m src.probes.run_synth_types`; gridline baseline `run_followups grid` | `results/probes/synth_types_*.json`, `synth_grid_baseline_*.json`, `results/synth_type_probes.md` |
 | E3 ChartQA | Misread vs computation probes, per question type, residualised | `python -m src.probes.run_chartqa_types [--question-type ...] [--residualise]` | `results/probes/chartqa_types_*.json`, `results/chartqa_type_probes.md` |
 | Transfer | Synthetic probes applied to ChartQA | `python -m src.probes.run_transfer transfer` | `results/probes/transfer_chartqa_*.json` |
+| Pilot 3 probes | Do the pilot 1-2 missing-bar probes fire on out-of-range years? | `python -m src.probes.run_pilot3 --pilot pilot1 ... --pilot pilot2 ... --target ...` (CPU job) | `results/probes/pilot3_*.json`, `results/pilot3_probes.md` |
+| Human agreement | Two annotators on 200 errors, kappa, human vs LLM labels | `python -m src.label.human_agreement --raters shrish sanjith --labels results/labels/qwen2_5_vl_7b_test.claude.jsonl --labels results/labels/llava_next_mistral_7b_test.claude.jsonl --out results/human_agreement.md` | `results/human_agreement.md` |
 | E4 (GPU) | Every repair on every synthetic value-question error | `PREDICTIONS=... SYNTH_MANIFEST=... sbatch scripts/intervene.sbatch` | `results/e4/*.outcomes.jsonl`, `results/e4.md` |
 | E5 re-ask (GPU) | The same repairs on the correct answers | as E4 with `CORRECT=1` | `results/e4/*.correct.outcomes.jsonl` |
 | E5 | Controller vs selective prediction | `python -m src.controller.e5_scores` (CPU job), then `python -m src.controller.e5 --models ...` | `results/e5/`, `results/e5.md` |
