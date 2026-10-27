@@ -64,6 +64,13 @@ def _relabel(rec: dict, label: str, name: str, out: pathlib.Path) -> None:
     append_annotation(make_record(item, label, rec.get("rationale", ""), name), out)
 
 
+def _adjudicate(d: dict, label: str, out: pathlib.Path) -> None:
+    """Record the label both annotators settled on; the latest click wins."""
+    item = AnnotationItem(d["item_id"], "", d["question"], d["gold_answer"], d["model_answer"])
+    why = st.session_state.get(f"adj_why_{d['item_id']}", "")
+    append_annotation(make_record(item, label, why, " + ".join(sorted(d["votes"]))), out)
+
+
 # ---------------------------------------------------------------------------
 # Sidebar
 # ---------------------------------------------------------------------------
@@ -176,8 +183,9 @@ def agreement() -> None:
     elif kappa > KAPPA_THRESHOLD:
         st.success("Passes the gate.")
     else:
-        st.error("Below the gate. Adjudicate the disagreements below and revise "
-                 "docs/taxonomy.md before labelling further (TASKS P2.4).")
+        st.error("Below the gate. Per AGENTS.md decision 6 this is reported as a "
+                 "limitation, with no relabelling round. Adjudicate the disagreements "
+                 "below: that settles a consensus label, it does not change kappa.")
 
     st.subheader("Pairwise Cohen's kappa")
     st.caption(f"Pairs sharing fewer than {MIN_PAIR_ITEMS} items are noise; read them "
@@ -190,7 +198,13 @@ def agreement() -> None:
                  width="stretch")
 
     rows = disagreements(ratings, selected)
-    st.subheader(f"Disagreements ({len(rows)})")
+    adj_file = ANN_DIR / "adjudicated.jsonl"
+    settled = ratings.get("adjudicated", {})
+    n_open = sum(d["item_id"] not in settled for d in rows)
+    st.subheader(f"Disagreements ({len(rows)}, {n_open} not yet adjudicated)")
+    st.caption("Decide each one together from the rubric, then click the agreed label. "
+               f"Saved to `{adj_file.relative_to(REPO)}`; click again to change it.")
+    only_open = st.checkbox("Show only items not yet adjudicated", value=True)
     pool_file = TASK_DIR / "pool.jsonl"
     images = {}
     if pool_file.is_file():
@@ -199,15 +213,25 @@ def agreement() -> None:
                 p = json.loads(line)
                 images[p["item_id"]] = pathlib.Path(image_root) / p["image_path"]
     for d in rows:
+        if only_open and d["item_id"] in settled:
+            continue
         votes = ", ".join(f"{r}: {v[0]}" for r, v in d["votes"].items())
-        with st.expander(f"{d['question']}  ({votes})"):
+        done = settled.get(d["item_id"], {}).get("label")
+        mark = f"  -> {done}" if done else ""
+        with st.expander(f"{d['question']}  ({votes}){mark}"):
             img = images.get(d["item_id"])
             if img is not None and img.is_file():
                 st.image(str(img), width=520)
             st.markdown(f"**Gold** {d['gold_answer']}  \n**Model** {d['model_answer']}")
             for r, (label, why) in d["votes"].items():
                 st.markdown(f"- **{r}**: {label}" + (f", \"{why}\"" if why else ""))
-            st.caption(f"item {d['item_id']}")
+            st.text_input("Why you settled on it (optional)", key=f"adj_why_{d['item_id']}")
+            cols = st.columns(len(LABELS))
+            for col, (text, label) in zip(cols, LABELS):
+                col.button(text, key=f"adj_{label}_{d['item_id']}", width="stretch",
+                           type="primary" if label == done else "secondary",
+                           on_click=_adjudicate, args=(d, label, adj_file))
+            st.caption(f"item {d['item_id']}" + (f", adjudicated: **{done}**" if done else ""))
 
 
 if page == "Annotate":
