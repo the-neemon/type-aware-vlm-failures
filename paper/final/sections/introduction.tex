@@ -1,4 +1,46 @@
-% Owner: Yash (docs/final-plan.md, Yash task 2). Title per AGENTS.md decision 1.
+% Introduction. Sources: results/probes/binary_*_test.md,
+% results/chartqa_type_probes.md, results/labels/*.error_stats.json,
+% results/synth_fabrication_pilots.md, results/pilot3_probes.md, results/e4.md,
+% results/e5.md.
 \section{Introduction}
 \label{sec:intro}
-\pending{Yash}{Motivation, refined problem statement, contributions, paper outline. Start from paper/mid/main.tex Section 1; drop "and Diagram" (AGENTS.md decision 1).}
+
+Vision-language models (VLMs) are routinely asked to read charts, and a wrong
+answer can be wrong in two different ways. The model may have \emph{misread}
+the figure: taken the adjacent bar, rounded to a gridline, or misread a printed
+value. The answer was in the image, and a closer look might recover it. Or it
+may have \emph{fabricated}: reported a value the figure does not contain.
+Looking again cannot help, and the right response is to withhold the answer.
+Reliability methods usually collapse both cases into one ``do not trust''
+score. We ask whether the two failure types are visible in the model's internal
+state \emph{before} it answers, and whether knowing the type helps choose a
+repair.
+
+\paragraph{Problem.} Let $x=(I,q)$ be a chart image and a question, and $\hat y$
+the answer a frozen VLM generates greedily. Let $h_\ell(x)\in\mathbb{R}^d$ be the
+hidden state after decoder layer $\ell$ at the last prompt token, computed in the
+same forward pass that produces $\hat y$. Each wrong answer has a failure type
+$t$, read off $\hat y$ and the figure. We test (i) whether linear probes on
+$h_\ell$ predict $\Pr(\hat y \text{ wrong})$ and $t$ better than surface features
+of the input, (ii) whether a probe trained for one type also responds to the
+other (cross-transfer), (iii) whether the best repair depends on $t$ (E4), and
+(iv) whether a controller that uses the type beats plain selective prediction
+(E5). The \textbf{Type Separability Hypothesis} states that the states before a
+misread and before a fabrication are linearly distinguishable, the first being
+a precision-limited perceptual failure and the second an answer ungrounded in
+the image. A collapse of the two classes is a reportable outcome, not a failure
+of the design.
+
+\paragraph{Contributions.} (1) Full-depth activation caches of
+\qwen and \llava on ChartQA and on three synthetic pilots, taken from the pass
+that produced each answer. (2) Five-label annotations of all 1,495 ChartQA
+errors of both models, with a two-person agreement check. (3) Probes that
+predict wrong answers (AUROC 0.877 and 0.798) and separate misreads from
+arithmetic errors on real charts (0.897 and 0.961), each against surface
+baselines, residualisation, five data splits and single-question-type
+controls. (4) A synthetic arm that induces fabrication: neither model refuses
+questions about a missing bar, yet both encode that it is missing (AUROC 0.96 to
+1.00), and the same signal fires on years outside a chart's range. (5) A
+pre-registered repair experiment in which cropping rescues misreads more than
+fabrications in both models, and a controller evaluated against selective
+prediction.

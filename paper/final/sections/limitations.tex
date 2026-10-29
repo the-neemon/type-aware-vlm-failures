@@ -1,8 +1,33 @@
-% Owner: Sanjith (docs/final-plan.md, Sanjith task 4). Course rule: challenges,
-% limitations and future work only, immediately before the references, with no
-% results. Naman's E4/E5 fragment is included below.
+% Limitations, challenges and future work. Course rule: this section sits
+% immediately before the references and holds no results. Merges the labelling
+% and synthetic-arm limitations with Naman's E4/E5 fragment
+% (sections/e4_e5_limitations.tex, kept for the record).
 \section*{Limitations, Challenges and Future Work}
 \label{sec:limits}
-\pending{Sanjith}{Merge the labelling and synthetic-arm limitations with the E4/E5 text below.}
 
-\input{sections/e4_e5_limitations}
+\paragraph{Labels.} The ChartQA labels come from one LLM annotator. Two human
+annotators agreed with each other below our 0.6 gate, so the five-way taxonomy is
+hard to apply consistently, and the adjudicated human labels match the LLM labels
+only moderately. Type probes trained on these labels inherit their noise.
+
+\paragraph{Scope of the type contrast.} Fabrication is nearly absent from
+ChartQA, so the misread versus fabrication contrast rests on synthetic bar charts
+with a single value-question template, where a fabrication always concerns
+something missing. Synthetic misreads are partly determined by where a value sits
+relative to the gridlines, the best gridline features were chosen after seeing
+the data, and the synthetic probes do not carry over to real charts. Qwen makes
+few misreads (46 synthetic, 71 real), so its intervals are wide. The question-type
+rule is a keyword heuristic.
+
+\paragraph{Repairs and the controller.} E4 and E5 use synthetic charts only,
+because the crop needs bar geometry that ChartQA does not provide. Their balance
+of shown and missing bars differs from how often unsupported questions occur in
+real use, so the controller's risk-coverage numbers should not be extrapolated to
+ChartQA. Cross-fitting by figure still reuses the same pilots, and we did not
+optimise latency or inference cost. All probes are linear and diagnostic; we did
+not test whether steering along the missing-bar direction changes the answer.
+
+\paragraph{Future work.} Repair selection on naturalistic unanswerable
+questions; a crop for real charts based on text detection; more models and chart
+types, including node-link diagrams; and a causal test of the missing-bar
+direction.

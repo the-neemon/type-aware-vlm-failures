@@ -1,4 +1,42 @@
-% Owner: Yash (docs/final-plan.md, Yash task 2).
-\section{Background and Related Work}
+% Related work, condensed from paper/mid/main.tex Section 2.
+\section{Related Work}
 \label{sec:related}
-\pending{Yash}{Start from paper/mid/main.tex Section 2 (references.bib is copied from the mid report).}
+
+\paragraph{Pre-generation failure detection.} Models often know when they are
+likely to be wrong: language models' own estimates of correctness are informative
+\citep{kadavath2022know}, and hallucination risk in VLMs can be read from internal
+representations in a single forward pass, at up to 0.93 AUROC across eight
+models \citep{kogilathota2026halp}. HALP also finds that the most informative
+features differ by architecture, with \qwen best served by visual-only features.
+\citet{zhang2026vibprobe} isolate hallucination-relevant attention heads with a
+variational information bottleneck and steer with probe gradients. Both address
+binary object hallucination on photographs; neither asks whether different kinds
+of failure are internally distinguishable.
+
+\paragraph{Failure types inside the model.} \citet{liu2026dualpathway} find, by
+activation patching across five VLMs, a visual grounding pathway behind correct
+predictions and a separate pathway driving errors, at different depths; the
+circuit transfers to relational but not attribute hallucination. This
+selectivity is the closest prior evidence that hallucination is not one
+phenomenon, and it motivates probing every layer.
+
+\paragraph{Chart reasoning and error taxonomies.} ChartQA
+\citep{masry2022chartqa} is the standard chart question answering benchmark.
+RADAR \citep{rani2025radar} and DRAGON \citep{iyengar2026dragon} annotate the
+regions that justify an answer; they label \emph{where} a model should look, not
+\emph{how} it failed. \citet{ashurytahan2026errormap} build failure taxonomies
+for text-only LLMs with an LLM judge; we adopt the method, not the taxonomy.
+Visual Self-Refine \citep{li2026visualselfrefine} makes a chart parser
+re-examine its own localisations. Re-looking is thus established; whether the
+right repair depends on the failure type is not.
+
+\paragraph{Probes and selective prediction.} Linear probes read information
+from intermediate layers \citep{alain2016probes}, but a probe can succeed by
+exploiting properties of the input rather than of the model, so it needs
+controls \citep{hewitt2019control}. \citet{sahoo2026linearprobes} show reasoning
+type probes at 100\% accuracy collapsing to chance once format confounds are
+residualised out, and \citet{yuan2026hiddenerror} find a hidden-state error
+probe at 0.95 AUROC whose signal supported no successful intervention. We
+therefore report every probe beside an activation-free baseline and test
+repairs directly. We evaluate abstention with risk-coverage curves, as in
+selective classification \citep{geifman2017selective}.

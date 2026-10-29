@@ -1,5 +1,55 @@
-% Owner: Sanjith (docs/final-plan.md, Sanjith task 4). Sources: results/labels/,
-% results/human_agreement.md.
-\section{Labelling the Errors}
+% Labelling. Sources: results/labels/*.claude.jsonl, results/labels/README_llava.md,
+% results/labels/*.error_stats.json, results/human_agreement.md, docs/taxonomy.md.
+\section{Labelling the ChartQA Errors}
 \label{sec:labels}
-\pending{Sanjith}{Five-label taxonomy, label counts for both models, and the human agreement check (two annotators kappa 0.421; below the 0.6 gate; adjudicated human labels vs LLM kappa 0.614; results/human\_agreement.md).}
+
+On the 2,500 ChartQA test questions (1,250 human-written, 1,250 machine-augmented,
+1,509 charts), Qwen is correct on 87.3\% and LLaVA on 52.9\%, leaving 317 and
+1,178 wrong answers. Every wrong answer was labelled with five classes:
+\cls{structural} (explained by misreading the figure), \cls{fabrication} (content
+the figure does not support), \cls{computation} (inputs read correctly,
+arithmetic or logic wrong), \cls{not\_an\_error} (actually right: an equivalent
+format, a wrong gold answer, or a valid reading of the question) and
+\cls{ambiguous}. An LLM annotator (Claude) labelled all errors from the chart,
+question, gold and model answer, never seeing the model's identity, following a
+written rubric (Appendix~\ref{app:examples} gives examples). Before labelling
+LLaVA it re-labelled 50 random Qwen errors blind and agreed on 47
+($\kappa=0.917$).
+
+\begin{table}[t]
+\centering\small\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrr}
+\toprule
+ & \multicolumn{2}{c}{Qwen} & \multicolumn{2}{c}{LLaVA} \\
+Label & $n$ & \% & $n$ & \% \\
+\midrule
+\cls{structural} & 71 & 22 & 583 & 49 \\
+\cls{computation} & 93 & 29 & 435 & 37 \\
+\cls{not\_an\_error} & 112 & 35 & 69 & 6 \\
+\cls{ambiguous} & 40 & 13 & 74 & 6 \\
+\cls{fabrication} & 1 & 0.3 & 17 & 1.4 \\
+\midrule
+errors & 317 & & 1,178 & \\
+\bottomrule
+\end{tabular}
+\caption{Labels of each model's ChartQA test errors.}
+\label{tab:labels}
+\end{table}
+
+Table~\ref{tab:labels} gives three findings. \textbf{Fabrication is almost
+absent from ChartQA} (1 of 317 and 17 of 1,178 errors): its questions are written
+about content the chart contains, so a model rarely has occasion to invent, and
+most apparent inventions turned out to be garbled printed values (486 for a
+printed 4,863), which are misreads. \textbf{35\% of Qwen's scored errors are not
+errors} (6\% of LLaVA's), mostly equivalent formats (0.95 for 95\%) and wrong gold
+answers. \textbf{The models fail differently}: half of LLaVA's errors are
+misreads, while Qwen's real errors are mostly arithmetic. The naturalistic arm
+therefore supports a misread versus computation contrast, and fabrication needs
+the synthetic arm (Section~\ref{sec:synth}).
+
+\paragraph{Human agreement.} Two team members labelled the same 200 errors
+blind (100 per model, stratified by the LLM label). They agreed with each other at
+$\kappa=0.421$ (Qwen 0.452, LLaVA 0.345), below our 0.6 gate. After they
+adjudicated the 79 disagreements together, the human labels agree with the LLM
+labels at $\kappa=0.614$ overall (Qwen 0.589, LLaVA 0.613; 72\% raw agreement).
+All experiments use the LLM labels.

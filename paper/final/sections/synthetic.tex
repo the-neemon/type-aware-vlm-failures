@@ -1,8 +1,130 @@
-% Owner: Yash (docs/final-plan.md, Yash task 2: synthetic arm and E3).
-% Sources: results/synth_fabrication_pilots.md, results/synth_type_probes.md,
-% results/probes/synth_*, results/pilot3_probes.md.
-\section{Synthetic Arm}
+% Synthetic arm. Sources: results/synth_fabrication_pilots.md,
+% results/probes/synth_pilot2_*.json, results/probes/synth_types_*.json,
+% results/synth_type_probes.md, results/probes/synth_grid_baseline_*.json,
+% results/probes/transfer_chartqa_*.json, results/pilot3_probes.md,
+% results/probes/pilot3_*.json. Outcome counts rescored with src/synth/items.py.
+\section{Synthetic Charts: Inducing Fabrication}
 \label{sec:synth}
-\pending{Yash}{Pilots 1 and 2 design and outcomes, missing-vs-shown probes, E3 cross-transfer matrix, gridline baseline, transfer to ChartQA, and pilot 3 (Table~\ref{tab:pilot3}).}
+
+\paragraph{Design.} We induce fabrication by asking about something the chart
+does not show. Two constraints shape the design: a probe comparing ChartQA
+misreads with synthetic fabrications would learn ``real vs.\ synthetic chart'',
+and on synthetic data the question template alone predicts the intended failure
+type perfectly. Every contrast is therefore made \emph{within one question
+wording}, and every outcome is scored from the model's actual answer.
+\textbf{Pilot 1} (300 bar charts, 4 to 7 bars, six themes) asks each chart the same
+question twice: once about a shown bar (``What is the value of Mango?'') and once
+about a plausible missing name (``\dots of Guava?''). \textbf{Pilot 2} (300
+charts) adds lookalike names (asked for Dubai when Dublin is shown), values off
+multiples of 5 on axes up to 200, and two more question families:
+\emph{compare} (``Which is larger, Guava or Apple?'') and \emph{neighbor}
+(``Which bar is right of Guava?''). \textbf{Pilot 3} (300 charts of consecutive
+years) asks about a shown year and, in the same words, about a year one to three
+years outside the shown range. A missing-bar answer is scored as
+\emph{rejected} (``not shown''), \emph{``0''} (no bar has zero height, so we
+treat it as a refusal expressed as a number, and score it wrong but not as
+fabrication), \emph{fabricated} (any other number, or naming a bar), or
+\emph{picked shown} (naming the shown bar in a compare question, reported
+separately).
+
+\begin{table}[t]
+\centering\small\setlength{\tabcolsep}{3pt}
+\begin{tabular}{llcc}
+\toprule
+ & & Qwen & LLaVA \\
+\midrule
+Shown bar, value & read right & 554/600 & 185/600 \\
+\midrule
+\multirow{3}{*}{Missing, value} & rejected & 15 & 0 \\
+ & ``0'' & 494 & 232 \\
+ & fabricated & 91 & 368 \\
+\multirow{2}{*}{Missing, compare} & fabricated & 37 & 101 \\
+ & picked shown & 263 & 199 \\
+Missing, neighbor & fabricated & 300 & 290 \\
+\midrule
+\multicolumn{4}{l}{\textit{Missing-vs-shown probe, test AUROC}} \\
+\multicolumn{2}{l}{\quad value} & 0.999 & 0.977 \\
+\multicolumn{2}{l}{\quad compare} & 0.991 & 0.959 \\
+\multicolumn{2}{l}{\quad neighbor} & 1.000 & 0.996 \\
+\multicolumn{2}{l}{\quad text-only baseline} & 0.49--0.52 & 0.49--0.52 \\
+\multicolumn{2}{l}{\quad image-token probe} & 0.500 & 0.500 \\
+\bottomrule
+\end{tabular}
+\caption{Pilots 1 and 2. Top: answers (value rows pool both pilots; compare and
+neighbor are pilot 2, 300 each). Bottom: probes separating a missing from a
+shown name under identical wording (pilot 2, held-out charts).}
+\label{tab:synth}
+\end{table}
+
+\paragraph{The models know the bar is missing, and answer anyway.}
+Neither model refuses: Qwen rejects 15 of 1,200 missing-name questions and LLaVA
+none (Table~\ref{tab:synth}). Qwen mostly answers ``0'', and when it invents a
+number it usually copies the lookalike bar (57 of its 76 pilot-2 inventions);
+LLaVA invents far more often (368 vs.\ 91). Yet probes on the last prompt token
+separate missing from shown names almost perfectly, also for lookalike names
+(0.98 to 1.00 Qwen, 0.92 to 0.99 LLaVA). Two controls rule out shortcuts: a
+classifier on the question text is at chance, because every name is shown on
+some charts and missing on others, and the image-token probe scores exactly
+0.500, because image tokens precede the question and cannot see it. The signal
+appears early (Qwen by layer 2, LLaVA by about layer 9).
+
+\begin{table}[t]
+\centering\small\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{lcccccc}
+\toprule
+ & \multicolumn{3}{c}{Qwen} & \multicolumn{3}{c}{LLaVA} \\
+Probe & S/C & F/C & F/Z & S/C & F/C & F/Z \\
+\midrule
+Misread (S/C) & \textbf{.887} & .594 & .400 & \textbf{.776} & .879 & .215 \\
+\quad metadata & .814 & .557 & .543 & .512 & .522 & .537 \\
+\quad + gridline$^\dagger$ & .920 & & & .860 & & \\
+Fabricated (F/C) & .576 & \textbf{1.00} & .286 & .680 & \textbf{.988} & .243 \\
+Invented vs.\ ``0'' & .336 & .138 & \textbf{.984} & .520 & .226 & \textbf{.986} \\
+\bottomrule
+\end{tabular}
+\caption{E3 cross-transfer on synthetic value questions (pilots 1 and 2, 5-fold
+CV by chart). Rows: the probe; columns: the contrast it is scored on (C correct
+read, S misread, F invented number, Z ``0''). Bold: own task. Metadata: the
+same probe on chart settings. $^\dagger$Gridline features chosen after seeing
+the data.}
+\label{tab:matrix}
+\end{table}
+
+\paragraph{Misreads vs.\ fabrications (E3).} On the value template the four
+classes are correct read, misread, invented number and ``0'' (Qwen 554, 46, 91,
+494; LLaVA 185, 415, 368, 232). In Qwen the two type probes are largely specific
+(Table~\ref{tab:matrix}): the misread probe barely responds to fabrications
+(0.594), and the fabrication probe barely to misreads (0.576). In LLaVA the
+misread probe fires \emph{more} on fabrications (0.879) than on its own task
+(0.776), the pattern our proposal called one signal wearing two labels. In both
+models the ``fabrication'' probe is a missing-bar detector: it ranks ``0'' answers
+as high as invented numbers. What separates an invented number from ``0'' is
+decodable (0.984 and 0.986), but only in the last layers, where it reads out the
+answer about to be produced (Appendix~\ref{app:layers}).
+
+\paragraph{A chart property explains synthetic misreads.} Relaxed accuracy
+tolerates a 5\% \emph{relative} error, so whether a coarse reading is a misread
+depends on how far the true value lies from a gridline relative to its size. Two
+features declared in advance (distance to the nearest gridline, and to the
+nearest multiple of 10) added to the metadata reach 0.853 (Qwen) and 0.642
+(LLaVA), below both probes; the same distances divided by the value, added after
+seeing that result, reach 0.920 and 0.860, above both. Synthetic misread probes
+also transfer poorly to real charts: trained on synthetic charts and applied
+unchanged to ChartQA, they separate real misreads from correct answers at only
+0.597 (Qwen) and 0.557 (LLaVA). The synthetic misread signal may describe the
+chart more than the model.
 
 \input{tables/pilot3.tex}
+
+\paragraph{The missing-bar signal is about answerability (pilot 3).} In pilots 1
+and 2 a fabrication always concerns a missing category. Pilot 3 separates the two
+(Table~\ref{tab:pilot3}). Here Qwen refuses 102 of 300 out-of-range years, against
+15 of 1,200 missing names, while LLaVA still invents a number for 281. Most
+invented numbers copy a shown bar's value (92 of 105 for Qwen, 135 of 281 for
+LLaVA) rather than extend the trend (5 and 9). Both missing-bar probes, trained
+only on missing \emph{names} in pilots 1 and 2, flag out-of-range \emph{years}
+perfectly in Qwen and at 0.911 and 0.880 in LLaVA, are at chance in the first
+layers, and ignore misreads of shown years. In Qwen the probe fires equally
+whether the model then refuses, says ``0'' or invents a number (invented vs.\
+refused 0.521): it encodes that the chart cannot answer the question, not what
+the model will do about it.

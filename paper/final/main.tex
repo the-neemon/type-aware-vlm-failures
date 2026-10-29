@@ -38,7 +38,22 @@
 \maketitle
 
 \begin{abstract}
-\pending{Yash}{Abstract: at most 200 words, plain text with no LaTeX commands.}
+A vision-language model that answers a chart question wrongly may have misread
+the figure or stated something the figure does not show. We ask whether these
+failure types are distinguishable in the model's internal state before it
+answers, and whether the type should decide the repair. On ChartQA, a linear
+probe on the last prompt token of Qwen2.5-VL-7B and LLaVA-NeXT-7B predicts wrong
+answers with AUROC 0.88 and 0.80, well above surface features of the question.
+Fabrication is almost absent from real chart errors. The real errors are misreads
+and arithmetic slips, which probes separate (0.90 and 0.96), also within a single
+question type. On synthetic bar charts that ask about missing categories, neither
+model refuses, yet both encode the absence (AUROC 0.96 to 1.00), and the same
+signal flags years outside a chart's range. In a pre-registered repair
+experiment, cropping to the asked bar rescues misreads more than fabrications in
+both models. A type-aware controller beats binary selective prediction only for
+Qwen, mainly by turning missing-bar answers into refusals. Whether a chart can
+answer the question is the most useful internal signal for abstention, while
+misread signals on synthetic charts largely reflect chart geometry.
 \end{abstract}
 
 \input{sections/introduction}
@@ -51,9 +66,6 @@
 \input{sections/conclusion}
 \input{sections/limitations}
 
-% Temporary: lists every reference until the sections cite them. Remove once
-% the related work section is in, so only cited works appear.
-\nocite{*}
 \bibliography{references}
 
 \clearpage

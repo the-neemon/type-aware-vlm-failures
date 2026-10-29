@@ -1,4 +1,39 @@
-% Owner: Shrish (docs/final-plan.md, Shrish task 8).
+% Experimental setup. Sources: configs/inference.yaml, configs/activations.yaml,
+% src/extract/{qwen,llava,cache_chartqa}.py, src/probes/*.py.
 \section{Experimental Setup}
 \label{sec:setup}
-\pending{Shrish}{Models and inference, activation caching, probes, splits and bootstrap; the hypothesis can open this section or the introduction.}
+
+\paragraph{Models and inference.} We use two frozen VLMs, \qwen
+\citep{bai2025qwen25vl} and LLaVA-NeXT with a Mistral-7B language model
+\citep{liu2024llavanext}. Each question gets the standard ChartQA suffix
+``Answer the question using a single word or phrase.'' and is decoded greedily
+(at most 32 tokens) in fp16 on RTX 2080 Ti GPUs. Answers are scored by ChartQA
+relaxed accuracy: numbers within 5\% of the gold, strings by exact match.
+
+\paragraph{Activations.} Forward hooks record the residual stream after every
+decoder layer during the prefill of the same \texttt{generate()} call that
+produces the answer, so each vector belongs to the scored answer. We pool four
+positions per layer (mean and max over image tokens, the last prompt token, and
+the mean over prompt text tokens) for all 28 layers of Qwen ($d=3584$) and 32 of
+LLaVA ($d=4096$). The image precedes the question and attention is causal, so
+image-token states cannot depend on the question.
+
+\paragraph{Probes.} A probe is an $L_2$-regularised logistic regression on one
+pooled vector, z-scored with training-set statistics, with $\lambda$ chosen from
+$\{1,10,10^2,10^3,10^4\}$. The binary probe uses a 60/20/20 split by
+\emph{figure}: layer, position and $\lambda$ are chosen on validation and the test
+set is scored once. Type probes, whose classes are smaller, use five folds by
+figure: within each outer fold, layer and $\lambda$ are chosen by inner
+cross-validation on the other folds, so every item is scored by a probe that
+never saw its chart; the position is fixed to the last prompt token. We report
+AUROC with 95\% intervals from a bootstrap over figures (2,000 draws), since
+questions on one chart are correlated. Seed 42 throughout.
+
+\paragraph{Baselines and controls.} Every probe is reported beside a baseline
+without activations. On ChartQA this is the same probe on four surface features
+(question source, question length, number of image tokens, numeric gold). We
+also \emph{residualise}: regress the surface features out of the activations,
+fitted on training rows only, and retrain \citep{sahoo2026linearprobes}. On
+synthetic charts the baselines are a question-text classifier, the image-token
+probe, and the probe on chart metadata (pilot, axis range, tick density, number
+of bars, lookalike name, phrasing).

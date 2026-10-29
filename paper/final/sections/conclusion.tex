@@ -1,4 +1,14 @@
-% Owner: Yash (report lead).
+% Conclusion. Sources as in the sections above.
 \section{Conclusion}
 \label{sec:conclusion}
-\pending{Yash}{A short summary of what the experiments show.}
+
+Before a VLM answers a chart question, a linear probe on its last prompt token
+predicts whether the answer will be wrong, beyond what the question's surface
+reveals. On real charts the errors are misreads and arithmetic slips, and the two
+leave different internal signatures in both models. Fabrication is rare on real
+charts but easy to induce: both models encode that a question asks for something
+the chart does not show, and answer anyway. That answerability signal, together
+with a general error score, is the most useful input for deciding when to
+abstain; whether to re-look depends on the failure type, as the pre-registered
+crop test shows, but in our controller re-looking helped mainly by turning
+missing-bar answers into refusals.

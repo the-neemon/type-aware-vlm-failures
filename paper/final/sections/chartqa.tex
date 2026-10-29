@@ -1,6 +1,86 @@
-% Owner: not assigned in docs/final-plan.md (ask the team). Sources:
-% results/probes/binary_*, binary_followups*, chartqa_types_*,
-% results/chartqa_type_probes.md.
-\section{Naturalistic Arm: ChartQA (E1 to E3)}
+% Naturalistic arm. Sources: results/probes/binary_*_test.{json,md},
+% results/probes/binary_without_not_an_error_*.json,
+% results/probes/binary_followups*.json, results/probes/chartqa_types_*.json,
+% results/chartqa_type_probes.md, results/probes/sanity_*.json.
+\section{Real Charts: Predicting Errors and Their Type}
 \label{sec:chartqa}
-\pending{unassigned}{E1 binary probe with robustness checks, E2 surface and residualised baselines, E3 misread vs computation on real charts. Start from paper/mid/main.tex Section 5.}
+
+\paragraph{Will the answer be wrong? (E1, E2).} A sanity probe first confirmed
+that each cache decodes what it plainly contains (human-written vs.\ augmented
+question: validation AUROC 1.000 for Qwen, 0.999 for LLaVA). The binary probe
+then predicts wrong answers far above the surface baseline in both models
+(Table~\ref{tab:e1}), always at the last prompt token (Qwen layer 21 of 28,
+LLaVA 24 of 32); image-token positions stay near the surface baseline at every
+depth (Appendix~\ref{app:layers}). Removing the \cls{not\_an\_error} items raises
+Qwen's probe from 0.877 to 0.932: part of its apparent error was label noise.
+The signal is not question style. It holds within human-written questions only
+(0.895 Qwen, clean; 0.850 LLaVA), regressing the surface features out lowers it
+by only 0.02 to 0.07, and it moves by about $\pm$0.02 across five figure splits
+(the reported Qwen split lies above the five-split mean of 0.910, clean).
+Applied unchanged to 960 human-written validation questions on charts never
+used in training, Qwen's probe scores 0.772 [0.73, 0.81]. Its probabilities are
+calibrated (expected calibration error 0.03 for Qwen, 0.05 for LLaVA).
+
+\begin{table}[t]
+\centering\small\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lcccc}
+\toprule
+ & Probe & 5 splits & Resid. & Surface \\
+\midrule
+Qwen, all & 0.877 {\scriptsize[.83,.92]} & .862 & .803 & .715 \\
+Qwen, clean & 0.932 {\scriptsize[.90,.96]} & .910 & .901 & .786 \\
+LLaVA, all & 0.798 {\scriptsize[.76,.84]} & .801 & .783 & .608 \\
+LLaVA, clean & 0.819 {\scriptsize[.78,.85]} & .810 & .798 & .636 \\
+\bottomrule
+\end{tabular}
+\caption{E1 binary probe (wrong vs.\ right), test AUROC [95\% CI]; mean over five
+figure splits; with surface features regressed out; and the surface baseline.
+Clean: without \cls{not\_an\_error} items.}
+\label{tab:e1}
+\end{table}
+
+\paragraph{Misreads vs.\ arithmetic errors (E3).} ChartQA supplies enough
+misreads and computation errors, but not fabrications, to train type probes
+(Table~\ref{tab:chartqa-types}). Misreads are detectable well above the surface
+features (0.892 and 0.813), and misreads and computation errors are separable
+(0.897 and 0.961). In LLaVA each type probe barely responds to the other type
+(0.586 and 0.540); Qwen's misread probe also flags computation errors (0.820),
+but surface features alone reach 0.765 on that contrast. Computation errors only
+occur on questions that ask for an operation, and that wording is visible from
+the first layer (LLaVA's computation probe already scores 0.865 at layer~0). We
+therefore tagged each question as \emph{arithmetic} or \emph{retrieval} with a
+keyword rule fixed in advance and retrained within one type: the computation
+probe still reaches 0.845 and 0.836 within arithmetic questions, and the misread
+probe 0.913 and 0.805 within retrieval questions. Residualised, all three probes
+stay between 0.80 and 0.92 in both models. On real charts, then, the two error
+types the models actually make leave different, linearly readable signatures.
+
+\begin{table}[t]
+\centering\small\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lcc}
+\toprule
+Probe (trained on) & Qwen & LLaVA \\
+\midrule
+Misread vs.\ correct & \textbf{0.892} {\scriptsize[.85,.93]} & \textbf{0.813} {\scriptsize[.79,.83]} \\
+\quad surface & 0.651 & 0.536 \\
+\quad retrieval qs.\ only & 0.913 & 0.805 \\
+\quad residualised & 0.830 & 0.798 \\
+\quad on comp.\ vs.\ corr. & 0.820 & 0.586 \\
+Comp.\ vs.\ correct & \textbf{0.904} {\scriptsize[.87,.93]} & \textbf{0.949} {\scriptsize[.94,.96]} \\
+\quad surface & 0.818 & 0.821 \\
+\quad arithmetic qs.\ only & 0.845 & 0.836 \\
+\quad residualised & 0.874 & 0.900 \\
+\quad on misread vs.\ corr. & 0.732 & 0.540 \\
+Misread vs.\ comp. & \textbf{0.897} {\scriptsize[.84,.94]} & \textbf{0.961} {\scriptsize[.95,.97]} \\
+\quad surface & 0.693 & 0.845 \\
+\quad residualised & 0.918 & 0.920 \\
+\midrule
+errors (misread / comp.) & 71 / 93 & 583 / 435 \\
+\bottomrule
+\end{tabular}
+\caption{E3 on ChartQA (comp.: computation): out-of-fold AUROC [95\% CI] of each
+probe on its own contrast, its surface baseline, the probe trained within one
+question type, with surface features regressed out, and applied to the other
+error type.}
+\label{tab:chartqa-types}
+\end{table}
