@@ -4,7 +4,7 @@
 
 Before a VLM answers a chart question, a linear probe on its last prompt token
 predicts whether the answer will be wrong, beyond what the question's surface
-reveals. On real charts the errors are misreads and arithmetic slips, and the two
+reveals. On real charts the errors are misreads and arithmetic errors, and the two
 leave different internal signatures in both models. Fabrication is rare on real
 charts but easy to induce: both models encode that a question asks for something
 the chart does not show, and answer anyway. That answerability signal, together

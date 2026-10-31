@@ -4,16 +4,17 @@
 \section{Examples of the error labels}
 \label{app:examples}
 
-Examples from Qwen's labels, with the annotator's rationale paraphrased.
-\cls{structural}: a pie chart with seven labelled sectors counted as six; the
-adjacent 2017 bar reported for the asked 2018 bar. \cls{computation}: every input
-printed and readable but the operation wrong, e.g.\ a ratio of levels (83/11)
-where the question asks for a ratio of changes. \cls{not\_an\_error}: 0.95 for a
-gold of 95\%, or a correct ratio 28/19 = 1.474 where the gold 1.18 matches no ratio
-on the chart. \cls{ambiguous}: both gold and model wrong, or a question with
-several readings that the model fits none of. \cls{fabrication} (Qwen's only
-case): pie slices of 35, 40, 13 and 11, gold 75, model 55, which matches no slice
-and no sum.
+Examples from Qwen's labels (question; gold / model answer; the annotator's
+rationale, paraphrased). \cls{structural}: ``How many Swedish companies operated
+on the total market \dots\ 2018?''; 315 / 347; 347 is the adjacent 2017 bar.
+\cls{computation} (arithmetic error): ``What is the average percentage in Live
+event category?''; 35.2 / 38.2; the printed values 35, 53, 38, 30 and 20 average
+35.2, so the model added wrongly. \cls{not\_an\_error}: ``What is the share of
+one-year olds vaccinated against HepB3 in Bhutan?''; 95 / 0.95; the same share as
+a fraction, scored wrong only for its format. \cls{ambiguous}: ``How many colors
+are used in the bar?''; 11 / 10; two near-identical teal shades make 10 or 11
+depend on telling them apart. \cls{fabrication} (Qwen's only case): a pie chart
+with slices 35, 40, 13 and 11; 75 / 55; 55 matches no slice and no sum of slices.
 
 \section{Layer profiles}
 \label{app:layers}

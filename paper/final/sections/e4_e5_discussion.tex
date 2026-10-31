@@ -117,7 +117,7 @@ policies are possible within this evaluation.
 
 % Sources: results/probes/binary_*_test.md;
 % results/chartqa_type_probes.md; results/synth_type_probes.md;
-% results/probes/{synth_grid_baseline,transfer_chartqa}_*.json.
+% results/probes/synth_grid_baseline_*.json.
 E1 predicts wrong answers (AUROC 0.877 for Qwen, 0.798 for LLaVA; surface
 baselines 0.715 and 0.608). Real-chart probes distinguish misreads from
 computation errors (0.897 and 0.961), including after surface residualisation
@@ -129,8 +129,7 @@ question type.
 The synthetic results depend on the model. Qwen's misread probe responds more
 strongly to misreads (0.887) than fabrications (0.594); LLaVA's responds more
 to fabrications (0.879) than misreads (0.776). Post-hoc gridline features with
-chart metadata exceed both probes on misreads (0.920 and 0.860). Synthetic
-misread probes also transfer weakly to ChartQA (0.597 and 0.557). We therefore
+chart metadata exceed both probes on misreads (0.920 and 0.860). We therefore
 cannot infer a general mechanism shared by the models from separability alone.
 
 % Source: results/pilot3_probes.md.

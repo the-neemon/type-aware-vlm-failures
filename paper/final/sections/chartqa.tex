@@ -13,10 +13,12 @@ then predicts wrong answers far above the surface baseline in both models
 LLaVA 24 of 32); image-token positions stay near the surface baseline at every
 depth (Appendix~\ref{app:layers}). Removing the \cls{not\_an\_error} items raises
 Qwen's probe from 0.877 to 0.932: part of its apparent error was label noise.
-The signal is not question style. It holds within human-written questions only
-(0.895 Qwen, clean; 0.850 LLaVA), regressing the surface features out lowers it
-by only 0.02 to 0.07, and it moves by about $\pm$0.02 across five figure splits
-(the reported Qwen split lies above the five-split mean of 0.910, clean).
+The signal is not question style. With the surface features regressed out, the
+probe loses only 0.02 to 0.07 and stays well above the surface features alone
+(Table~\ref{tab:e1}), so in both models it reads an internal property of the
+hidden state beyond what the question's surface reveals. It also holds within
+human-written questions only (0.895 Qwen, clean; 0.850 LLaVA) and moves by about
+$\pm$0.02 across five figure splits.
 Applied unchanged to 960 human-written validation questions on charts never
 used in training, Qwen's probe scores 0.772 [0.73, 0.81]. Its probabilities are
 calibrated (expected calibration error 0.03 for Qwen, 0.05 for LLaVA).

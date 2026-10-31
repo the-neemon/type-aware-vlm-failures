@@ -553,11 +553,17 @@ adds no tokens there either
 \end{frame}
 
 \begin{frame}{E4: results}
-\centering
 \footnotesize
+\textbf{Recovery rate}: accuracy on the wrong answers only. Of the answers the
+model originally got wrong, the fraction that become correct after the repair
+(correct = within 5\% for a shown bar; a refusal for a missing bar).
+\vspace{0.3em}
+
+\centering
+{\renewcommand{\arraystretch}{0.9}
 \begin{tabular}{lcccc}
 \toprule
-Fraction of errors fixed & Re-ask & Upsample & Crop & Verify \\
+Recovery rate (errors) & Re-ask & Upsample & Crop & Verify \\
 \midrule
 \multicolumn{5}{l}{\textit{Qwen}} \\
 Misread (46) & 0.11 & 0.13 & \hl{0.26} & 0.09 \\
@@ -568,8 +574,8 @@ Misread (415) & 0.03 & 0.01 & \hl{0.15} & 0.03 \\
 Made-up number (368) & 0.00 & 0.00 & 0.00 & 0.00 \\
 ``0'' (232) & 0.00 & 0.00 & 0.00 & 0.00 \\
 \bottomrule
-\end{tabular}
-\vspace{0.5em}
+\end{tabular}}
+\vspace{0.2em}
 \raggedright
 \begin{itemize}\footnotesize
 \item \textbf{Pre-registered test passes} in both models: crop helps misreads more
