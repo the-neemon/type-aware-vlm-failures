@@ -1,20 +1,20 @@
 % Final presentation, HiddenStates. Build: pdflatex slides (twice).
-% Written for an audience new to the topic: concepts first, then results.
-% Every number is from results/ (see paper/final/main.tex for the sources).
+% Figures: paper/final/figures (slide_*.pdf from scripts/slide_figures.py).
+% Every number is from results/ (sources listed in paper/final/main.tex).
 \documentclass[10pt,aspectratio=169]{beamer}
 \usetheme[progressbar=frametitle,numbering=fraction]{metropolis}
 \usepackage[T1]{fontenc}
 \usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,shapes.geometric}
 
 \newcommand{\hl}[1]{\alert{\textbf{#1}}}
 \setbeamerfont{title}{size=\Large}
-\tikzset{box/.style={draw, rounded corners, align=center, inner sep=5pt, font=\small},
-         arr/.style={-{Stealth[length=2mm]}, thick}}
 
 \title{Type-Aware Failure Prediction for Chart Reasoning in Vision-Language Models}
-\subtitle{Can a model's internal state tell us \emph{how} it is about to go wrong?}
+\subtitle{Final presentation}
 \author{Yash More \and Naman Singhal \and Shrish Kadam \and Sanjith Ganapathi}
 \institute{Team HiddenStates, ANLP course project, IIIT Hyderabad}
 \date{October 2026}
@@ -23,302 +23,418 @@
 \maketitle
 
 % ===========================================================================
-\section{The problem}
+\begin{frame}{Contents}
+\scriptsize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{L{0.15\textwidth}L{0.17\textwidth}L{0.13\textwidth}L{0.47\textwidth}}
+\toprule
+Part & Data & Experiment & Question \\
+\midrule
+1. Real charts & ChartQA, 2,500 questions & Error labels & Which errors do the models make? \\
+ & & E1 & Can a probe predict a wrong answer before it is written? \\
+ & & E2 & Is the probe only reading surface features of the question? \\
+ & & E3 & Do misreads and arithmetic errors look different inside? \\
+\midrule
+2. Synthetic charts & 3 pilots, 900 bar charts & Missing-bar probe & Does the model know a bar is missing? \\
+ & & Pilot 3 & Same signal for years outside the chart? \\
+ & & E3 & Do misreads and fabrications look different inside? \\
+\midrule
+3. Fixes by error type & Synthetic charts & E4 & Which repair works for which error type? \\
+ & & E5 & Does a type-aware controller beat plain abstention? \\
+\bottomrule
+\end{tabular}
+\vspace{0.3em}
 
-\begin{frame}{Vision-language models read charts, and sometimes get them wrong}
+\small Fix by error type: \textbf{misread} $\to$ look again (crop the chart);
+\textbf{fabrication / missing bar} $\to$ abstain.
+\end{frame}
+
+% ===========================================================================
+\section{Problem and setup}
+
+\begin{frame}{Problem: two types of chart errors}
 \begin{columns}[c]
-\column{0.42\textwidth}
+\column{0.36\textwidth}
 \begin{tikzpicture}[x=0.55cm,y=0.05cm]
-  \draw[->] (0,0) -- (7.4,0); \draw[->] (0,0) -- (0,58);
-  \foreach \y in {10,20,30,40,50} {\draw[gray!30] (0,\y) -- (7.2,\y);
+  \draw[->] (0,0) -- (6.4,0); \draw[->] (0,0) -- (0,58);
+  \foreach \y in {10,20,30,40,50} {\draw[gray!30] (0,\y) -- (6.2,\y);
     \node[left,font=\tiny] at (0,\y) {\y};}
   \foreach \x/\h/\n in {1/34/Mango,3/52/Apple,5/18/Banana} {
     \fill[blue!50] (\x-0.6,0) rectangle (\x+0.6,\h);
     \node[below,font=\scriptsize] at (\x,0) {\n};}
 \end{tikzpicture}
-\column{0.56\textwidth}
-A \textbf{vision-language model (VLM)} takes an image and a question and writes
-an answer. We study two open 7B models: \textbf{Qwen2.5-VL} and \textbf{LLaVA-NeXT}.
+\column{0.62\textwidth}
+\small
+\begin{tabular}{L{0.42\linewidth}L{0.46\linewidth}}
+\toprule
+\textbf{Misread (structural)} & \textbf{Fabrication} \\
+\midrule
+``Value of Mango?'' $\to$ \alert{30} (true 34) & ``Value of Guava?'' $\to$ \alert{40} (no Guava bar) \\
+The answer is on the chart; the model read it badly &
+The model states something the chart does not contain \\
+Fix: look again more carefully & Fix: do not answer \\
+\bottomrule
+\end{tabular}
 \vspace{0.6em}
 
-\textbf{Q:} ``What is the value of Mango?''\\
-Right answer: 34
-\vspace{0.6em}
-
-\textbf{Q:} ``What is the value of Guava?''\\
-Right answer: \emph{there is no Guava bar}
+Existing failure detectors give one ``wrong / right'' score, so they cannot
+choose between these two fixes.
 \end{columns}
 \end{frame}
 
-\begin{frame}{Two different ways to be wrong}
-\begin{columns}[T]
-\column{0.48\textwidth}
-\textbf{Misread} (``structural'')
-\begin{itemize}
-\item ``Mango?'' $\to$ \alert{30}
-\item The answer \emph{was} on the chart; the model read it badly (rounded to a
-gridline, took the next bar)
-\item Fix: \textbf{look again}, more carefully
-\end{itemize}
-\column{0.48\textwidth}
-\textbf{Fabrication}
-\begin{itemize}
-\item ``Guava?'' $\to$ \alert{40}
-\item The model states something the chart does \emph{not} contain
-\item Looking again cannot help. Fix: \textbf{don't answer}
-\end{itemize}
-\end{columns}
-\vspace{1em}
-Today's reliability tools give one ``trust / don't trust'' score. They cannot
-tell these apart, so they cannot pick the right fix.
-\end{frame}
-
-\begin{frame}{Our question}
-\begin{center}
-\Large Before the model answers, can we tell from its \hl{internal state}\\
-whether it is about to be wrong, and \hl{in which way}?
-\end{center}
-\vspace{1em}
-\textbf{Hypothesis (type separability).} The internal state before a misread
-differs from the state before a fabrication, because one is a perception error
-and the other is an answer not grounded in the image.
-\vspace{0.6em}
-
-And if so: does the \textbf{type} decide which fix works?
-\end{frame}
-
-% ===========================================================================
-\section{Three tools we use}
-
-\begin{frame}{Tool 1: the hidden state}
-\centering
-\begin{tikzpicture}[node distance=7mm]
-  \node[box] (in) {chart image\\+ question};
-  \node[box, right=of in, minimum height=1.6cm] (m) {VLM\\(28 to 32 layers)};
-  \node[box, right=of m] (out) {answer\\``40''};
-  \node[box, below=9mm of m, fill=orange!15] (h) {hidden state $h$:\\a list of 3,584 to 4,096 numbers};
-  \draw[arr] (in) -- (m); \draw[arr] (m) -- (out);
-  \draw[arr, dashed] (m) -- node[right,font=\scriptsize] {recorded} (h);
-\end{tikzpicture}
+\begin{frame}{Research question and hypothesis}
+\textbf{Question.} Before a VLM answers a chart question, can its hidden state tell
+us (1) whether the answer will be wrong, and (2) which type of error it will be?
+And does the type decide which repair works?
 \vspace{0.8em}
-\raggedright
-\begin{itemize}\small
-\item Inside, the model turns its input into long vectors of numbers, layer by layer
-\item We record the vector at the \textbf{last word of the question}, the moment
-just before it writes its first answer word, at every layer
-\item Recorded in the same run that produced the answer, so it belongs to exactly that answer
-\end{itemize}
+
+\textbf{Type Separability Hypothesis.} The hidden state before a misread is
+linearly distinguishable from the hidden state before a fabrication: a misread is
+a precision-limited perception error, a fabrication is an answer not grounded in
+the image.
+\vspace{0.8em}
+
+If the two collapse into one signal, that is a reportable outcome too.
 \end{frame}
 
-\begin{frame}{Tool 2: a probe}
-\begin{columns}[c]
-\column{0.48\textwidth}
-\centering
-\begin{tikzpicture}[scale=0.9]
-  \foreach \x/\y in {0.4/0.6,0.8/1.3,1.1/0.4,0.6/1.8,1.4/1.0}
-    \fill[blue!60] (\x,\y) circle (2.5pt);
-  \foreach \x/\y in {2.6/2.2,3.0/1.5,2.3/2.9,3.3/2.6,2.8/3.2}
-    \fill[orange!80] (\x,\y) circle (2.5pt);
-  \draw[thick, dashed] (1.0,3.4) -- (2.4,0.1);
-  \node[font=\scriptsize, blue!70!black] at (0.8,-0.2) {answer right};
-  \node[font=\scriptsize, orange!70!black] at (3.0,3.6) {answer wrong};
-\end{tikzpicture}
+\begin{frame}{Setup}
+\begin{columns}[T]
 \column{0.5\textwidth}
+\footnotesize
+\textbf{Models} (frozen, fp16, greedy, max 32 tokens)
 \begin{itemize}
-\item A \textbf{probe} is a simple classifier (logistic regression) trained on
-hidden states to predict a label, e.g.\ ``will this answer be wrong?''
-\item It can only draw a straight line through the space
-\item If it succeeds on charts it never saw, the information is plainly
-\emph{written in} the model's state
+\item Qwen2.5-VL-7B (28 layers, $d=3584$)
+\item LLaVA-NeXT-7B, Mistral LM (32 layers, $d=4096$)
+\end{itemize}
+\textbf{Data}
+\begin{itemize}
+\item ChartQA test: 2,500 questions (1,250 human, 1,250 machine-generated)
+\item ChartQA validation: 960 human questions (Qwen)
+\item Three synthetic pilots: 900 bar charts
+\end{itemize}
+\column{0.5\textwidth}
+\footnotesize
+\textbf{Activations}
+\begin{itemize}
+\item Forward hooks inside the \emph{same} \texttt{generate()} call that produced
+the scored answer
+\item Every layer, 4 pooled positions: image-token mean and max, last prompt
+token, prompt mean
+\end{itemize}
+\textbf{Probes}
+\begin{itemize}
+\item $L_2$ logistic regression on one vector, scored by AUROC
+\item Splits by \emph{chart}, never by question; layer and $L_2$ chosen without
+the test set
+\item 95\% CIs from a bootstrap over charts
+\item Always next to a baseline that sees no activations
 \end{itemize}
 \end{columns}
-\end{frame}
-
-\begin{frame}{Tool 3: how we score a probe, and why we need baselines}
-\textbf{AUROC}: pick one example of each class at random; AUROC is the chance the
-probe scores the right one higher.
-\begin{center}
-0.5 = coin flip \qquad 0.8 = useful \qquad 1.0 = perfect
-\end{center}
-\vspace{0.4em}
-\textbf{Baselines.} A probe can ``succeed'' by reading something trivial, such as
-how long the question is. So every probe is compared with:
-\begin{itemize}\small
-\item the same classifier on \textbf{surface features} only (question type and
-length, image size, numeric answer), with no access to the model
-\item the probe after those features are \textbf{removed} from the hidden state
-\item probes trained \textbf{within one question type}
-\end{itemize}
-Every number has a 95\% confidence interval, and no chart is in both training and test.
 \end{frame}
 
 % ===========================================================================
 \section{Part 1: real charts (ChartQA)}
 
-\begin{frame}{What errors do models actually make on real charts?}
+\begin{frame}{ChartQA dataset}
 \begin{columns}[c]
-\column{0.45\textwidth}
+\column{0.55\textwidth}
+\includegraphics[width=\textwidth]{figures/chartqa_example.png}
+\column{0.43\textwidth}
+\small
+\textbf{Q:} ``How many Swedish companies operated on the total market between
+2011 and 2018?''
+\vspace{0.3em}
+
+Gold: 315 (2018, total market)\\
+Qwen: \alert{347}, the 2017 bar next to it $\to$ \textbf{misread}
+\vspace{0.6em}
+
+\begin{itemize}
+\item Real charts (Statista, Pew, OWID, OECD) with human-written and machine-generated
+questions
+\item Scored by relaxed accuracy: numbers within 5\%
+\item Accuracy: Qwen \textbf{87.3\%} (317 wrong), LLaVA \textbf{52.9\%} (1,178 wrong)
+\end{itemize}
+\end{columns}
+\end{frame}
+
+\begin{frame}{ChartQA: error labels}
+\begin{columns}[c]
+\column{0.42\textwidth}
 \small
 \begin{tabular}{lrr}
 \toprule
 Error label & Qwen & LLaVA \\
 \midrule
 Misread & 71 & 583 \\
-Arithmetic slip & 93 & 435 \\
-Not actually wrong & 112 & 69 \\
-Unclear & 40 & 74 \\
+Arithmetic error & 93 & 435 \\
+Not an error & 112 & 69 \\
+Ambiguous & 40 & 74 \\
 Fabrication & \hl{1} & \hl{17} \\
 \midrule
 All errors & 317 & 1,178 \\
 \bottomrule
 \end{tabular}
-\column{0.53\textwidth}
+\column{0.56\textwidth}
 \begin{itemize}\small
-\item 2,500 ChartQA questions: Qwen 87\% right, LLaVA 53\%
-\item We labelled every wrong answer (LLM annotator, written rubric)
-\item \textbf{Fabrication almost never happens} on real charts: questions are
-about things the chart shows
-\item 35\% of Qwen's ``errors'' are actually right (format, wrong gold)
-\item Human check: two of us labelled 200 errors; after settling disagreements,
-humans and LLM agree at $\kappa=0.61$
+\item Every wrong answer labelled by an LLM annotator (Claude Opus 5.5) with a written rubric
+\item \textbf{Fabrication almost never happens} on real charts: the questions ask
+about what the chart shows
+\item 35\% of Qwen's scored errors are actually right (other format, wrong gold)
+\item Human check: two of us labelled the same 200 errors blind; they agreed with
+each other at $\kappa=0.42$; after settling disagreements, humans and LLM agree
+at $\kappa=0.61$
 \end{itemize}
 \end{columns}
 \end{frame}
 
-\begin{frame}{Result 1: we can predict a wrong answer before it is written}
-\centering
-\begin{tabular}{lccc}
+\begin{frame}{ChartQA: error label examples}
+\scriptsize
+\begin{tabular}{L{0.12\textwidth}L{0.34\textwidth}L{0.1\textwidth}L{0.3\textwidth}}
 \toprule
-AUROC (wrong vs.\ right) & Probe & Surface features only & Features removed \\
+Label & Question & Gold / model & Why \\
 \midrule
-Qwen & \hl{0.88} & 0.72 & 0.80 \\
-LLaVA & \hl{0.80} & 0.61 & 0.78 \\
+Misread & ``How many Swedish companies \dots\ total market \dots\ 2018?'' & 315 / 347 &
+347 is the adjacent 2017 bar \\
+Arithmetic error & ``What is the average percentage in Live event category?'' &
+35.2 / 38.2 & Values printed: 35, 53, 38, 30, 20; mean is 35.2, the model added wrongly \\
+Not an error & ``What is the share of one-year olds vaccinated against HepB3 in
+Bhutan?'' & 95 / 0.95 & Same value as a fraction; scored wrong only because of the format \\
+Ambiguous & ``How many colors are used in the bar?'' & 11 / 10 & Two
+near-identical teal shades: 10 or 11 depends on telling them apart \\
+Fabrication & Pie chart with slices 35, 40, 13, 11 & 75 / 55 & 55 matches no slice
+and no sum of slices \\
 \bottomrule
 \end{tabular}
-\vspace{1em}
-\raggedright
+\vspace{0.5em}
+
+\small Only misreads and arithmetic errors are frequent enough to train probes on
+real charts.
+\end{frame}
+
+\begin{frame}{E1: predicting wrong answers}
+\begin{columns}[c]
+\column{0.56\textwidth}
+\includegraphics[width=\textwidth]{figures/slide_e1_controls.pdf}
+\column{0.42\textwidth}
+\small
 \begin{itemize}
-\item Far above what the question's surface reveals, and most of it survives
-removing those features
-\item The signal sits in the question-side state in the last third of the
-network; the image part alone stays near the surface baseline
-\item Stable across five different train/test splits ($\pm$0.02)
+\item Probe on the last prompt token: wrong vs.\ right answer
+\item Qwen \textbf{0.88}, LLaVA \textbf{0.80}; surface features alone 0.71 and 0.61
+\item Removing the surface features from the hidden state costs only 0.02 to 0.07
+\item Same picture over five different train/test splits
+\end{itemize}
+\end{columns}
+\end{frame}
+
+\begin{frame}{E1: how the numbers are computed}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\small
+\textbf{AUROC}
+\begin{itemize}
+\item Charts split 60/20/20 into train / validation / test
+\item Layer (1 of 28 or 32), position and $L_2$ chosen on validation
+\item Test set scored \textbf{once} with that choice; CI from 2,000 bootstrap
+resamples of test charts
+\end{itemize}
+\textbf{Surface features} (4 numbers per question)
+\begin{itemize}
+\item question written by a human or generated
+\item question length in characters
+\item number of image tokens (image size)
+\item whether the gold answer is a number
+\end{itemize}
+\column{0.5\textwidth}
+\small
+\textbf{Removing them}: regress each hidden-state dimension on the 4 features
+(fitted on training charts only), subtract the fit, retrain the probe on what is
+left
+\vspace{0.4em}
+
+\textbf{Are the numbers optimistic?} Slightly, for Qwen:
+\begin{itemize}
+\item Reported split 0.88; mean of 5 splits 0.86 (range 0.83 to 0.89).
+LLaVA: 0.80 both
+\item On 960 questions from \emph{unseen} charts, Qwen's probe scores 0.77,
+against 0.83 on test human questions
+\item ``Clean'' numbers (not-an-error items removed, Qwen 0.93) are the most
+optimistic; we headline all errors
+\end{itemize}
+\end{columns}
+\end{frame}
+
+\begin{frame}{E1: probe accuracy by layer}
+\begin{columns}[c]
+\column{0.55\textwidth}
+\includegraphics[width=\textwidth]{figures/binary_by_layer.pdf}
+\column{0.43\textwidth}
+\small
+\begin{itemize}
+\item \textbf{Last prompt token} is best: rises with depth, plateaus in the last
+third (best layer 21 of 28 for Qwen, 24 of 32 for LLaVA)
+\item \textbf{Image tokens} stay at 0.62 to 0.68 at every depth, near the surface
+baseline
+\item Unlike HALP (photo hallucination, where Qwen is best on image features):
+for charts the useful state is the one that has read the question
+\end{itemize}
+\end{columns}
+\end{frame}
+
+\begin{frame}{E3 (ChartQA): misread vs.\ arithmetic error}
+\centering
+\includegraphics[width=0.86\textwidth]{figures/slide_chartqa_types.pdf}
+\raggedright
+\small
+\begin{itemize}
+\item Both error types are detectable, and \textbf{misread vs.\ arithmetic error}
+is separable: 0.90 (Qwen), 0.96 (LLaVA)
+\item Holds with surface features removed, and within one question type (next slide)
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Result 2: misreads and arithmetic slips look different inside}
-\centering
+\begin{frame}{E3 (ChartQA): question-type control}
+\footnotesize
+\textbf{Concern.} Arithmetic errors only happen on questions that ask for a
+calculation (``What is the \emph{difference}\dots'', ``\dots the \emph{average}''),
+while misreads happen on ``What is the value of\dots'' questions. A probe could
+separate the two just by recognising the question wording.
+\vspace{0.3em}
+
+\textbf{Control.} Tag every question as \emph{arithmetic} (difference, sum,
+average, ratio, \dots) or \emph{reading} (all others), then compare errors with
+correct answers \textbf{to the same kind of question}, where the wording no
+longer differs:
+\begin{center}
 \begin{tabular}{lcc}
 \toprule
-AUROC & Qwen & LLaVA \\
+ & Qwen & LLaVA \\
 \midrule
-Misread vs.\ correct & 0.89 & 0.81 \\
-Arithmetic slip vs.\ correct & 0.90 & 0.95 \\
-\hl{Misread vs.\ arithmetic slip} & \hl{0.90} & \hl{0.96} \\
+Arithmetic error vs.\ correct, arithmetic questions only & 0.85 & 0.84 \\
+Misread vs.\ correct, reading questions only & 0.91 & 0.81 \\
 \bottomrule
 \end{tabular}
-\vspace{1em}
-\raggedright
-\begin{itemize}
-\item Worry: arithmetic slips only happen on ``what is the difference\dots''
-questions, so a probe might just spot the wording
-\item Check: retrain using only arithmetic questions (0.85 and 0.84), or only
-reading questions (0.91 and 0.81). The signal survives
-\item On real charts, the two error types models actually make are separable
-\end{itemize}
+\end{center}
+The probe still works, so it detects the error, not only the question type.
+\vspace{0.3em}
+
+\textbf{Why we need synthetic charts.} The project's main comparison is
+\emph{misread vs.\ fabrication}, but ChartQA has only 1 (Qwen) and 17 (LLaVA)
+fabrications, too few to train a probe. So we built charts where fabrication can
+be induced.
 \end{frame}
 
 % ===========================================================================
-\section{Part 2: making fabrication happen}
+\section{Part 2: synthetic charts}
 
-\begin{frame}{Synthetic charts: ask about something that is not there}
-We drew 900 bar charts and asked each the same question twice, \textbf{in
-identical words}: once about a bar that is shown, once about one that is not.
-\vspace{0.6em}
-\begin{itemize}
-\item Pilot 1: ``What is the value of Mango?'' vs.\ ``\dots of \alert{Guava}?''
-\item Pilot 2: lookalike names (Dublin shown, ask \alert{Dubai}); also ``Which is
-larger?'' and ``Which bar is next to\dots?''
-\item Pilot 3: years 2014 to 2019 shown, ask about \alert{2021}
-\end{itemize}
-\vspace{0.6em}
-Identical wording matters: the question text alone cannot tell which case it
-is, so a probe cannot cheat by reading the words.
+\begin{frame}{Synthetic data: three pilots}
+\centering
+\begin{tabular}{ccc}
+\includegraphics[height=3.0cm]{figures/synth_pilot1.png} &
+\includegraphics[height=3.0cm]{figures/synth_pilot2.png} &
+\includegraphics[height=3.0cm]{figures/synth_pilot3.png} \\[-0.2em]
+\textbf{Pilot 1} (300 charts) & \textbf{Pilot 2} (300 charts) & \textbf{Pilot 3} (300 charts)
+\end{tabular}
+\vspace{0.3em}
+\scriptsize
+\begin{tabular}{L{0.3\textwidth}L{0.3\textwidth}L{0.3\textwidth}}
+``How high is the bar for Tennis?'' Qwen 95 (true 96) & ``What is the value of
+Slovenia?'' Qwen 31, LLaVA 30 (true 31) & ``What is the value for 2018?'' both 60 (true 59) \\
+``\dots for \alert{Rugby}?'' (not shown) Qwen 0, LLaVA 0 & ``\dots of
+\alert{Mali}?'' (Malta is shown) Qwen \alert{18} = Malta's value & ``\dots for
+\alert{2013}?'' (chart is 2016 to 2020) Qwen ``None'', LLaVA \alert{60} \\
+\end{tabular}
+\vspace{0.3em}
+
+\small Each chart gets the same question twice in \textbf{identical words}: once
+about a shown bar, once about a missing one. Pilot 2 adds lookalike names and
+``Which is larger?'' / ``Which bar is next to?'' questions.
 \end{frame}
 
-\begin{frame}{The models almost never say ``it's not there''}
-\centering
+\begin{frame}{Synthetic data: answers to a missing bar}
+\begin{columns}[c]
+\column{0.52\textwidth}
+\footnotesize
 \begin{tabular}{lcc}
 \toprule
-Asked for a missing bar's value (600 questions) & Qwen & LLaVA \\
+Missing bar, value question (600) & Qwen & LLaVA \\
 \midrule
 Says it is not shown & \hl{15} & \hl{0} \\
 Says ``0'' & 494 & 232 \\
 Makes up a number & 91 & 368 \\
 \bottomrule
 \end{tabular}
-\vspace{1em}
-\raggedright
+\column{0.46\textwidth}
+\small
 \begin{itemize}
-\item Qwen mostly says ``0''; when it invents, it usually copies the lookalike bar
-(asked Dubai, reports Dublin)
-\item LLaVA invents a number for most missing bars
+\item Only ``not shown'' counts as correct
+\item ``0'' \textbf{is} counted as a wrong answer, but \textbf{not as a
+fabrication}: no bar in these charts has height 0, so ``0'' means ``nothing
+there'' written as a number; it invents no value
+\item Made-up numbers are the fabrications. Qwen usually copies a lookalike bar
+(asked Mali, reports Malta)
 \end{itemize}
+\end{columns}
 \end{frame}
 
-\begin{frame}{\dots but inside, they know the bar is missing}
+\begin{frame}{Probe: missing vs.\ shown bar}
 \centering
-\begin{tabular}{lcc}
+\small
+\begin{tabular}{lcccccc}
 \toprule
-AUROC, missing vs.\ shown name & Qwen & LLaVA \\
+ & \multicolumn{3}{c}{Qwen} & \multicolumn{3}{c}{LLaVA} \\
+Question family & Probe & Text only & Image only & Probe & Text only & Image only \\
 \midrule
-Probe on hidden state & \hl{0.99 to 1.00} & \hl{0.96 to 1.00} \\
-Classifier on the question text only & 0.49 to 0.52 & 0.49 to 0.52 \\
-Probe on the image part only & 0.50 & 0.50 \\
+Value (``value of X?'') & \hl{0.999} & 0.51 & 0.50 & \hl{0.977} & 0.51 & 0.50 \\
+Compare (``larger, X or Y?'') & \hl{0.991} & 0.52 & 0.50 & \hl{0.959} & 0.52 & 0.50 \\
+Neighbor (``bar after X?'') & \hl{1.000} & 0.49 & 0.50 & \hl{0.996} & 0.49 & 0.50 \\
 \bottomrule
 \end{tabular}
-\vspace{1em}
+\vspace{0.6em}
 \raggedright
-\begin{itemize}
-\item The models register that the asked bar is missing, \textbf{then answer anyway}
-\item The controls are at chance: it is neither the words nor the image alone,
-but the model combining the two
-\item Qwen knows by layer 2 of 28; LLaVA by about layer 9 of 32
+\begin{itemize}\small
+\item One probe per question family (pilot 2, 62 test charts per class); the
+range ``0.96 to 1.00'' earlier simply spanned these three rows
+\item The models \textbf{know} the bar is missing, then answer anyway
+\item Text-only classifier at chance: every name is shown on some charts and
+missing on others. Image-only probe exactly 0.50: the image comes before the
+question, so it cannot see the question
+\item Qwen knows by layer 2 of 28, LLaVA by about layer 9 of 32
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Is it really about ``missing'', or about ``can't be answered''?}
-Pilot 3: the chart shows 2014 to 2019; we ask about \alert{2021}. Nothing is
-``missing'', the question just cannot be answered from the chart.
-\vspace{0.6em}
-\begin{columns}[T]
-\column{0.5\textwidth}
+\begin{frame}{Pilot 3: years outside the chart}
+\begin{columns}[c]
+\column{0.42\textwidth}
 \small
+Chart shows 2016 to 2020; we ask about \alert{2013}: nothing is ``missing'', the
+chart just cannot answer it.
+\vspace{0.4em}
+
 \begin{tabular}{lcc}
 \toprule
-Answer to 2021 & Qwen & LLaVA \\
+Answer (300) & Qwen & LLaVA \\
 \midrule
 Says not shown & \hl{102} & 0 \\
 ``0'' & 76 & 19 \\
 Makes up a number & 105 & 281 \\
 \bottomrule
 \end{tabular}
-\column{0.48\textwidth}
-\begin{itemize}\small
-\item The probe trained on missing \emph{names} also flags out-of-range
-\emph{years}: \hl{1.00} (Qwen), \hl{0.91} (LLaVA)
-\item It fires whether Qwen then refuses or invents: it tracks ``the chart
-can't answer this'', not what the model will say
-\end{itemize}
+\vspace{0.4em}
+
+The probe trained only on missing \emph{names} flags out-of-range \emph{years}:
+\hl{1.00} (Qwen), \hl{0.91} (LLaVA). It fires whether Qwen then refuses or
+invents: it tracks ``the chart cannot answer this''.
+\column{0.56\textwidth}
+\includegraphics[width=\textwidth]{figures/slide_pilot3_layers.pdf}
 \end{columns}
 \end{frame}
 
-\begin{frame}{Misread vs.\ fabrication: does each probe stick to its own type?}
+\begin{frame}{E3 (synthetic): misread vs.\ fabrication}
 \centering
 \begin{tabular}{lcccc}
 \toprule
  & \multicolumn{2}{c}{Qwen} & \multicolumn{2}{c}{LLaVA} \\
-Scored on $\to$ & misreads & fabrications & misreads & fabrications \\
+Probe $\downarrow$ \quad scored on $\to$ & misreads & fabrications & misreads & fabrications \\
 \midrule
 Misread probe & \hl{0.89} & 0.59 & \hl{0.78} & 0.88 \\
 Fabrication probe & 0.58 & \hl{1.00} & 0.68 & \hl{0.99} \\
@@ -327,112 +443,235 @@ Fabrication probe & 0.58 & \hl{1.00} & 0.68 & \hl{0.99} \\
 \vspace{0.8em}
 \raggedright
 \begin{itemize}\small
-\item \textbf{Qwen:} each probe is strong on its own type, weak on the other:
+\item Each probe is trained on its own type vs.\ correct reads, then scored on both types
+\item \textbf{Qwen}: each probe is strong on its own type and weak on the other:
 separable, as hypothesised
-\item \textbf{LLaVA:} the misread probe fires even more on fabrications: one
+\item \textbf{LLaVA}: the misread probe fires even more on fabrications: one
 general ``not grounded'' signal
-\item \textbf{Caveat:} on synthetic charts, whether a reading counts as a misread
-depends mostly on where the value sits between gridlines; that chart property
-alone predicts misreads as well as the probes (0.92 and 0.86)
+\item In both, the ``fabrication'' probe is really a missing-bar detector: it
+scores ``0'' answers as high as made-up numbers
 \end{itemize}
+\end{frame}
+
+\begin{frame}{E3 (synthetic): probe accuracy by layer}
+\begin{columns}[c]
+\column{0.55\textwidth}
+\includegraphics[width=\textwidth]{figures/type_probes_by_layer.pdf}
+\column{0.43\textwidth}
+\small
+\begin{itemize}
+\item \textbf{Missing-bar signal} appears early: Qwen by layer 3, LLaVA by about
+layer 8
+\item \textbf{Misread signal} builds gradually and peaks in the last third
+\item Made-up number vs.\ ``0'' is only separable in the last layers: that reads
+out the answer about to be written, not an early warning
+\end{itemize}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Gridline baseline}
+\begin{columns}[c]
+\column{0.52\textwidth}
+\includegraphics[width=\textwidth]{figures/slide_gridline.pdf}
+\column{0.46\textwidth}
+\small
+\begin{itemize}
+\item A reading counts as wrong if it is off by more than 5\% of the true value,
+so rounding 34 to 30 is wrong but 134 to 130 is right
+\item So the \emph{distance of the true value from a gridline}, relative to the
+value, decides many synthetic misreads
+\item Declared in advance: gridline distance adds little (0.85, 0.64)
+\item Added after seeing that: relative distance reaches 0.92 and 0.86, above
+both probes
+\item The synthetic misread signal may describe the chart more than the model
+\end{itemize}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Synthetic-to-real transfer}
+\begin{columns}[c]
+\column{0.5\textwidth}
+\includegraphics[width=\textwidth]{figures/slide_transfer.pdf}
+\column{0.48\textwidth}
+\small
+\begin{itemize}
+\item Train the misread probe on synthetic charts, apply it unchanged to ChartQA
+\item It barely separates real misreads from correct answers: 0.60 (Qwen), 0.56
+(LLaVA)
+\item A probe trained on real ChartQA labels: 0.89 and 0.81
+\item The missing-bar probe on LLaVA's 17 real fabrications: 0.65, but it scores
+real misreads just as high (0.67)
+\item Synthetic probes do not carry over to real charts
+\end{itemize}
+\end{columns}
 \end{frame}
 
 % ===========================================================================
-\section{Part 3: does the type decide the fix?}
+\section{Part 3: fixes by error type}
 
-\begin{frame}{Four ways to make the model look again}
+\begin{frame}{E4: four repairs}
 \begin{columns}[c]
 \column{0.5\textwidth}
-\begin{itemize}\small
-\item \textbf{Re-ask}: same question again (a second try)
+\small
+Every wrong answer on the synthetic value questions is asked again (Qwen 631,
+LLaVA 1,015 errors):
+\begin{itemize}
+\item \textbf{Re-ask}: same question again, sampled (temperature 0.7); controls for
+``a second try''
 \item \textbf{Upsample}: the whole chart, enlarged
-\item \textbf{Crop}: only the asked bar and its axis, enlarged
-\item \textbf{Verify}: ``first name the part of the chart that supports your
-answer''
+\item \textbf{Crop}: only the asked bar and the y-axis, enlarged
+\item \textbf{Verify}: ``First name the part of the chart that supports your
+answer, then answer''
 \end{itemize}
+\textbf{Pre-registered prediction} (written before running): crop rescues misreads
+more than fabrications, because for a fabrication there is nothing to look at.
 \column{0.48\textwidth}
-\textbf{Prediction, written down before running} (pre-registered): cropping should
-rescue misreads more than fabrications, since for a fabrication there is nothing
-to look at.
-\vspace{0.6em}
-
-Applied to every wrong answer on the synthetic charts (Qwen 631, LLaVA 1,015).
+\centering
+\includegraphics[height=3.6cm]{figures/synth_pilot2.png}\hspace{0.4em}
+\includegraphics[height=3.6cm]{figures/synth_crop_example.png}\\
+\scriptsize Original chart, and the crop for ``What is the value of Slovenia?''
 \end{columns}
 \end{frame}
 
-\begin{frame}{Result: the prediction holds}
+\begin{frame}{E4: how crop and upsample work}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\footnotesize
+\textbf{Which part is cropped?}
+\begin{itemize}
+\item The chart generator records the pixel box of every bar and of the plot area
+\item The question names a category (``Slovenia''); we find its bar by name
+\item Keep the y-axis strip (tick labels) and the bar $\pm$12 pixels, full height
+(so the bar's label and the top of the scale stay), joined side by side
+\item If the named bar is not on the chart (fabrication case), there is nothing
+to crop and the whole chart is shown
+\end{itemize}
+\column{0.48\textwidth}
+\footnotesize
+\textbf{Does enlarging overload the model?}
+\begin{itemize}
+\item Both repairs are enlarged to the \textbf{same pixel budget}: 1,000,000 pixels
+(the cap of the original run), at most 4$\times$
+\item Qwen makes one image token per 28$\times$28 pixels, so the budget caps it at
+about 1,275 tokens; crop and upsample get the same number
+\item LLaVA-NeXT resizes every image to its own fixed tile layout, so enlarging
+adds no tokens there either
+\item Crop vs.\ upsample therefore isolates \emph{where} the pixels go, not
+\emph{how many}. Example: crop 211$\times$720 $\to$ 541$\times$1847; full chart
+960$\times$720 $\to$ 1154$\times$866
+\end{itemize}
+\end{columns}
+\end{frame}
+
+\begin{frame}{E4: results}
 \centering
-\small
+\footnotesize
 \begin{tabular}{lcccc}
 \toprule
-Fraction fixed & Re-ask & Upsample & Crop & Verify \\
+Fraction of errors fixed & Re-ask & Upsample & Crop & Verify \\
 \midrule
 \multicolumn{5}{l}{\textit{Qwen}} \\
-Misread & 0.11 & 0.13 & \hl{0.26} & 0.09 \\
-Made-up number & 0.00 & 0.00 & 0.00 & \hl{0.14} \\
-``0'' & 0.02 & 0.02 & 0.02 & \hl{0.69} \\
+Misread (46) & 0.11 & 0.13 & \hl{0.26} & 0.09 \\
+Made-up number (91) & 0.00 & 0.00 & 0.00 & \hl{0.14} \\
+``0'' (494) & 0.02 & 0.02 & 0.02 & \hl{0.69} \\
 \multicolumn{5}{l}{\textit{LLaVA}} \\
-Misread & 0.03 & 0.01 & \hl{0.15} & 0.03 \\
-Made-up number & 0.00 & 0.00 & 0.00 & 0.00 \\
+Misread (415) & 0.03 & 0.01 & \hl{0.15} & 0.03 \\
+Made-up number (368) & 0.00 & 0.00 & 0.00 & 0.00 \\
+``0'' (232) & 0.00 & 0.00 & 0.00 & 0.00 \\
 \bottomrule
 \end{tabular}
-\vspace{0.6em}
+\vspace{0.5em}
 \raggedright
-\begin{itemize}\small
-\item Crop helps misreads, never fabrications, in both models (pre-registered
-test passes: +0.26 and +0.15, both intervals above zero)
-\item For Qwen the best fix differs by type: crop for misreads, verify for
-missing bars (it makes Qwen say ``not shown'')
-\item Nothing we tried fixes LLaVA's missing-bar answers: only abstaining works
+\begin{itemize}\footnotesize
+\item \textbf{Pre-registered test passes} in both models: crop helps misreads more
+than made-up numbers, by +0.26 (Qwen) and +0.15 (LLaVA), both CIs above zero
+\item Qwen's best repair differs by type: crop for misreads, verify for missing
+bars (it makes Qwen say ``not shown'')
+\item Nothing fixes LLaVA's missing-bar answers; for those, only abstaining helps
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Putting it together: a type-aware controller}
-\begin{columns}[c]
-\column{0.5\textwidth}
-\includegraphics[width=\textwidth]{figures/e5_risk_coverage.pdf}
-\column{0.48\textwidth}
+\begin{frame}{E5: type-aware controller}
 \small
-\textbf{Controller}: if the missing-bar probe fires, abstain; if the misread
-probe fires, look again with the best fix.
+\textbf{Selective prediction}: a system may abstain. Each policy ranks the 1,200
+synthetic value questions by confidence and abstains on the least confident first.
 \vspace{0.4em}
-
-\textbf{Risk-coverage}: answer only the questions you are most confident about;
-plot the error rate against the fraction answered. Lower is better.
 \begin{itemize}
-\item Re-looking lowers error in both models
-\item The controller beats plain ``abstain when unsure'' only for Qwen, mostly by
-turning ``0'' into ``not shown''
-\item A perfect-knowledge oracle is still far better: room to improve
+\item \textbf{Plain model}: answers everything
+\item \textbf{Binary abstention}: abstain when the wrong-vs-right probe fires
+\item \textbf{Controller}: re-look with the best E4 repair when the misread probe
+fires; abstain when the missing-bar probe fires
+\item \textbf{Re-look + binary}: the controller's re-look, then binary abstention
+\item \textbf{Oracle}: knows the true error type (upper bound)
 \end{itemize}
+Thresholds and the repair are chosen on four chart folds and applied to the fifth.
+A re-look that breaks a right answer counts against the policy (crop breaks 133 of
+Qwen's 554 right answers).
+\end{frame}
+
+\begin{frame}{E5: risk-coverage curves}
+\begin{columns}[c]
+\column{0.6\textwidth}
+\includegraphics[width=\textwidth]{figures/slide_risk_coverage.pdf}
+\column{0.38\textwidth}
+\scriptsize
+\textbf{How to read it.} Move right to left: the policy abstains on more
+questions, least confident first.
+\begin{itemize}
+\item x: coverage, the fraction answered
+\item y: risk, the error rate among answered
+\item Lower is better; the right end (coverage 1) is answering everything
+\item The plain model is flat: it has no ranking
+\item Re-looking lowers the right end (Qwen 0.53 $\to$ 0.34): fixed answers
+\end{itemize}
+\textbf{AURC} (area under curve, lower is better):\\
+\begin{tabular}{lcc}
+ & Qwen & LLaVA \\
+Plain & 0.53 & 0.85 \\
+Binary & 0.18 & 0.65 \\
+Controller & 0.16 & 0.72 \\
+Re-look + binary & \hl{0.11} & \hl{0.64} \\
+Oracle & 0.06 & 0.50 \\
+\end{tabular}
 \end{columns}
+\end{frame}
+
+\begin{frame}{E5: findings}
+\begin{itemize}
+\item Re-looking lowers error in both models, under either abstention ranking
+\item The controller beats binary abstention only for Qwen, mostly by turning
+``0'' answers into ``not shown'' (212 of its 222 fixes)
+\item For LLaVA, missing-bar abstention ranks worse than the binary probe, and
+re-looking fixes only 12 misreads
+\item Best probe policy: re-look, then rank by the binary probe
+\item The oracle is far better (0.06 and 0.50): better policies are possible
+\end{itemize}
 \end{frame}
 
 % ===========================================================================
 \section{Conclusions}
 
-\begin{frame}{What we learned}
+\begin{frame}{Conclusions}
 \begin{enumerate}
-\item A model's internal state predicts that an answer will be wrong
-\textbf{before} it is written, beyond the question's surface
-\item On real charts the errors are misreads and arithmetic slips, and they look
-\textbf{different} inside the model
-\item Models \textbf{know} when a chart cannot answer the question, and answer
-anyway. This ``unanswerable'' signal is the most useful one for deciding when to
-abstain
-\item The type does change the best fix: cropping rescues misreads, not
-fabrications, as we predicted in advance
+\item The hidden state predicts that an answer will be wrong \textbf{before} it is
+written, beyond what surface features explain (0.88 Qwen, 0.80 LLaVA)
+\item On real charts the errors are misreads and arithmetic errors, and the two
+are separable (0.90, 0.96), also within one question type
+\item Models \textbf{know} when a chart cannot answer the question (0.96 to 1.00),
+for missing names and out-of-range years, and answer anyway
+\item The error type changes the best repair: crop rescues misreads, not
+fabrications, as pre-registered
 \end{enumerate}
 \end{frame}
 
 \begin{frame}{Limitations}
 \begin{itemize}
-\item Fabrication is rare on real charts, so the misread vs.\ fabrication
-comparison rests on synthetic bar charts
-\item On synthetic charts, misreads largely reflect chart geometry, and those
-probes do not carry over to real charts
-\item Error labels come from an LLM annotator; two humans agreed with each other
-only moderately ($\kappa=0.42$)
+\item Fabrication is rare on real charts, so misread vs.\ fabrication rests on
+synthetic bar charts
+\item Synthetic misreads largely reflect gridline geometry, and synthetic probes
+do not transfer to real charts
+\item Labels come from an LLM annotator; two humans agreed with each other only
+at $\kappa=0.42$
 \item Repairs and the controller are tested on synthetic charts only
 \item Probes show what is encoded, not that the model uses it
 \end{itemize}
