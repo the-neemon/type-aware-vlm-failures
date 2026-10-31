@@ -8,10 +8,9 @@
  & Qwen & LLaVA \\
 \midrule
 \multicolumn{3}{l}{\textit{Answer to the out-of-range year}} \\
-Refused & 102 & 0 \\
+Refused & 119 & 0 \\
 ``0'' & 76 & 19 \\
 Made-up number & 105 & 281 \\
-Unclear & 17 & 0 \\
 \textit{Shown year read correctly} & 273 & 74 \\
 \midrule
 \multicolumn{3}{l}{\textit{Missing-vs-shown probe}} \\
@@ -29,6 +28,8 @@ Unclear & 17 & 0 \\
 words, about a year outside the shown range. Top: what the models answered to the
 out-of-range year (300 per model). Bottom: AUROC of the two missing-bar probes,
 trained on pilots 1 and 2 only and applied unchanged, with 95\% figure-bootstrap
-CIs; layer chosen on pilots 1 and 2.}
+CIs; layer chosen on pilots 1 and 2. Qwen's refusals include 17 written as
+sentences that name a year, which the scorer missed and we counted by hand; the
+made-up vs.\ refused AUROC uses the 102 refusals the scorer recognised.}
 \label{tab:pilot3}
 \end{table}

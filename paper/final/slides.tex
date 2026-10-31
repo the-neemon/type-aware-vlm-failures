@@ -249,17 +249,27 @@ resamples of test charts
 \textbf{Removing them}: regress each hidden-state dimension on the 4 features
 (fitted on training charts only), subtract the fit, retrain the probe on what is
 left
-\vspace{0.4em}
+\vspace{0.3em}
 
-\textbf{Are the numbers optimistic?} Slightly, for Qwen:
-\begin{itemize}
-\item Reported split 0.88; mean of 5 splits 0.86 (range 0.83 to 0.89).
-LLaVA: 0.80 both
-\item On 960 questions from \emph{unseen} charts, Qwen's probe scores 0.77,
-against 0.83 on test human questions
-\item ``Clean'' numbers (not-an-error items removed, Qwen 0.93) are the most
-optimistic; we headline all errors
-\end{itemize}
+\textbf{Is it more than surface features?} Yes, for both models:
+\vspace{0.2em}
+
+\centering
+{\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccc}
+\toprule
+ & Probe & Features removed & Features only \\
+\midrule
+Qwen & 0.88 & 0.80 & 0.72 \\
+LLaVA & 0.80 & 0.78 & 0.61 \\
+\bottomrule
+\end{tabular}}
+\vspace{0.3em}
+
+\raggedright
+With the features removed, the probe stays close to the full probe and well
+above the features alone: it learns an internal property of the model's state,
+beyond what the question's surface reveals.
 \end{columns}
 \end{frame}
 
@@ -274,8 +284,6 @@ optimistic; we headline all errors
 third (best layer 21 of 28 for Qwen, 24 of 32 for LLaVA)
 \item \textbf{Image tokens} stay at 0.62 to 0.68 at every depth, near the surface
 baseline
-\item Unlike HALP (photo hallucination, where Qwen is best on image features):
-for charts the useful state is the one that has read the question
 \end{itemize}
 \end{columns}
 \end{frame}
@@ -367,9 +375,8 @@ Makes up a number & 91 & 368 \\
 \small
 \begin{itemize}
 \item Only ``not shown'' counts as correct
-\item ``0'' \textbf{is} counted as a wrong answer, but \textbf{not as a
-fabrication}: no bar in these charts has height 0, so ``0'' means ``nothing
-there'' written as a number; it invents no value
+\item ``0'' treated as the model refusing to answer, as it notices about the missing bar or that the answer isn't contained in the chart. So, it \textbf{isn't counted as a
+fabrication} 
 \item Made-up numbers are the fabrications. Qwen usually copies a lookalike bar
 (asked Mali, reports Malta)
 \end{itemize}
@@ -414,7 +421,7 @@ chart just cannot answer it.
 \toprule
 Answer (300) & Qwen & LLaVA \\
 \midrule
-Says not shown & \hl{102} & 0 \\
+Says not shown & \hl{119} & 0 \\
 ``0'' & 76 & 19 \\
 Makes up a number & 105 & 281 \\
 \bottomrule
@@ -484,24 +491,6 @@ value, decides many synthetic misreads
 \item Added after seeing that: relative distance reaches 0.92 and 0.86, above
 both probes
 \item The synthetic misread signal may describe the chart more than the model
-\end{itemize}
-\end{columns}
-\end{frame}
-
-\begin{frame}{Synthetic-to-real transfer}
-\begin{columns}[c]
-\column{0.5\textwidth}
-\includegraphics[width=\textwidth]{figures/slide_transfer.pdf}
-\column{0.48\textwidth}
-\small
-\begin{itemize}
-\item Train the misread probe on synthetic charts, apply it unchanged to ChartQA
-\item It barely separates real misreads from correct answers: 0.60 (Qwen), 0.56
-(LLaVA)
-\item A probe trained on real ChartQA labels: 0.89 and 0.81
-\item The missing-bar probe on LLaVA's 17 real fabrications: 0.65, but it scores
-real misreads just as high (0.67)
-\item Synthetic probes do not carry over to real charts
 \end{itemize}
 \end{columns}
 \end{frame}
@@ -668,8 +657,7 @@ fabrications, as pre-registered
 \begin{itemize}
 \item Fabrication is rare on real charts, so misread vs.\ fabrication rests on
 synthetic bar charts
-\item Synthetic misreads largely reflect gridline geometry, and synthetic probes
-do not transfer to real charts
+\item Synthetic misreads largely reflect gridline geometry
 \item Labels come from an LLM annotator; two humans agreed with each other only
 at $\kappa=0.42$
 \item Repairs and the controller are tested on synthetic charts only

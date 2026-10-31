@@ -48,7 +48,11 @@ PILOT3_CAPTION = r"""Pilot 3: each chart is asked about a shown year and, in the
 words, about a year outside the shown range. Top: what the models answered to the
 out-of-range year (300 per model). Bottom: AUROC of the two missing-bar probes,
 trained on pilots 1 and 2 only and applied unchanged, with 95\% figure-bootstrap
-CIs; layer chosen on pilots 1 and 2."""
+CIs; layer chosen on pilots 1 and 2. Qwen's refusals include 17 written as
+sentences that name a year, which the scorer missed and we counted by hand; the
+made-up vs.\ refused AUROC uses the 102 refusals the scorer recognised."""
+# Hand recount of Qwen's pilot-3 sentence refusals (see the file's description).
+PILOT3_RECOUNT = "results/probes/pilot3_qwen_sentence_refusals.json"
 
 
 def _read(path):
@@ -156,8 +160,14 @@ def pilot3_table() -> str:
     r = {m: json.loads((ROOT / f"results/probes/pilot3_{m}.json").read_text(encoding="utf-8"))
          for m in MODELS}
 
+    counts = {m: dict(r[m]["outcomes"]["counts"]) for m in MODELS}
+    moved = len(json.loads((ROOT / PILOT3_RECOUNT).read_text(encoding="utf-8"))["items"])
+    counts["qwen2_5_vl_7b"]["U"] -= moved                  # unclear -> refused
+    counts["qwen2_5_vl_7b"]["R"] += moved
+    assert all(sum(counts[m][c] for c in "RZFU") == 300 for m in MODELS)
+
     def count(c):
-        return " & ".join(str(r[m]["outcomes"]["counts"][c]) for m in MODELS)
+        return " & ".join(str(counts[m][c]) for m in MODELS)
 
     def probe(name, target, ci=True):
         return " & ".join(_auc(r[m]["probes"][name]["pilot3"].get(target), ci) for m in MODELS)
@@ -173,7 +183,7 @@ def pilot3_table() -> str:
              f"Refused & {count('R')} \\\\",
              f"``0'' & {count('Z')} \\\\",
              f"Made-up number & {count('F')} \\\\",
-             f"Unclear & {count('U')} \\\\",
+             *([f"Unclear & {count('U')} \\\\"] if any(counts[m]["U"] for m in MODELS) else []),
              f"\\textit{{Shown year read correctly}} & {count('C')} \\\\",
              r"\midrule",
              r"\multicolumn{3}{l}{\textit{Missing-vs-shown probe}} \\",

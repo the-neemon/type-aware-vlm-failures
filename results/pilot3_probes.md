@@ -85,6 +85,19 @@ LLaVA rises from layer 8 and holds 0.86 to 0.95 from layer 16.
   numbers (F vs Z 0.26), as on pilots 1 and 2.
 - Neither probe responds to misreads of shown years (S vs C 0.49 to 0.58).
 - With out-of-range years, fabrication no longer coincides with a missing
-  category (AGENTS.md decision 4). Qwen refuses here (102 of 300) where it almost
+  category (AGENTS.md decision 4). Qwen refuses here (119 of 300, see the note
+  below) where it almost
   never refused missing categories, and most made-up numbers in both models
   equal a shown bar's value rather than an extrapolation of the trend.
+
+## Note: hand recount of Qwen's refusals (31 Oct 2026)
+
+The scorer counts an answer as a refusal only if it contains refusal words and no
+digits. Pilot 3 refusals often name a year ("The bar chart does not include data
+for the year 2011"), so all 17 of Qwen's "unclear" answers above are refusals
+written as sentences; one of them (range_000189) is cut off by the 32-token limit
+while listing the chart's years and is counted as a refusal by judgment. They are
+listed in `results/probes/pilot3_qwen_sentence_refusals.json`. Counting them gives
+Qwen 119 refused, 0 unclear; the report and slides use these counts. The probe
+AUROCs above are unchanged: the "R vs C" and "F vs R" rows use the 102 refusals
+the scorer recognised, and "out-of-range vs shown" uses all 300 questions.

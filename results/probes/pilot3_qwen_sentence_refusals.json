@@ -1,0 +1,108 @@
+{
+  "description": "Qwen pilot 3: the 17 out-of-range answers scored 'unclear' by src/synth/items.py are refusals written as sentences that name a year; the scorer counts a refusal only if it contains no digits. Counted as refused by hand (Yash, 31 Oct 2026). One answer (range_000189) is cut off by the 32-token limit while listing the chart's years; it is counted as a refusal by judgment.",
+  "reclassified_as": "rejected",
+  "items": [
+    {
+      "item_id": "c9c34e538e9e",
+      "figure_id": "range_000008",
+      "question": "What was the value in 2014?",
+      "prediction": "The value in 2014 is not shown on the bar chart. The chart only displays data from 2015 to 202"
+    },
+    {
+      "item_id": "dd0e5da71b8d",
+      "figure_id": "range_000048",
+      "question": "What was the value in 2010?",
+      "prediction": "The image shows data from 2013 to 2019, but it does not include any information for the year 2010"
+    },
+    {
+      "item_id": "0c1dc57eb91f",
+      "figure_id": "range_000077",
+      "question": "What was the value in 2020?",
+      "prediction": "The bar chart does not provide data for the year 2020. The data is only available up to the year 2019."
+    },
+    {
+      "item_id": "b78c2b95b54f",
+      "figure_id": "range_000078",
+      "question": "What was the value in 2024?",
+      "prediction": "The bar chart only shows data up to the year 2021. There is no information provided for the year 2024."
+    },
+    {
+      "item_id": "d923c2f6dd77",
+      "figure_id": "range_000133",
+      "question": "What was the value in 2013?",
+      "prediction": "The image shows data from 2015 to 2020, but it does not include any information about the year 2013"
+    },
+    {
+      "item_id": "8cefc95039de",
+      "figure_id": "range_000134",
+      "question": "What was the value in 2011?",
+      "prediction": "The bar chart does not include data for the year 2011. The earliest year shown is 2013."
+    },
+    {
+      "item_id": "6a145dab4bb4",
+      "figure_id": "range_000156",
+      "question": "What was the value in 2019?",
+      "prediction": "The bar chart does not include data for 2019, so the value for that year cannot be determined from the information provided."
+    },
+    {
+      "item_id": "a48b1e1f3aa9",
+      "figure_id": "range_000157",
+      "question": "What was the value in 2024?",
+      "prediction": "The image shows a bar chart with data up to the year 2022. There is no data provided for the year 2024,"
+    },
+    {
+      "item_id": "788ad24a32db",
+      "figure_id": "range_000182",
+      "question": "What was the value in 2014?",
+      "prediction": "The value in 2014 is not shown on the graph. The graph only displays data from 2015 to 2021"
+    },
+    {
+      "item_id": "363fc45629d1",
+      "figure_id": "range_000186",
+      "question": "What was the value in 2014?",
+      "prediction": "The image shows data from 2016 to 2022, but it does not include any information for the year 2014"
+    },
+    {
+      "item_id": "f6e61a1712e6",
+      "figure_id": "range_000188",
+      "question": "What was the value in 2011?",
+      "prediction": "The image shows data from 2013 to 2019, but it does not include any information for the year 2011"
+    },
+    {
+      "item_id": "15c238d4842b",
+      "figure_id": "range_000189",
+      "question": "What was the value in 2021?",
+      "prediction": "The image shows a bar chart with data for the years 2015, 2016, 2017, and 2"
+    },
+    {
+      "item_id": "624a790b931e",
+      "figure_id": "range_000218",
+      "question": "What was the value in 2019?",
+      "prediction": "The image shows a bar chart with data for the years 2013 to 2018, but it does not include any data for the"
+    },
+    {
+      "item_id": "1ea221fa0e6c",
+      "figure_id": "range_000229",
+      "question": "What was the value in 2014?",
+      "prediction": "The image shows data from 2016 to 2021, but it does not include any information for the year 2014"
+    },
+    {
+      "item_id": "276082c8082a",
+      "figure_id": "range_000250",
+      "question": "What was the value in 2020?",
+      "prediction": "The bar chart does not include data for the year 2020. The years shown are 2013, 2014,"
+    },
+    {
+      "item_id": "049212e2ea4e",
+      "figure_id": "range_000255",
+      "question": "What was the value in 2022?",
+      "prediction": "The image shows a bar chart with data for the years 2015 to 2020, but it does not include any data for"
+    },
+    {
+      "item_id": "c476a9c1a3db",
+      "figure_id": "range_000262",
+      "question": "What was the value in 2016?",
+      "prediction": "There is no data for 2016 in the image."
+    }
+  ]
+}

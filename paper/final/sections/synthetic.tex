@@ -1,7 +1,7 @@
 % Synthetic arm. Sources: results/synth_fabrication_pilots.md,
 % results/probes/synth_pilot2_*.json, results/probes/synth_types_*.json,
 % results/synth_type_probes.md, results/probes/synth_grid_baseline_*.json,
-% results/probes/transfer_chartqa_*.json, results/pilot3_probes.md,
+% results/pilot3_probes.md,
 % results/probes/pilot3_*.json. Outcome counts rescored with src/synth/items.py.
 \section{Synthetic Charts: Inducing Fabrication}
 \label{sec:synth}
@@ -108,17 +108,14 @@ depends on how far the true value lies from a gridline relative to its size. Two
 features declared in advance (distance to the nearest gridline, and to the
 nearest multiple of 10) added to the metadata reach 0.853 (Qwen) and 0.642
 (LLaVA), below both probes; the same distances divided by the value, added after
-seeing that result, reach 0.920 and 0.860, above both. Synthetic misread probes
-also transfer poorly to real charts: trained on synthetic charts and applied
-unchanged to ChartQA, they separate real misreads from correct answers at only
-0.597 (Qwen) and 0.557 (LLaVA). The synthetic misread signal may describe the
-chart more than the model.
+seeing that result, reach 0.920 and 0.860, above both. The synthetic misread
+signal may describe the chart more than the model.
 
 \input{tables/pilot3.tex}
 
 \paragraph{The missing-bar signal is about answerability (pilot 3).} In pilots 1
 and 2 a fabrication always concerns a missing category. Pilot 3 separates the two
-(Table~\ref{tab:pilot3}). Here Qwen refuses 102 of 300 out-of-range years, against
+(Table~\ref{tab:pilot3}). Here Qwen refuses 119 of 300 out-of-range years, against
 15 of 1,200 missing names, while LLaVA still invents a number for 281. Most
 invented numbers copy a shown bar's value (92 of 105 for Qwen, 135 of 281 for
 LLaVA) rather than extend the trend (5 and 9). Both missing-bar probes, trained
