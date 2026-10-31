@@ -3,120 +3,34 @@
 Advanced NLP, Monsoon 2026, IIIT Hyderabad.
 Yash More, Naman Singhal, Shrish Kadam, Sanjith Ganapathi.
 
-Do vision-language models fail on charts in two mechanically different ways
-(misreading the figure versus fabricating a value), is that difference visible
-in the model's internal state before it generates, and is knowing it worth
-anything? Two frozen models (Qwen2.5-VL-7B, LLaVA-NeXT-7B), ChartQA plus three
-synthetic bar-chart pilots, linear probes on cached activations, a repair
-experiment (E4) and a type-aware controller (E5).
-
-- [docs/taxonomy.md](docs/taxonomy.md): the five error labels.
-- [paper/](paper/): the mid and final reports.
-
-## Results and how to reproduce them
-
-Every number in the reports comes from a file under `results/`. Each script's
-docstring gives its full arguments; the table names the script and the files it
-writes. GPU steps run as SLURM jobs on RTX 2080 Ti nodes; probe and analysis
-steps need only a CPU and the cached activations.
-
-| Step | What it produces | Command | Output |
-| --- | --- | --- | --- |
-| Synthetic data | Pilot 1, 2, 3 charts and questions | `python -m src.synth.absent_pairs`, `src.synth.absent_lookalikes`, `src.synth.out_of_range` | `$HOME/data/synth/absent_pilot_v{1,2,3}/` (hash in each `configs/inference_synth_pilot*.yaml`) |
-| Inference and caching (GPU) | Answers and pooled activations, every layer | `TAG=<tag> INFERENCE_CONFIG=configs/[llava/]inference*.yaml sbatch scripts/cache_chartqa.sbatch` | `results/predictions/*.jsonl` (+ `.run.json`, `.summary.json`); activations `.npz` kept off the repo |
-| Error labels | Five-label annotation of every ChartQA error | LLM annotator following `docs/taxonomy.md` (`src/label/llm_label.py`); human check in `src/label/app.py` | `results/labels/*.claude.jsonl` |
-| Error statistics | Labels by source, gold-answer errors | `python -m src.label.error_stats` | `results/labels/*.error_stats.json` |
-| E1 binary probes | Will the answer be wrong? | `python -m src.probes.run_sweep --target binary` (and `--target source` for the sanity probe) | `results/probes/binary_*_test.{json,md}`, `sanity_*` |
-| E1/E2 follow-ups | Five splits, residualised, calibration, val_human | `python -m src.probes.run_followups binary` | `results/probes/binary_followups*.json` |
-| E3 synthetic | Type probes and cross-transfer matrix | `python -m src.probes.run_synth_types`; gridline baseline `run_followups grid` | `results/probes/synth_types_*.json`, `synth_grid_baseline_*.json`, `results/synth_type_probes.md` |
-| E3 ChartQA | Misread vs computation probes, per question type, residualised | `python -m src.probes.run_chartqa_types [--question-type ...] [--residualise]` | `results/probes/chartqa_types_*.json`, `results/chartqa_type_probes.md` |
-| Transfer | Synthetic probes applied to ChartQA | `python -m src.probes.run_transfer transfer` | `results/probes/transfer_chartqa_*.json` |
-| Pilot 3 probes | Do the pilot 1-2 missing-bar probes fire on out-of-range years? | `python -m src.probes.run_pilot3 --pilot pilot1 ... --pilot pilot2 ... --target ...` (CPU job) | `results/probes/pilot3_*.json`, `results/pilot3_probes.md` |
-| Human agreement | Two annotators on 200 errors, kappa, human vs LLM labels | `python -m src.label.human_agreement --raters shrish sanjith --labels results/labels/qwen2_5_vl_7b_test.claude.jsonl --labels results/labels/llava_next_mistral_7b_test.claude.jsonl --out results/human_agreement.md` | `results/human_agreement.md` |
-| E4 (GPU) | Every repair on every synthetic value-question error | `PREDICTIONS=... SYNTH_MANIFEST=... sbatch scripts/intervene.sbatch` | `results/e4/*.outcomes.jsonl`, `results/e4.md` |
-| E5 re-ask (GPU) | The same repairs on the correct answers | as E4 with `CORRECT=1` | `results/e4/*.correct.outcomes.jsonl` |
-| E5 | Controller vs selective prediction | `python -m src.controller.e5_scores` (CPU job), then `python -m src.controller.e5 --models ...` | `results/e5/`, `results/e5.md` |
-
-E4 is pre-registered in [results/e4-preregistration.md](results/e4-preregistration.md).
-
 ## Setup
 
-Everything runs on Ada, partition `u22`, on RTX 2080 Ti nodes. The GPU type is
-frozen for the project (`configs/activations.yaml`), because a model's answers
-and the activations recorded alongside them have to come from the same kernels.
+The final report is [paper/final/main.pdf](paper/final/main.pdf) and the final
+slides are [paper/final/slides.pdf](paper/final/slides.pdf).
 
-Some nodes have broken GPU drivers or mixed card types. Keep their names in a
-`BAD_NODES` shell variable (comma-separated, not committed) and pass
-`--exclude="$BAD_NODES"` to every GPU job; each job also checks the card at
-start-up and stops rather than fall back to the CPU.
+GPU steps run as SLURM jobs on RTX 2080 Ti nodes; probe and analysis steps need
+only a CPU and the cached activations. Keep nodes with broken GPU drivers or
+mixed cards in a `BAD_NODES` shell variable and pass `--exclude="$BAD_NODES"` to
+every GPU job.
 
-Build the environment from inside a job, never on the head node, which runs an
-older glibc than the compute nodes:
+Build the environment inside a job, not on the login node:
 
 ```bash
 srun -p u22 --constraint=2080ti --exclude="$BAD_NODES" --gres=gpu:1 \
      -c 8 --mem=32G -t 01:00:00 bash scripts/setup_env.sh
 ```
 
-`requirements.txt` holds exact pins, not floors. Activations move silently
-between library versions and this project's claim rests on activations, so a
-teammate who resolves a different `transformers` build has a correctness
-problem, not a convenience one.
+## Data
 
-### Getting ChartQA onto Ada
-
-Run this once, on any compute node. It takes a few minutes and is idempotent,
-so it is safe to call unconditionally from a job script:
+ChartQA (about 875 MB, into `$HOME/data/ChartQA`), then a check of the splits:
 
 ```bash
-bash scripts/download_chartqa.sh          # ~875 MB download, 1.1 GiB on disk
-bash scripts/download_chartqa.sh --json-only   # laptop: split stats, no images
-```
-
-You get 32,719 questions over 20,882 figures, laid out as
-`$HOME/data/ChartQA/{train,val,test}/{split}_{human,augmented}.json` plus the
-PNGs. Check it with:
-
-```bash
+bash scripts/download_chartqa.sh
 python -m src.eval.chartqa ~/data/ChartQA
 ```
 
-which prints the per-split summary and runs the P5.4 no-shared-figure assertion.
-
-**Each of us needs our own copy.** Home directories on Ada are `drwx------`, so
-one person's download is unreadable by the rest of the team, and there is no
-shared writable path on the cluster to put a single copy in. At 1.1 GiB against a
-30 GiB quota that is an acceptable duplication; it is not worth loosening
-permissions on a home directory to avoid.
-
-It goes in `$HOME` rather than `/scratch` on purpose: `/scratch` is node-local
-and purged at 7 days, so images cached there would be re-downloaded on whichever
-node the scheduler happened to pick.
-
-### Three Ada facts that shape every job
-
-`scripts/ada_env.sh` encodes all three.
-
-- **`/scratch` is node-local, and it is really `/tmp`.** Same device, same
-  inode, and `tmpreaper` purges it daily at 7 days of no access. It holds
-  `HF_HOME` because two 7B checkpoints are ~33 GB against a 30 GB home quota,
-  and `stage_in_model` repairs the cache on whichever node a job lands on.
-  Anything durable is staged back to `$HOME` before the job exits, and the job
-  fails loudly if that copy does not happen.
-- **A 7B model does not fit on one card.** 2080 Tis hold 11 GiB; fp16 weights
-  are ~16.6 GiB. Jobs ask for `--gres=gpu:2` and shard with `device_map="auto"`.
-  Quantising is not available to us: it would perturb the activations we are
-  measuring.
-- **Turing has no bf16 tensor cores and no FlashAttention-2.** The project runs
-  `float16` with `attn_implementation="sdpa"`. bf16 does not error on this
-  hardware, it is merely emulated, which is why this is written down rather
-  than left to be discovered.
-
-## Synthetic data generation
-
-The three pilots the results use, from the repository root (each output
-directory must be new; generate on the cluster, since bar geometry depends on
-the pinned matplotlib build):
+The three synthetic pilots (each output directory must be new; add `--verify`
+to check a folder against its manifest):
 
 ```bash
 python -m src.synth.absent_pairs      ~/data/synth/absent_pilot_v1 --num-charts 300
@@ -124,21 +38,123 @@ python -m src.synth.absent_lookalikes ~/data/synth/absent_pilot_v2 --num-charts 
 python -m src.synth.out_of_range      ~/data/synth/absent_pilot_v3 --num-charts 300
 ```
 
-Each takes `--verify` to check a folder against its manifest. The earlier
-generators (`src.synth.generate_bar_charts`, `generate_followups`, including the
-unused node-link diagrams) are kept for reference.
+## Running the experiments
 
-## Models
+Run from the repository root, in this order. GPU steps are SLURM jobs; the rest
+are CPU steps, run inside a CPU job. Set these once; run each model-specific
+block for both models.
 
-| Model | Backbone | Hidden | Layers |
-| --- | --- | --- | --- |
-| Qwen2.5-VL-7B-Instruct | Qwen2.5-7B | 3584 | 28 |
-| LLaVA-NeXT (llava-v1.6-mistral-7b-hf) | Mistral-7B-Instruct-v0.2 | 4096 | 32 |
+```bash
+export PROJ=$PWD            # the GPU jobs look for the repository here
+export DURABLE=$HOME/vlm-failures-durable   # GPU job outputs that must outlive the node
+M=qwen2_5_vl_7b             # then again with M=llava_next_mistral_7b
+ACT=$HOME/activations       # where the caching job writes the .npz caches
+SYNTH=$HOME/data/synth
+P=results/predictions
+L=results/labels
+```
 
-Config snapshots are vendored under `configs/model_configs/` so the storage
-budget is reproducible without network access. Note that the LLaVA-NeXT
-`text_config` omits `hidden_size` and `num_hidden_layers`; both fall back to
-Mistral-7B defaults and must be read from the backbone config, not the VLM one.
+### 1. Inference and activation caching (GPU)
+
+```bash
+C=configs                   # configs/llava for LLaVA
+for run in test:inference synth_pilot:inference_synth_pilot \
+           synth_pilot2:inference_synth_pilot2 synth_pilot3:inference_synth_pilot3; do
+  TAG=${run%%:*} INFERENCE_CONFIG=$C/${run#*:}.yaml \
+    sbatch --exclude="$BAD_NODES" scripts/cache_chartqa.sbatch
+done
+# Qwen only: the held-out human-written validation questions
+TAG=val_human INFERENCE_CONFIG=configs/inference_val_human.yaml \
+  sbatch --exclude="$BAD_NODES" scripts/cache_chartqa.sbatch
+```
+
+Writes `$P/${M}_<tag>.jsonl` (with `.run.json` and `.summary.json`) and
+`$ACT/$M/<tag>.npz`.
+
+### 2. Error labels
+
+```bash
+# LLM labels: write batches, label them, append the labels
+B=labelling_batches
+python -m src.label.llm_label batches --predictions $P/${M}_test.jsonl \
+    --image-root ~/data/ChartQA --out $B --size 25
+python -m src.label.llm_label append --batch $B/batch_001.jsonl \
+    --labels $B/batch_001.labels.jsonl --out $L/${M}_test.claude.jsonl \
+    --annotator "<annotator name>"
+python -m src.label.error_stats --predictions $P/${M}_test.jsonl \
+    --labels $L/${M}_test.claude.jsonl --out $L/${M}_test.error_stats.json
+
+# Human agreement check (both models at once)
+python -m src.label.pool sample \
+    --predictions $P/qwen2_5_vl_7b_test.jsonl --predictions $P/llava_next_mistral_7b_test.jsonl \
+    --labels $L/qwen2_5_vl_7b_test.claude.jsonl --labels $L/llava_next_mistral_7b_test.claude.jsonl \
+    --per-model 100 --out annotations/tasks
+python -m src.label.pool assign --pool annotations/tasks/pool.jsonl \
+    --annotators shrish sanjith --overlap 200 --out annotations/tasks
+python -m streamlit run src/label/app.py      # each annotator labels here
+python -m src.label.human_agreement --raters shrish sanjith \
+    --labels $L/qwen2_5_vl_7b_test.claude.jsonl \
+    --labels $L/llava_next_mistral_7b_test.claude.jsonl --out results/human_agreement.md
+```
+
+### 3. Probes on ChartQA (E1, E2, E3)
+
+```bash
+# E1: will the answer be wrong? (and the source sanity probe); each writes <out>/report.json
+python -m src.probes.run_sweep --target binary --activations $ACT/$M/test.npz \
+    --predictions $P/${M}_test.jsonl --out runs/binary_$M
+python -m src.probes.run_sweep --target source --activations $ACT/$M/test.npz \
+    --predictions $P/${M}_test.jsonl --out runs/sanity_$M
+
+# E1/E2 follow-ups: five splits, residualised, calibration; add
+# --val-human $ACT/$M/val_human.npz $P/${M}_val_human.jsonl for Qwen
+python -m src.probes.run_followups binary --activations $ACT/$M/test.npz \
+    --predictions $P/${M}_test.jsonl --out results/probes/binary_followups_$M.json
+python -m src.probes.run_followups binary --activations $ACT/$M/test.npz \
+    --predictions $P/${M}_test.jsonl --drop-not-an-error $L/${M}_test.claude.jsonl \
+    --out results/probes/binary_followups_clean_$M.json
+
+# E3: misread vs. computation error
+for opt in "" "--question-type arithmetic" "--question-type retrieval" "--residualise"; do
+  name=$(echo "$opt" | sed 's/--question-type //; s/--residualise/residualised/')
+  python -m src.probes.run_chartqa_types --activations $ACT/$M/test.npz \
+      --predictions $P/${M}_test.jsonl --labels $L/${M}_test.claude.jsonl $opt \
+      --out results/probes/chartqa_types_${name:+${name}_}$M
+done
+```
+
+### 4. Probes on synthetic charts (E3, pilot 3)
+
+```bash
+PILOTS="--pilot pilot1 $ACT/$M/synth_pilot.npz $P/${M}_synth_pilot.jsonl $SYNTH/absent_pilot_v1/manifest.jsonl
+        --pilot pilot2 $ACT/$M/synth_pilot2.npz $P/${M}_synth_pilot2.jsonl $SYNTH/absent_pilot_v2/manifest.jsonl"
+
+python -m src.probes.run_synth_types $PILOTS --out results/probes/synth_types_$M
+python -m src.probes.run_followups grid $PILOTS \
+    --probe-report results/probes/synth_types_$M.json \
+    --out results/probes/synth_grid_baseline_$M.json
+python -m src.probes.run_pilot3 $PILOTS \
+    --target $ACT/$M/synth_pilot3.npz $P/${M}_synth_pilot3.jsonl $SYNTH/absent_pilot_v3/manifest.jsonl \
+    --out results/probes/pilot3_$M.json
+```
+
+### 5. Repairs and the controller (E4, E5)
+
+```bash
+# E4 (GPU): every repair on every value-question error; CORRECT=1 re-asks the correct answers for E5
+for pilot in synth_pilot:absent_pilot_v1 synth_pilot2:absent_pilot_v2; do
+  for correct in "" 1; do
+    CORRECT=$correct PREDICTIONS=$P/${M}_${pilot%%:*}.jsonl \
+      SYNTH_MANIFEST=$SYNTH/${pilot#*:}/manifest.jsonl \
+      sbatch --exclude="$BAD_NODES" scripts/intervene.sbatch
+  done
+done
+cp $DURABLE/e4/*.outcomes.jsonl results/e4/   # once the jobs finish
+
+# E5: probe scores per model, then the controller for both models
+python -m src.controller.e5_scores $PILOTS --out results/e5/${M}_scores
+python -m src.controller.e5 --models qwen2_5_vl_7b llava_next_mistral_7b
+```
 
 ## Layout
 
