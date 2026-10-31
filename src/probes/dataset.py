@@ -74,13 +74,13 @@ class ProbeConfig:
     # OPEN. Which pooled position to probe. Swept, not assumed: run the whole
     # pipeline once per position and report all four. `query_last` is the
     # pre-generation state the hypothesis is literally about, so it is the
-    # default, but SPEC 4.1 expects vision-side features to win for Qwen.
+    # default, but the proposal expects vision-side features to win for Qwen.
     position: str = "query_last"
 
     # OPEN. L2 strength. Selected on validation only, never on test.
     l2: float = 1.0
 
-    # OPEN, and it changes what E3 can say. SPEC calls the type probes
+    # OPEN, and it changes what E3 can say. The proposal calls the type probes
     # "structural one-vs-rest" and "fabrication one-vs-rest" without saying
     # what "rest" is.
     #
@@ -115,7 +115,7 @@ class ProbeConfig:
     # residualise() takes fit_on: pooled statistics leak test information.
     standardize: bool = True
 
-    # Split sizes. Figure-level. Seed is the project-wide 42 (TASKS 4.5).
+    # Split sizes. Figure-level. Seed is the project-wide 42.
     val_fraction: float = 0.2
     test_fraction: float = 0.2
     seed: int = 42
@@ -299,7 +299,7 @@ def load_activations(
             raise ValueError(
                 f"{path} has no `item_ids` array. Row order is then unknowable "
                 "and the cache cannot be joined to labels; re-run the caching "
-                "job (see inf.md Section 3.3).")
+                "job.")
         item_ids = [str(x) for x in npz["item_ids"]]
         figure_ids = ([str(x) for x in npz["figure_ids"]]
                       if "figure_ids" in npz else [])
@@ -341,7 +341,7 @@ def load_activations(
 def load_predictions(path: str | pathlib.Path) -> dict[str, dict]:
     """Read the inference manifest into `{item_id: row}`.
 
-    Expects the schema in inf.md Section 3.2. `item_id` is required: without it
+    Expects the predictions schema. `item_id` is required: without it
     there is nothing to join on.
     """
     rows: dict[str, dict] = {}
@@ -355,7 +355,7 @@ def load_predictions(path: str | pathlib.Path) -> dict[str, dict]:
             if not iid:
                 raise ValueError(
                     f"{path}:{lineno} has no item_id. The predictions file must "
-                    "carry it (inf.md Section 3.2); recomputing it here would "
+                    "carry it; recomputing it here would "
                     "duplicate the hash definition and invite drift.")
             if iid in rows:
                 raise ValueError(f"{path}:{lineno} duplicate item_id {iid!r}")
@@ -443,7 +443,7 @@ def resolve_labels(
 
 
 # ---------------------------------------------------------------------------
-# Figure-level splits (TASKS 5.4)
+# Figure-level splits
 # ---------------------------------------------------------------------------
 
 def assign_figure_splits(
@@ -482,7 +482,7 @@ def assign_figure_splits(
 def assert_no_figure_leak(figure_ids_by_split: Mapping[str, Sequence[str]]) -> None:
     """Fail if any figure appears in more than one split.
 
-    Called on every dataset this module produces. TASKS 5.4 asks for an
+    Called on every dataset this module produces. We want an
     assertion in code rather than trust in the split script, because a leak
     inflates every probe number and looks like a good result.
     """
@@ -596,7 +596,7 @@ def build_dataset(
     if not keep:
         raise ValueError(
             f"task {task!r} has no usable items. Check that the predictions and "
-            "the activation cache share item_ids (inf.md Section 3.1).")
+            "the activation cache share item_ids.")
 
     # --- split by figure --------------------------------------------------
     split_of_figure = assign_figure_splits(

@@ -4,8 +4,8 @@ Three probes, all L2 logistic regressions on cached activations: `binary`
 (correct vs incorrect), and one-vs-rest `structural` and `fabrication`.
 
 **The layer-selection guard is the point of this module.** Picking the best
-layer by test AUROC is the classic way to invent a result, and TASKS Section
-5.4 asks for code that cannot make that mistake rather than a comment asking
+layer by test AUROC is the classic way to invent a result, so this module is
+code that cannot make that mistake rather than a comment asking
 people not to. So the API is shaped to forbid it:
 
     sweep_layers(train, val)      -> per-layer validation AUROC. No test data.
@@ -70,7 +70,7 @@ def evaluate_at(layer: int, result: SweepResult,
 
     `figure_ids` groups the bootstrap by figure rather than by item, because a
     figure contributes several questions and item-level resampling produces
-    intervals that are too narrow (TASKS Section 5.5).
+    intervals that are too narrow.
     """
     w = result.weights_by_layer[layer]
     scores = predict_scores(test[layer], w)

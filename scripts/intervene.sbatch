@@ -1,5 +1,5 @@
 #!/bin/bash
-# E4: every repair on every labelled error (TASKS P6.5, cross.md).
+# E4: every repair on every labelled error.
 #
 # Resumable: after a timeout or eviction, resubmit the same command and it
 # continues from the last saved answer.
@@ -36,7 +36,7 @@ set -euo pipefail
 PROJ="${PROJ:-$HOME/anlp/project/type-aware-vlm-failures}"
 source "$PROJ/scripts/ada_env.sh"
 
-: "${PREDICTIONS:?set PREDICTIONS to an inf.md predictions file}"
+: "${PREDICTIONS:?set PREDICTIONS to a results/predictions/*.jsonl file}"
 if [[ -z "${SYNTH_MANIFEST:-}" ]]; then
     : "${LABELS:?set LABELS to the annotations/ folder or a labels file (or SYNTH_MANIFEST)}"
 fi

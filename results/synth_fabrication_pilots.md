@@ -4,8 +4,8 @@ Why these exist: the labelling pilot (`results/labels/pilot/README.md`) found 0
 fabrications in 20 naturalistic ChartQA errors, so fabrication examples have to
 come from the synthetic arm. A probe trained on "ChartQA structural vs synthetic
 fabrication" would learn real-vs-synthetic, and on synthetic data the question
-template alone predicts the intended class at AUROC 1.000
-(`results/e2-synthetic-is-tautological.md`). So the design is a **within-template
+template alone predicts the intended class at AUROC 1.000.
+So the design is a **within-template
 contrast**: the same question type, asked about a missing category, and the
 probe separates answers that fabricated from answers that rejected the premise.
 Every outcome is scored from the model's actual answer (`src/synth/items.py`).

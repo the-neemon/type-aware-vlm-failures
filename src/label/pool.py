@@ -1,14 +1,14 @@
-"""Build the annotation pool and split it between annotators (TASKS P2.4, P2.6).
+"""Build the annotation pool and split it between annotators.
 
 Two steps, both deterministic (seed 42, the project convention):
 
     build  : predictions files -> pool.jsonl (blind) + pool_key.jsonl (private)
     sample : as build, but a fixed number of errors per model, stratified by
-             the LLM label (the human agreement check, AGENTS.md decision 6)
+             the LLM label (the human agreement check)
     assign : pool.jsonl -> tasks/<annotator>.jsonl, with a designed overlap
 
 Item IDs are taken unchanged from the predictions file, which mints them with
-`item_id()` below (inf.md 3.1), a hash of (model, source, figure, question,
+`item_id()` below, a hash of (model, source, figure, question,
 occurrence). Reusing them is what lets
 human labels join to the predictions, the Claude labels, the activations and
 E4. Minting a separate ID here would silently join nothing. Because the model is
@@ -69,7 +69,7 @@ def sanitize(name: str) -> str:
 
 def item_id(model: str, figure_id: str, question: str, source: str | None = None,
             occurrence: int = 0) -> str:
-    """The project's one join key (inf.md 3.1). Inference imports this; never restate it.
+    """The project's one join key. Inference imports this; never restate it.
 
     `\x1f` is the ASCII unit separator, which cannot occur inside a question or
     a filename, so the fields cannot run into each other. ``source`` and
@@ -136,7 +136,7 @@ def allocate(counts: dict[str, int], n: int, floor: int) -> dict[str, int]:
 
 def sample_pool(paths: Sequence[str | pathlib.Path], label_paths: Sequence[str | pathlib.Path],
                 per_model: int = 100, floor: int = 5) -> tuple[list[dict], list[dict]]:
-    """The human agreement sample (AGENTS.md decision 6): per_model errors from
+    """The human agreement sample: per_model errors from
     each predictions file, stratified by the LLM label. Returns (pool, key) in
     the same blind format as build_pool."""
     labels: dict[str, str] = {}
@@ -214,12 +214,12 @@ def main() -> None:
 
     b = sub.add_parser("build", help="predictions files -> blind pool + private key")
     b.add_argument("--predictions", action="append", required=True, type=pathlib.Path,
-                   help="inf.md 3.2 format; repeat once per model")
+                   help="predictions .jsonl; repeat once per model")
     b.add_argument("--out", type=pathlib.Path, default=pathlib.Path("annotations/tasks"))
 
     sm = sub.add_parser("sample", help="stratified sample of errors -> blind pool + private key")
     sm.add_argument("--predictions", action="append", required=True, type=pathlib.Path,
-                    help="inf.md 3.2 format; repeat once per model")
+                    help="predictions .jsonl; repeat once per model")
     sm.add_argument("--labels", action="append", required=True, type=pathlib.Path,
                     help="LLM label file(s) to stratify by; repeat once per model")
     sm.add_argument("--per-model", type=int, default=100)

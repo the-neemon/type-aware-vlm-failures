@@ -19,8 +19,7 @@ What it does, and the order matters:
 **E2 is not here.** The surface baseline lives in `src/surface/` and needs the
 figure's text, which the activation cache does not carry. See the note at the
 bottom of this file: ChartQA ships the underlying data tables, which is the
-cheapest source for it. No probe number should be reported without it
-(TASKS 5.10).
+cheapest source for it. No probe number should be reported without it.
 """
 
 from __future__ import annotations
@@ -218,7 +217,7 @@ def main() -> int:
         print("\nno --annotations given; type probes and E3 skipped")
 
     print("\nREMINDER: no probe number is a result without its E2 surface "
-          "baseline\n(TASKS 5.10). See the note in this module's docstring.")
+          "baseline.\nSee the note in this module's docstring.")
 
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -263,7 +262,7 @@ if __name__ == "__main__":
 # they are a cleaner and cheaper source of "is the answer present in the figure"
 # than anything recovered from pixels.
 #
-# Once featurised, E2 has two halves and TASKS 5.10 wants both:
+# Once featurised, E2 has two halves and we report both:
 #   1. the surface-only baseline AUROC, reported next to every probe number;
 #   2. the probe re-run on residualise(A, S, fit_on=train_mask), which is the
 #      number that decides whether we have a mechanism or a confound.

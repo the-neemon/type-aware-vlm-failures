@@ -163,7 +163,7 @@ computation 17 to 21, struct_vs_comp 16 to 23.
 ## Limits
 
 - One annotator per model (an AI-assisted labelling pass, audited). The two-person
-  agreement check in `todos.md` is still owed.
+  agreement check came later (`results/human_agreement.md`).
 - Qwen's classes are small (71 S, 93 K), so its CIs are wide.
 - The surface baseline has only four features. As the layer-0 numbers show, it
   understates how much the question alone gives away.

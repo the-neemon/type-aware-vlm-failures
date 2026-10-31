@@ -1,4 +1,4 @@
-"""Follow-up checks on the main probes (todos.md, 1 Oct 2026). Two subcommands.
+"""Follow-up checks on the main probes. Two subcommands.
 
 binary
     The E1 binary probe (is the answer wrong?) on query_last, re-run four ways in
@@ -28,7 +28,7 @@ binary
 
 grid
     The synthetic misread baseline with the value's position relative to the
-    gridlines, declared before running (todos.md): an earlier diagnostic found
+    gridlines, declared before running: an earlier diagnostic found
     that distance to the nearest multiple of 10 predicts LLaVA's misreads at
     0.852, above its probe, but it was chosen after seeing the data. Two numeric
     features are added to the chart-metadata baseline of run_synth_types:

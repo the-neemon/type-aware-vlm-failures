@@ -1,7 +1,6 @@
-"""Boundary tests for relaxed accuracy (TASKS P1.1).
+"""Boundary tests for relaxed accuracy.
 
-The TASKS file is explicit: "unit-test it exactly at the tolerance boundary in
-both directions."  Getting this wrong marks correct answers as errors, and those
+Tested exactly at the tolerance boundary, in both directions. Getting this wrong marks correct answers as errors, and those
 mislabelled items land in the structural class and poison every probe.
 
 Run:

@@ -1,7 +1,7 @@
-"""E4 recovery matrix and its pre-registered test (TASKS P6.6, P6.7).
+"""E4 recovery matrix and its pre-registered test.
 
 The matrix is failure type x intervention, each cell holding
-`P(correct | type, intervention)`. SPEC asks whether it has "diagonal
+`P(correct | type, intervention)`. The proposal asks whether it has "diagonal
 structure". That phrase needs sharpening before there is data to look at,
 because the matrix is 2x4 rather than square and `I_abstain` is scored as risk
 avoided rather than accuracy gained.
@@ -115,7 +115,7 @@ def did_with_ci(outcomes: Sequence[Outcome],
     """The pre-registered statistic with a cluster-bootstrapped 95% interval.
 
     Grouped by figure, because a figure contributes several erroneous answers
-    and their outcomes are correlated (TASKS Section 5.5).
+    and their outcomes are correlated.
     """
     rec = np.array([o.recovered for o in outcomes], dtype=float)
     ftype = np.array([o.failure_type for o in outcomes])

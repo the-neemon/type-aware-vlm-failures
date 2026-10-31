@@ -1,12 +1,12 @@
 # E4: pre-registered test for the cross-intervention matrix
 
-Written 2 September, **before any intervention has been run**. TASKS P6.7 asks
+Written 2 September, **before any intervention has been run**. The plan asks
 for the test to be stated in advance rather than chosen after seeing the matrix,
 which is the whole value of this document.
 
 ## What "diagonal structure" means
 
-SPEC asks whether the failure-type x intervention matrix has diagonal structure.
+The proposal asks whether the failure-type x intervention matrix has diagonal structure.
 That phrase needs sharpening: the matrix is 2x4 rather than square, and
 `I_abstain` is scored as risk avoided rather than accuracy gained, so it has no
 recovery rate to compare.
@@ -98,7 +98,7 @@ synthetic error rate of roughly 30 percent, 800 errors per cell needs on the
 order of 2,700 items per failure type per model.
 
 **But E4 needs inference, not activations.** The recovery matrix is built from
-outcomes alone; no probe touches it (SPEC 4.3 is explicit that this experiment
+outcomes alone; no probe touches it (the proposal is explicit that this experiment
 does not use the probes). So scaling the synthetic arm for E4 power costs
 inference compute and nothing in the activation cache, and the 30 GiB home quota
 is not the binding constraint here. Cache activations for the probe subset;

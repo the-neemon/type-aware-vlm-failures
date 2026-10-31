@@ -155,25 +155,6 @@ def gridline():
     plt.close(fig)
 
 
-def transfer():
-    """Misread probe trained on real labels vs trained on synthetic charts, scored on ChartQA."""
-    fig, ax = plt.subplots(figsize=(4.4, 2.4))
-    groups, series = [], {"Trained on ChartQA labels": [], "Trained on synthetic charts": []}
-    for m, (name, _) in MODELS.items():
-        groups.append(name)
-        series["Trained on ChartQA labels"].append(
-            load(f"chartqa_types_{m}.json")["probes"]["structural"]["matrix"]["S_vs_C"]["auroc"])
-        series["Trained on synthetic charts"].append(
-            load(f"transfer_chartqa_{m}.json")["probes"]["structural"]["chartqa"]["S_vs_C"]["auroc"])
-    bars(ax, groups, series, ["#2a78d6", "#eda100"])
-    ax.legend(fontsize=7, frameon=False, loc="upper right")
-    ax.set_title("Real misreads vs correct answers (ChartQA)", fontsize=9)
-    ax.set_ylim(0.4, 1.0)
-    fig.tight_layout()
-    fig.savefig(OUT / "slide_transfer.pdf")
-    plt.close(fig)
-
-
 def risk_coverage():
     """E5 risk-coverage at slide size, five policies (results/e5/*_e5.json)."""
     import sys
@@ -208,7 +189,7 @@ def risk_coverage():
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for f in (e1_controls, chartqa_types, pilot3_layers, gridline, transfer, risk_coverage):
+    for f in (e1_controls, chartqa_types, pilot3_layers, gridline, risk_coverage):
         f()
     print("wrote", *sorted(p.name for p in OUT.glob("slide_*.pdf")))
 

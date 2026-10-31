@@ -1,4 +1,4 @@
-"""Run the E2 surface baseline over a synthetic manifest (TASKS P5.4).
+"""Run the E2 surface baseline over a synthetic manifest.
 
 Reports per-class AUROC for the surface features alone, plus ablations that
 isolate which feature is carrying the separation. Run:

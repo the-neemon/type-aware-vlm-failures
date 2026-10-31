@@ -49,7 +49,7 @@ python -m src.label.pool assign --pool annotations/tasks/pool.jsonl \
     --annotators naman yash shrish sanjith --overlap 200
 ```
 
-Item IDs come straight from the predictions file (inf.md 3.1), so human labels
+Item IDs come straight from the predictions file, so human labels
 join to the predictions, the Claude labels, the activations and E4 without any
 mapping. Pass `--predictions` once per model when LLaVA exists.
 
@@ -70,7 +70,7 @@ discusses them, write the agreed labels to `annotations/adjudicated.jsonl`
 
 ## LLM labels (for Yash)
 
-Per inf.md 10, write `results/labels/qwen2_5_vl_7b_test.claude.jsonl`, one line
+Write `results/labels/qwen2_5_vl_7b_test.claude.jsonl`, one line
 per item:
 
 ```json

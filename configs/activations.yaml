@@ -1,14 +1,14 @@
-# Activation caching schema. Resolves open decision 1 (TASKS.md Section 7).
+# Activation caching schema. Resolves open decision 1.
 #
-# DECIDED 2 September (open decision 1). Supporting arithmetic is in
-# results/storage_budget.md, regenerable via src/extract/storage_budget.py.
+# DECIDED 2 September (open decision 1). Supporting arithmetic comes from
+# src/extract/storage_budget.py.
 # Still contingent on P0.10: the vision-token counts behind the budget are
 # analytic and unverified against the real processor. If P0.10 fails, recompute
 # before caching anything.
 #
 # Headline: pooling the vision tokens is what makes this affordable, and once
 # they are pooled we can afford EVERY layer rather than a subsampled set. The
-# SPEC assumed storage forced us to subsample; the arithmetic says otherwise.
+# proposal assumed storage forced us to subsample; the arithmetic says otherwise.
 
 schema_version: 1
 
@@ -17,7 +17,7 @@ dtype: float16            # never float32; doubles the cache for no probe benefi
 # --------------------------------------------------------------------------
 # What to cache, per layer, per item
 # --------------------------------------------------------------------------
-# Schema B in results/storage_budget.md. Four vectors per layer.
+# Schema B in src/extract/storage_budget.py. Four vectors per layer.
 #
 # vision_mean and vision_max cover HALP's visual-only family, which it reports
 # as the strongest for Qwen2.5-VL specifically. query_last covers the late
@@ -72,8 +72,7 @@ layers_fallback:
 # GPU type in its SLURM constraint, that type is fixed for the project, and it
 # is recorded next to the library versions in the run config.
 compute_pool: ada
-gpu_type: 2080ti          # RTX 2080 Ti, sm_75, 11 GiB. Measured 2 Sep, see
-                          # results/ada_filesystem.md Section 4. FROZEN.
+gpu_type: 2080ti          # RTX 2080 Ti, sm_75, 11 GiB. Measured 2 Sep. FROZEN.
                           # Turing has no bf16 tensor cores and no FlashAttention-2,
                           # so the project runs fp16 + sdpa. This is part of the
                           # pin: it changes activations, not just speed.
@@ -146,7 +145,7 @@ storage:
   # Ada's /scratch is NODE-LOCAL. A job on one node cannot see what a job on
   # another node wrote there, so it is working space for the duration of a job,
   # never the cache's home. Every job stages its output to durable_root before
-  # exiting (TASKS.md P0.9) or the cache fragments across nodes.
+  # exiting or the cache fragments across nodes.
   working_root: /scratch    # node-local, fast, per job
   durable_root: $HOME       # measured in P0.3: the ONLY shared, writable,
                             # durable path visible from compute nodes.
@@ -159,7 +158,7 @@ storage:
   # oldest surviving entry observed on a node was 5 days old. So the weights
   # cache on /scratch is never set up once: stage_in_model in
   # scripts/ada_env.sh repairs it on whichever node a job lands on, which is a
-  # no-op on a warm node. Measured 2 Sep, results/ada_filesystem.md Section 3.
+  # no-op on a warm node. Measured 2 Sep.
   working_root_purge_days: 7
   stage_back_required: true
 
@@ -197,8 +196,7 @@ storage:
   #
   # MODEL WEIGHTS DO NOT GO HERE. Qwen2.5-VL-7B is ~16.6 GB and LLaVA-NeXT-7B
   # ~15.1 GB; together 29.5 GiB, which exhausts the quota on its own. HF_HOME
-  # stays on node-local /scratch with jobs pinned to a fixed node set, per
-  # TASKS.md P0.3.
+  # stays on node-local /scratch with jobs pinned to a fixed node set.
 
   # Contingencies IN ORDER if the item count grows past ~8,000. Do not shard the
   # cache across teammates' home directories: home dirs are not group-readable
@@ -208,7 +206,7 @@ storage:
   contingencies:
     - drop query_mean from positions (4 -> 3 vectors per layer, saves 25%)
     - cache and analyse one model at a time; they are reported separately
-      anyway (TASKS.md Section 5.7), so the asymmetry costs nothing
+      anyway, so the asymmetry costs nothing
     - stage completed caches to /share1 from the login node (decision 10)
     - only then, layers_fallback
 

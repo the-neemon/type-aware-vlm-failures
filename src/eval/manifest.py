@@ -1,4 +1,4 @@
-"""Manifest schema for the evaluation pipeline (TASKS P1.6).
+"""Manifest schema for the evaluation pipeline.
 
 The manifest is the single source of truth that both the labelling pipeline
 (workstream B) and the activation caching pipeline (workstream A) key off.

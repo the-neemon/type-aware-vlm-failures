@@ -1,4 +1,4 @@
-"""Minimal blind annotation tool (TASKS P2.2).
+"""Minimal blind annotation tool.
 
 Show the figure, question, gold answer and model's answer; take one keypress
 for `structural`, `fabrication` or `ambiguous`; take a one-line rationale;

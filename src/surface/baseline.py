@@ -1,4 +1,4 @@
-"""Surface baseline for E2 (TASKS P5.4, P5.5).
+"""Surface baseline for E2.
 
 The linear-model primitives live in `src.common.linear` because the activation
 probes use exactly the same ones; this module is the E2-specific layer on top.

@@ -1,6 +1,6 @@
-"""A VLM over ChartQA or a synthetic set: answers plus prefill activations (inf.md, TASKS P1.3, P4.1-P4.4).
+"""A VLM over ChartQA or a synthetic set: answers plus prefill activations.
 
-Spec: qwen_chartqa_activation_caching_spec.md. Three steps, run in this order
+Three steps, run in this order
 by scripts/cache_chartqa.sbatch:
 
     run       answer every question once, greedily, and cache the four pooled
@@ -16,11 +16,11 @@ by scripts/cache_chartqa.sbatch:
 
 Where things go, for the default --tag test:
 
-    results/predictions/qwen2_5_vl_7b_test.jsonl        predictions (inf.md 3.2)
+    results/predictions/qwen2_5_vl_7b_test.jsonl        predictions
     results/predictions/qwen2_5_vl_7b_test.run.json     versions and settings used
     results/predictions/qwen2_5_vl_7b_test.summary.json acceptance report
     ~/activations/qwen2_5_vl_7b/shards_test/            resumable shards
-    ~/activations/qwen2_5_vl_7b/test.npz                the cache (inf.md 3.3)
+    ~/activations/qwen2_5_vl_7b/test.npz                the cache
 
 Shards are written straight to $HOME rather than node-local /scratch: a job
 resubmitted after a timeout may land on another node, and resuming has to see
@@ -365,7 +365,7 @@ def run(cfg: RunConfig, paths: Paths, limit: int | None, shard_size: int) -> Non
 # ---------------------------------------------------------------------------
 
 def summarize(rows: list[dict], vision_range: tuple[int, int]) -> dict:
-    """Accuracy per sub-split (inf.md 8.3), error yield (8.4) and vision tokens (8.5).
+    """Accuracy per sub-split, error yield and vision tokens.
 
     Synthetic rows also get accuracy per template and, per absent template, the
     counts of each outcome (src/synth/items.py).

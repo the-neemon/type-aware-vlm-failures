@@ -10,7 +10,6 @@ anything? Two frozen models (Qwen2.5-VL-7B, LLaVA-NeXT-7B), ChartQA plus three
 synthetic bar-chart pilots, linear probes on cached activations, a repair
 experiment (E4) and a type-aware controller (E5).
 
-- [SPEC.md](SPEC.md): the design and what counts as done.
 - [docs/taxonomy.md](docs/taxonomy.md): the five error labels.
 - [paper/](paper/): the mid and final reports.
 
@@ -59,13 +58,6 @@ srun -p u22 --constraint=2080ti --exclude="$BAD_NODES" --gres=gpu:1 \
      -c 8 --mem=32G -t 01:00:00 bash scripts/setup_env.sh
 ```
 
-Then:
-
-```bash
-sbatch scripts/smoke.sbatch           # one figure, one question, one answer
-sbatch scripts/verify_tokens.sbatch   # P0.10 vision-token check
-```
-
 `requirements.txt` holds exact pins, not floors. Activations move silently
 between library versions and this project's claim rests on activations, so a
 teammate who resolves a different `transformers` build has a correctness
@@ -93,8 +85,7 @@ which prints the per-split summary and runs the P5.4 no-shared-figure assertion.
 
 **Each of us needs our own copy.** Home directories on Ada are `drwx------`, so
 one person's download is unreadable by the rest of the team, and there is no
-shared writable path on the cluster to put a single copy in (see
-[results/ada_filesystem.md](results/ada_filesystem.md)). At 1.1 GiB against a
+shared writable path on the cluster to put a single copy in. At 1.1 GiB against a
 30 GiB quota that is an acceptable duplication; it is not worth loosening
 permissions on a home directory to avoid.
 
@@ -104,8 +95,7 @@ node the scheduler happened to pick.
 
 ### Three Ada facts that shape every job
 
-`scripts/ada_env.sh` encodes all three; the measurements behind them are in
-[results/ada_filesystem.md](results/ada_filesystem.md).
+`scripts/ada_env.sh` encodes all three.
 
 - **`/scratch` is node-local, and it is really `/tmp`.** Same device, same
   inode, and `tmpreaper` purges it daily at 7 days of no access. It holds

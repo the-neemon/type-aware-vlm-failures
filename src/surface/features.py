@@ -1,4 +1,4 @@
-"""Surface features for the E2 control (TASKS P5.4).
+"""Surface features for the E2 control.
 
 E2 is the experiment the project's credibility rests on. Our failure categories
 correlate with cheap surface properties of the item: "value absent from the
@@ -9,7 +9,7 @@ mechanism.
 So we train a classifier on these features ALONE and report the margin by which
 the activation probe beats it. The margin, not the raw AUROC, is the evidence.
 
-Features, per SPEC Section 6 E2:
+Features, per the proposal's E2:
     answer_in_figure   is the answer string present in the figure's text
     answer_type        numeric / boolean / categorical / other
     answer_length      characters in the answer

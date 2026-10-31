@@ -1,6 +1,5 @@
 #!/bin/bash
-# Qwen2.5-VL-7B over ChartQA test: predictions plus prefill activations
-# (inf.md, qwen_chartqa_activation_caching_spec.md, TASKS P1.3 and P4.1-P4.4).
+# Qwen2.5-VL-7B over ChartQA test: predictions plus prefill activations.
 #
 #   LIMIT=6 SHARD_SIZE=4 TAG=smoke sbatch scripts/cache_chartqa.sbatch   # first: a smoke run
 #   sbatch scripts/cache_chartqa.sbatch                                  # then: all 2,500

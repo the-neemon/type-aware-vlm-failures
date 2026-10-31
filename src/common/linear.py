@@ -4,7 +4,7 @@ Both the activation probes (P5.1 to P5.3) and the E2 surface baseline (P5.4)
 are L2 logistic regressions scored by AUROC, so the fitting, the metric, the
 residualisation and the bootstrap live here and are imported by both.
 
-Implemented on numpy and scipy rather than scikit-learn: SPEC specifies plain
+Implemented on numpy and scipy rather than scikit-learn: the proposal specifies plain
 L2 logistic regression, it is short, and it is one less dependency to pin on
 the cluster.
 """

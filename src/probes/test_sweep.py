@@ -79,7 +79,7 @@ class TestEvaluateAt:
 
 class TestClusterBootstrap:
     def test_wider_when_label_and_score_both_cluster(self):
-        # The claim in TASKS Section 5.5, tested rather than asserted. Writing
+        # The cluster-bootstrap claim, tested rather than asserted. Writing
         # it revealed the condition is narrower than the usual advice: the
         # bootstraps agree unless BOTH the label and the score are correlated
         # within figure. Our case has both, so this is the realistic scenario:

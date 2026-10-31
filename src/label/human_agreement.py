@@ -1,4 +1,4 @@
-"""Human agreement check for the final submission (AGENTS.md decision 6).
+"""Human agreement check for the final submission.
 
 Two people label the same 200 ChartQA errors blind (`pool.py sample`, then
 `assign --overlap 200`). This writes `results/human_agreement.md`:
@@ -100,7 +100,7 @@ def report(ratings: Ratings, raters: Sequence[str], key: Sequence[dict],
            for r in raters}
     cons = {i: l for i, l in consensus_labels(ratings, raters).items() if i in model_of}
 
-    out = [f"# Human agreement check (AGENTS.md decision 6)", "",
+    out = [f"# Human agreement check", "",
            f"Command: `{command}`", "",
            f"Labels: {', '.join(ALLOWED_LABELS)}. Gate: kappa >= {KAPPA_THRESHOLD}. "
            f"Intervals: 95% percentile bootstrap over items, {N_BOOT} resamples, seed {SEED}.", ""]

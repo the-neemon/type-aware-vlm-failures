@@ -17,7 +17,7 @@
 # Two deliberate choices.
 #
 # Output defaults to $HOME, not /scratch. The images are ~850 MB, and on Ada
-# /scratch is node-local and purged at 7 days (results/ada_filesystem.md), so
+# /scratch is node-local and purged at 7 days, so
 # putting them there means re-downloading on whichever node the scheduler
 # picks. $HOME is visible from every node and had ~6 GB free at the time of
 # writing, which fits. The zip itself is staged on /scratch where available so

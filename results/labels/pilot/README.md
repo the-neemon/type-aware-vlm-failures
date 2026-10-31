@@ -42,7 +42,7 @@ values, and two precision misreads of unlabelled bars.
    the rule of three the fabrication rate among these errors is below about 15%
    with 95% confidence, so 317 errors would hold at most a few dozen and
    probably far fewer. Qwen answers with a value or label that is in the figure
-   almost every time. This is the risk SPEC Section 9 names ("fabrication
+   almost every time. This is the risk the proposal names ("fabrication
    scarcity in natural data"), and it is what the synthetic arm exists to cover.
    A fabrication probe trained and tested on naturalistic errors alone is
    unlikely to be possible; running more ChartQA splits will not fix this.

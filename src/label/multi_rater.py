@@ -1,4 +1,4 @@
-"""Agreement across several annotators, including an LLM labeller (TASKS P2.4, P2.5).
+"""Agreement across several annotators, including an LLM labeller.
 
 Every top-level `annotations/<rater>.jsonl` is one rater. A human's file is
 written by the annotation app; an LLM labeller's file only needs `item_id` and

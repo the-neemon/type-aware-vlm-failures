@@ -1,11 +1,11 @@
-"""Capture the pre-generation decoder state inside `generate()` (inf.md 5, TASKS P4.1, P4.2).
+"""Capture the pre-generation decoder state inside `generate()`.
 
 The hypothesis is about the model's state after it has read the figure and the
 question and before it emits an answer token. That is the prefill pass, the
 first forward that `model.generate()` runs. Forward hooks on the decoder blocks
 keep each block's **first** output per item and ignore the decode steps that
-follow, so the activations come from the same call that produced the answer
-(TASKS P4.4). There is no second forward pass and no `output_hidden_states`.
+follow, so the activations come from the same call that produced the answer.
+There is no second forward pass and no `output_hidden_states`.
 
 Each hooked block's (1, T, hidden) output is pooled on the spot into four
 vectors and moved to the CPU as float16, so nothing the size of a sequence

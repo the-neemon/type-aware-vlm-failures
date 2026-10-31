@@ -1,6 +1,6 @@
 """Tests for probe dataset assembly (P5.1 to P5.4).
 
-Everything here runs on synthetic fixtures built to the contract in inf.md, so
+Everything here runs on synthetic fixtures built to the predictions/cache contract, so
 the assembly layer is verified before any real inference exists. When the real
 cache lands it should drop straight in.
 
@@ -32,7 +32,7 @@ HIDDEN = 8
 
 
 # ---------------------------------------------------------------------------
-# Fixtures: a tiny world built to the inf.md contract
+# Fixtures: a tiny world built to the predictions/cache contract
 # ---------------------------------------------------------------------------
 
 def _world(n_figures=12, questions_per_figure=3, seed=0):

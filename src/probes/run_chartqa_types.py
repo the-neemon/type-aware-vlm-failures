@@ -28,7 +28,7 @@ advance (best for every ChartQA probe so far). Baseline: the same probes on the
 surface features src/probes/run_sweep.py uses (question source, question length,
 number of image tokens, numeric gold), with no activations.
 
-Two options added on 1 Oct 2026 (todos.md):
+Two options added on 1 Oct 2026:
 
   --question-type arithmetic|retrieval
         keep only items whose question is of that type (src/probes/question_type.py),

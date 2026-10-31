@@ -1,31 +1,30 @@
-"""Load Qwen2.5-VL-7B and ask it one question, exactly as inf.md Section 4 specifies.
+"""Load Qwen2.5-VL-7B and ask it one question.
 
 The one place these settings live. Every job that queries the model (the
-inference run, E4's repairs) goes through here, because cross.md 3.3 is right
-that two copies of them can drift: a repair re-queried with a different dtype,
+inference run, E4's repairs) goes through here, because two copies of them can drift: a repair re-queried with a different dtype,
 attention implementation or processor is measuring the configuration change,
 not the repair. Same hazard as two definitions of `item_id`.
 
 Imports torch lazily, so the constants are usable on a machine with no GPU.
 
-Activation caching (inf.md 5) registers its forward hooks on the returned model
+Activation caching registers its forward hooks on the returned model
 before calling `generate()`; the hooks then fire inside the same forward pass
-that produces the answer, which is what TASKS P4.4 requires.
+that produces the answer.
 """
 
 from __future__ import annotations
 
 MODEL_ID = "Qwen/Qwen2.5-VL-7B-Instruct"
-MODEL_KEY = "qwen2_5_vl_7b" # hashed into every item_id (inf.md 3.1)
+MODEL_KEY = "qwen2_5_vl_7b" # hashed into every item_id
 MAX_PIXELS = 1_000_000      # configs/activations.yaml
 SEED = 42
 MAX_NEW_TOKENS = 32         # configs/inference.yaml
 REASK_TEMPERATURE = 0.7     # I_reask only; everything else is greedy
-ANSWER_SUFFIX = "\nAnswer the question using a single word or phrase."   # inf.md 4.1
+ANSWER_SUFFIX = "\nAnswer the question using a single word or phrase."
 
 # What src/extract/cache_chartqa.py needs to know about this model family.
 DECODER_OUTPUT = "tuple"    # Qwen2_5_VLDecoderLayer returns (hidden_states,) on 4.57.6
-# Below this relaxed accuracy the prompt or the pipeline is broken (inf.md 8.3):
+# Below this relaxed accuracy the prompt or the pipeline is broken:
 # the published ChartQA number for Qwen2.5-VL-7B is about 87%.
 MIN_ACCURACY = 0.60
 
@@ -61,7 +60,7 @@ def load(model_id: str = MODEL_ID):
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
         model_id, dtype=torch.float16, attn_implementation="sdpa", device_map="auto")
     # a misspelled dtype argument silently loads fp32 and dies as an OOM that
-    # looks like a hardware problem (inf.md 4.3)
+    # looks like a hardware problem
     got = next(model.parameters()).dtype
     if got != torch.float16:
         raise SystemExit(f"asked for float16, model loaded as {got}")

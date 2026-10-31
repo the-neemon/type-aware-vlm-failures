@@ -1,6 +1,6 @@
 """Load LLaVA-NeXT (Mistral-7B) and ask it one question, like src/extract/qwen.py does for Qwen.
 
-The second primary model (SPEC 4.1). Everything that decides what the model is
+The second primary model. Everything that decides what the model is
 asked and how the answer is decoded is shared with Qwen rather than copied:
 the answer suffix, the seed, greedy decoding with 32 new tokens, the chat
 template with the image before the text, and whitespace-only stripping. So the
@@ -32,7 +32,7 @@ from src.extract.qwen import (  # noqa: F401  (re-exported)
 )
 
 MODEL_ID = "llava-hf/llava-v1.6-mistral-7b-hf"
-MODEL_KEY = "llava_next_mistral_7b"   # hashed into every item_id (inf.md 3.1)
+MODEL_KEY = "llava_next_mistral_7b"   # hashed into every item_id
 
 DECODER_OUTPUT = "tensor"             # MistralDecoderLayer returns hidden_states itself
 # The pipeline floor, set the way Qwen's is: roughly 0.7 of the published score

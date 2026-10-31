@@ -1,4 +1,4 @@
-"""Two cheap CPU experiments on Qwen's labelled ChartQA errors (todos.md).
+"""Two cheap CPU experiments on Qwen's labelled ChartQA errors.
 
 Both reuse run_synth_types's folds, activations and fitting, so their numbers are
 comparable with results/synth_type_probes.md.

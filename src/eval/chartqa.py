@@ -131,8 +131,7 @@ def split_stats(items: list[ChartQAItem]) -> dict[str, int]:
 def print_split_summary(data: dict[str, list[ChartQAItem]]) -> None:
     """Print a table of figure-vs-question counts per split.
 
-    This is the deliverable: "figure-versus-question counts for every split"
-    (TASKS.md Section 1.1, Shrish's row).
+    The deliverable: figure-versus-question counts for every split.
     """
     print()
     print(f"{'Split':<22s}  {'Questions':>10s}  {'Figures':>8s}  {'Q/Fig':>6s}")

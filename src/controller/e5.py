@@ -1,4 +1,4 @@
-"""E5 step 2: the type-aware controller against its baselines (AGENTS.md decision 7).
+"""E5 step 2: the type-aware controller against its baselines.
 
 Universe: every value question of synthetic pilots 1 and 2 ("What is the value
 of X?", X shown or missing), classes C, S, F, Z, R as in e5_scores.py. For each

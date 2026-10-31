@@ -4,8 +4,7 @@
 #
 # The proposal assumed an LLM judge over the naturalistic arm. Without a budget
 # that is not available, so the naturalistic arm is labelled by hand and the
-# synthetic arm carries the volume. See TASKS.md decision 2 for the reasoning
-# and the cost this imposes.
+# synthetic arm carries the volume.
 
 method: human_annotation
 
@@ -41,7 +40,7 @@ naturalistic:
 
 # The synthetic arm carries E4's cell counts, because human labelling caps how
 # many naturalistic fabrications we can produce and E4 needs adequate counts in
-# every cell. This was always the synthetic arm's stated purpose (SPEC 5.2), it
+# every cell. This was always the synthetic arm's stated purpose, it
 # is just now load-bearing rather than a convenience.
 synthetic:
   # A FLOOR, not a target. The E4 power simulation

@@ -1,7 +1,7 @@
 """The E4 interventions: what gets re-asked, with which image and prompt (P6.1 to P6.4).
 
 Pure functions on images and strings, so everything here is testable without a
-GPU. `run_matrix.py` feeds the results to the model. Spec: cross.md.
+GPU. `run_matrix.py` feeds the results to the model.
 
 | Name         | Image                          | Prompt              | Decoding       |
 | ------------ | ------------------------------ | ------------------- | -------------- |
@@ -12,7 +12,7 @@ GPU. `run_matrix.py` feeds the results to the model. Spec: cross.md.
 | `I_verify`   | original                       | name evidence first | greedy, longer |
 | `I_abstain`  | not re-asked; scored in E5     |                     |                |
 
-Decisions taken 25 September (TASKS decisions 5 and 6):
+Decisions taken 25 September:
 
 - **`I_0` stays the pre-registered baseline**: the original wrong answer, so its
   recovery is zero by definition. That alone would let any repair look good for
@@ -20,7 +20,7 @@ Decisions taken 25 September (TASKS decisions 5 and 6):
   greedy (greedy would just repeat the answer). It separates "this repair works"
   from "asking twice works", and is reported alongside the pre-registered test,
   not instead of it.
-- **`I_crop` is question-conditioned, never attention-conditioned** (SPEC 4.3).
+- **`I_crop` is question-conditioned, never attention-conditioned**.
   It keeps the y-axis strip, because a crop of a bar without its scale cannot
   be read. It needs bar geometry, which only synthetic charts record, so on
   ChartQA it is not applicable until a text-matched crop exists (that needs
@@ -30,8 +30,8 @@ Decisions taken 25 September (TASKS decisions 5 and 6):
   `max_pixels` stays at the pinned 1,000,000 for every repair, and both
   `I_upsample` and `I_crop` enlarge their image to fill that same budget. So the
   two see the same number of vision tokens, and `I_crop` minus `I_upsample`
-  isolates localisation from resolution. (cross.md suggests raising
-  `max_pixels` for the crop instead; that would give the crop more tokens than
+  isolates localisation from resolution. (Raising
+  `max_pixels` for the crop instead that would give the crop more tokens than
   its own floor and fold resolution back into the comparison.)
 - When the question names a category that is not on the chart, there is nothing
   to crop to and `I_crop` shows the whole figure. That is the fabrication case,
@@ -47,7 +47,7 @@ from dataclasses import dataclass, field
 from PIL import Image
 
 # The prompt and pixel budget come from the one module that loads the model, so
-# a repair asks the question exactly as the original run did (cross.md 3.3).
+# a repair asks the question exactly as the original run did.
 from src.extract.qwen import ANSWER_SUFFIX, MAX_PIXELS
 
 VERIFY_SUFFIX = (

@@ -1,6 +1,6 @@
 # Line-ending policy.
 #
-# The problem this solves: TASKS.md, README.md, docs/taxonomy.md and six of
+# The problem this solves: README.md, docs/taxonomy.md and six of
 # src/synth/*.py were committed from Windows with CRLF, while everything
 # written on Linux is LF. Editing a CRLF file from Linux rewrites every line,
 # so a five-line change arrives as a 181-line diff, blame is destroyed, and

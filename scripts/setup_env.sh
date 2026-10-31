@@ -14,7 +14,6 @@
 #   pip cache, HF cache -> /scratch  Large and regenerable. /scratch is
 #                   node-local and purged at 7 days, which is fine for things
 #                   we can re-download and fatal for things we cannot.
-# See results/ada_filesystem.md for the measurements behind that split.
 set -euo pipefail
 
 VENV="${VENV:-$HOME/envs/vlmfail}"

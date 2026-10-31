@@ -85,7 +85,7 @@ LLaVA rises from layer 8 and holds 0.86 to 0.95 from layer 16.
   numbers (F vs Z 0.26), as on pilots 1 and 2.
 - Neither probe responds to misreads of shown years (S vs C 0.49 to 0.58).
 - With out-of-range years, fabrication no longer coincides with a missing
-  category (AGENTS.md decision 4). Qwen refuses here (119 of 300, see the note
+  category. Qwen refuses here (119 of 300, see the note
   below) where it almost
   never refused missing categories, and most made-up numbers in both models
   equal a shown bar's value rather than an extrapolation of the trend.

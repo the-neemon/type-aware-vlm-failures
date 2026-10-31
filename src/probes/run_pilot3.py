@@ -1,6 +1,6 @@
 """Pilot 3: do the missing-bar probes of pilots 1 and 2 fire on an out-of-range year?
 
-Pilot 3 (src/synth/out_of_range.py, AGENTS.md decision 4) asks each chart of
+Pilot 3 (src/synth/out_of_range.py) asks each chart of
 consecutive years about a shown year and, in identical words, about a year one
 to three years outside the shown range. Pilots 1 and 2 asked about a category
 that is not a bar, so there "fabrication" and "the category is missing" were the

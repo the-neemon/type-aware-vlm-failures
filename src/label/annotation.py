@@ -1,4 +1,4 @@
-"""Data structures and I/O for the annotation tool (TASKS P2.2).
+"""Data structures and I/O for the annotation tool.
 
 Guarantees:
 1. Blinding: Model identity, model name, and prior/ground-truth labels are

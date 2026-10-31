@@ -1,9 +1,9 @@
 """Run the E4 cross-intervention experiment: every repair on every labelled error.
 
-Inputs follow inf.md's contract: the predictions file for one model and split,
+Inputs: the predictions file for one model and split,
 and a labels file keyed by the same `item_id`. Only incorrect answers labelled
 `structural` or `fabrication` are used; `ambiguous` items are dropped, as the
-rubric says. Run on Ada inside the pinned environment (inf.md Section 2):
+rubric says. Run on Ada inside the pinned environment:
 
     python -m src.intervene.run_matrix \\
         --predictions results/predictions/qwen2_5_vl_7b_test.jsonl \\
@@ -11,7 +11,7 @@ rubric says. Run on Ada inside the pinned environment (inf.md Section 2):
         --image-root ~/data/ChartQA \\
         --out results/e4/qwen2_5_vl_7b_test.outcomes.jsonl
 
-`--labels` takes either the `annotations/` folder (cross.md 3.2), whose
+`--labels` takes either the `annotations/` folder, whose
 per-person files are merged first, or a single labels file keyed by `item_id`.
 In the folder case, items the annotators disagree on and nobody has adjudicated
 are left out and counted, rather than settled by picking one person's label.
@@ -54,13 +54,13 @@ models; LLaVA's processor then resizes to its own tile grid, which it does for
 both repairs alike, so the two still see the same number of image tokens.
 
 Output is one row per (item, repair), appended and fsynced as it goes, so a
-killed job resumes where it stopped. Field names follow cross.md 7. On Ada, run
+killed job resumes where it stopped. On Ada, run
 it through `scripts/intervene.sbatch`. `--summarize` prints the matrix and the
 pre-registered test (results/e4-preregistration.md) from that file without
 touching the GPU.
 
 Scoring uses the project's relaxed accuracy, and answers are only
-whitespace-stripped, exactly like the original run (inf.md 4.1). Anything else
+whitespace-stripped, exactly like the original run. Anything else
 would make a repaired answer and an original answer incomparable.
 """
 
@@ -200,7 +200,7 @@ def figure_loader(image_root: str | pathlib.Path,
 # ---------------------------------------------------------------------------
 
 class ModelResponder:
-    """The model, loaded and queried through its src.extract module (cross.md 3.3)."""
+    """The model, loaded and queried through its src.extract module."""
 
     def __init__(self, module=qwen):
         self.module = module

@@ -1,4 +1,4 @@
-"""Unit tests for the annotation tool and agreement calculations (TASKS P2.2, P2.4)."""
+"""Unit tests for the annotation tool and agreement calculations."""
 
 import io
 import json

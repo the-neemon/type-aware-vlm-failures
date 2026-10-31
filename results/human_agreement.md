@@ -1,4 +1,4 @@
-# Human agreement check (AGENTS.md decision 6)
+# Human agreement check
 
 Command: `python -m src.label.human_agreement --raters shrish sanjith --labels results/labels/qwen2_5_vl_7b_test.claude.jsonl --labels results/labels/llava_next_mistral_7b_test.claude.jsonl --out results/human_agreement.md`
 

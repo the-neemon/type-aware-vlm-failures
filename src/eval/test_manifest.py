@@ -1,4 +1,4 @@
-"""Tests for the manifest schema (TASKS P1.6).
+"""Tests for the manifest schema.
 
 Run:
     python -m pytest src/eval/test_manifest.py -v

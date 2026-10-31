@@ -67,7 +67,7 @@ is no visible optimism from selecting among 560 configurations.
   surface baseline", not "survives E2".
 - **One model.** P5.1 asks for both; LLaVA-NeXT has not been run.
 - **Augmented has 13 test errors**, hence the wide interval there.
-- **Possible tension with the literature.** SPEC 4.1 cites HALP as reporting
+- **Possible tension with the literature.** The proposal cites HALP as reporting
   that Qwen2.5-VL-7B is best served by visual-only features. Here the
   query-side state wins clearly. HALP studied hallucination on natural images,
   not chart QA correctness, so these need not conflict, but it should be

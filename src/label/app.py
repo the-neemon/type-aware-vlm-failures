@@ -1,4 +1,4 @@
-"""Annotation and agreement UI (TASKS P2.3 to P2.6). Run from the repo root:
+"""Annotation and agreement UI. Run from the repo root:
 
     streamlit run src/label/app.py
 
@@ -155,7 +155,7 @@ def annotate() -> None:
 
 def agreement() -> None:
     ratings, bad = load_raters(ANN_DIR)
-    llm_ratings, llm_bad = load_raters(REPO / "results" / "labels")   # inf.md 10
+    llm_ratings, llm_bad = load_raters(REPO / "results" / "labels")
     ratings.update({r: v for r, v in llm_ratings.items() if not r.endswith(".human")})
     bad += llm_bad
     if bad:
@@ -183,7 +183,7 @@ def agreement() -> None:
     elif kappa > KAPPA_THRESHOLD:
         st.success("Passes the gate.")
     else:
-        st.error("Below the gate. Per AGENTS.md decision 6 this is reported as a "
+        st.error("Below the gate. This is reported as a "
                  "limitation, with no relabelling round. Adjudicate the disagreements "
                  "below: that settles a consensus label, it does not change kappa.")
 

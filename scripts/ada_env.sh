@@ -1,7 +1,7 @@
 # Shared environment preamble for every Ada job in this project.
 # Source it, do not execute it:  source "$(dirname "$0")/ada_env.sh"
 #
-# Why this file exists: the SPEC assumed /scratch was a shared filesystem on
+# Why this file exists: the proposal assumed /scratch was a shared filesystem on
 # Ada. It is not. /scratch is node-local disk, so the model cache has to be
 # repaired per node, and anything durable has to be staged back to $HOME.
 # Centralising that here keeps every job honest about it.
@@ -25,7 +25,7 @@ export PIP_CACHE_DIR="$SCRATCH_ROOT/pipcache"
 export TOKENIZERS_PARALLELISM=false
 
 # --- Determinism -----------------------------------------------------------
-# Every downstream label refers to one specific answer string (TASKS.md P1.2),
+# Every downstream label refers to one specific answer string,
 # so the answer has to be reproducible.
 export PYTHONHASHSEED=0
 export CUBLAS_WORKSPACE_CONFIG=:4096:8

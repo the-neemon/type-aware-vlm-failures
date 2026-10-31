@@ -1,4 +1,4 @@
-"""Third fabrication pilot: a year outside the chart's range (AGENTS.md decision 4).
+"""Third fabrication pilot: a year outside the chart's range.
 
 In pilots 1 and 2 every absent question named a category that is not a bar
 (Guava on a fruit chart), so a "fabrication" there is, by construction, an

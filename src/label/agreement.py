@@ -1,4 +1,4 @@
-"""Inter-annotator agreement and validation against ground truth (TASKS P2.2, P2.4).
+"""Inter-annotator agreement and validation against ground truth.
 
 Provides:
 1. Cohen's kappa calculation between two raters.

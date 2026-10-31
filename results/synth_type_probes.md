@@ -128,7 +128,7 @@ Layers chosen: structural 20-30, fabrication 16-19, fab_vs_zero 23-30.
    more on missing-bar questions (F vs C 0.879, Z vs C 0.987) than on its own task
    (0.776). In LLaVA it behaves like a general "this answer is not grounded"
    direction, strongest when there is no bar at all. In Qwen it was specific
-   (0.887 own, 0.594 on fabrications). By SPEC E3's criterion, LLaVA shows
+   (0.887 own, 0.594 on fabrications). By the proposal's E3 criterion, LLaVA shows
    strong cross-transfer from the structural side: one signal wearing two labels,
    in one direction only.
 3. **LLaVA's misread probe does not beat a one-number chart baseline.** Because

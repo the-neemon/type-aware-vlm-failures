@@ -1,4 +1,4 @@
-"""Prediction rows, activation shards and the final cache (inf.md 3 and 7).
+"""Prediction rows, activation shards and the final cache.
 
 Numpy only, so all of it is testable without a GPU.
 

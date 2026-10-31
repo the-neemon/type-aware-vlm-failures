@@ -1,4 +1,4 @@
-"""Activation cache storage budget (open decision 1, TASKS.md Section 7).
+"""Activation cache storage budget (open decision 1).
 
 Answers one question: for each candidate caching schema, how many bytes does
 the activation cache take? The term that dominates is the number of vision

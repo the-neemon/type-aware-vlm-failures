@@ -1,4 +1,4 @@
-"""ChartQA relaxed accuracy metric (SPEC Section 4.2, TASKS P1.1).
+"""ChartQA relaxed accuracy metric.
 
 ChartQA uses "relaxed accuracy" rather than exact match:
   - Numeric answers: correct when |pred - gold| <= tolerance * |gold|.
