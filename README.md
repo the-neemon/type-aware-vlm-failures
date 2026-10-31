@@ -155,11 +155,3 @@ scripts/      Ada and SLURM job submission
 results/      metrics and figures (small artefacts only)
 paper/        ACL-style LaTeX for the mid and final write-ups
 ```
-
-## Model and experiment tracking
-
-HuggingFace and Weights & Biases links go here. Required by the course
-guidelines for both the mid and final submissions.
-
-- HuggingFace: none yet
-- Weights & Biases: none yet
